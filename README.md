@@ -21,13 +21,13 @@
 | `parts/post.js` | 立柱（含埋地段） |
 | `parts/beam.js` | 斜梁 + 立柱-斜梁螺栓 |
 | `parts/brace.js` | 斜撑、外斜撑、斜撑连接板 + 斜撑两端螺栓 |
-| `parts/purlin.js` | 檩条、檩托 + 檩托螺栓 |
-| `parts/module.js` | 光伏组件 + M8 安装螺栓 |
+| `parts/purlin.js` | 檩条、檩托 + 檩托螺栓；剖切面上的檩条截面 |
+| `parts/module.js` | 光伏组件 + M8 安装螺栓；剖切面上的组件截面 |
 | `parts/bolts.js` | 螺栓规格和叠层；各构件登记螺栓位置，最后统一画成实例化网格 |
-| `model.js` | 整体重建 `PV.build()`：求几何 → 依次调用各构件 → 地面 → 标注、视图、面板 |
+| `model.js` | 整体重建 `PV.build()`：求几何 → 依次调用各构件 → 剖切面封口 → 地面 → 标注、视图、面板 |
 | `dims.js` / `joint-detail.js` | 尺寸标注；连接节点详图的引线标注 |
 | `overlay.js` | 原图叠加 |
-| `view.js` | 各视图显示哪些部分、相机取景和切换动画 |
+| `view.js` | 各视图显示哪些部分、轴测节点图的剖切范围、相机取景和切换动画 |
 | `edit.js` / `panel.js` | 蓝字点击修改；右侧面板 |
 | `main.js` | 启动和渲染循环（最后加载） |
 

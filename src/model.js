@@ -56,6 +56,17 @@
     const clip = parts.purlin.build(c);
     parts.module.build(c);
     layout.counts = Object.assign({ clip }, bolts.flush(g.hw));
+
+    // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。
+    // 略往保留的一侧挪 0.5，免得被剖切面自己裁掉；组件的封口放进组件分组，跟着“光伏组件”开关
+    const [lo, hi] = PV.view.sectionRange(layout);
+    g.caps = [new THREE.Group(), new THREE.Group()];
+    g.model.add(g.caps[0]);
+    g.modules.add(g.caps[1]);
+    for (const z of [lo + 0.5, hi - 0.5]) {
+      parts.purlin.cap(c, z, g.caps[0]);
+      parts.module.cap(c, z, g.caps[1]);
+    }
     root.add(g.model);
 
     buildGround(S, layout);

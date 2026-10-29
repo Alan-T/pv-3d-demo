@@ -6,12 +6,21 @@
   const { MM, V, EZ, FIX, CLIP, M, addMember } = PV;
 
   const geo = PV.extrudeC(FIX.purlin);
+  const capGeo = new THREE.ShapeGeometry(PV.cShape(FIX.purlin));
   // 檩托截面：局部 x 从檩条腹板外表面往下坡，局部 y 从斜梁上表面往上；沿局部 z 拉伸单位长度
   const clipGeo = (() => {
     const t = CLIP.t * MM, a = CLIP.base * MM, h = CLIP.height * MM;
     const s = new THREE.Shape([[0, 0], [a, 0], [a, t], [t, t], [t, h], [0, h]].map((q) => new THREE.Vector2(q[0], q[1])));
     return new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false });
   })();
+
+  // 檩条 t（距斜梁下端）在东西向 z 处的截面原点：截面局部 a 沿 n、b 沿 u，腹板在下坡一侧
+  function origin(c, t, z) {
+    const p = c.S.along(t);
+    return V(p.x, p.y, z)
+      .addScaledVector(c.n, (c.S.hBeamTop + FIX.purlin.d / 2) * MM)
+      .addScaledVector(c.u, (-FIX.purlin.f / 2) * MM);
+  }
 
   // 返回檩托个数
   function build(c) {
@@ -36,14 +45,16 @@
     PV.instanced(c.hw, clipGeo, M.clip, clipMats);
 
     for (const t of S.purlins) {
-      const p = S.along(t);
-      const o = V(p.x, p.y, -layout.purlinLen / 2)
-        .addScaledVector(n, (S.hBeamTop + FIX.purlin.d / 2) * MM)
-        .addScaledVector(u, (-FIX.purlin.f / 2) * MM);
-      addMember(c.model, geo, M.purlin, o, n, u, EZ.clone().multiplyScalar(layout.purlinLen * MM));
+      addMember(c.model, geo, M.purlin, origin(c, t, -layout.purlinLen / 2), n, u, EZ.clone().multiplyScalar(layout.purlinLen * MM));
     }
     return clipMats.length;
   }
 
-  PV.parts.purlin = { build };
+  // 剖切面封口：在东西向 z 处给每根檩条补一块 C 型截面
+  function cap(c, z, parent) {
+    if (Math.abs(z) >= c.layout.purlinLen / 2) return;
+    for (const t of c.S.purlins) addMember(parent, capGeo, M.purlinCap, origin(c, t, z), c.n, c.u, EZ);
+  }
+
+  PV.parts.purlin = { build, cap };
 })();

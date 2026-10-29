@@ -9,6 +9,12 @@
   let tween = null;
 
   // ---------- 显示开关 ----------
+  // 轴测节点图的剖切范围：最东一榀往西 400、往东 300（mm）；剖切面上的封口在 model.js 里画
+  const SECTION = { below: 400, above: 300 };
+  function sectionRange(layout) {
+    const z = layout.zs[layout.zs.length - 1];
+    return [z - SECTION.below, z + SECTION.above];
+  }
   const clipLo = new THREE.Plane(new V3(0, 0, 1), 0), clipHi = new THREE.Plane(new V3(0, 0, -1), 0);
   function applyVisibility() {
     const g = st.groups, d = st.dims, view = st.view, show = PV.show;
@@ -28,13 +34,14 @@
     // 正视不剖切：正视里组件、檩条只看得到端面，剖掉端面后侧面全是“侧着”的，会整个看不见；
     // 而正视下相邻榀正好重合在后面，本来也不乱
     if (sectioned) {
-      const z = st.layout.zs[st.layout.zs.length - 1];
-      clipLo.constant = -(z - 400) * MM;
-      clipHi.constant = (z + 300) * MM;
+      const [lo, hi] = sectionRange(st.layout);
+      clipLo.constant = -lo * MM;
+      clipHi.constant = hi * MM;
       renderer.clippingPlanes = [clipLo, clipHi];
     } else {
       renderer.clippingPlanes = [];
     }
+    for (const cg of g.caps) cg.visible = sectioned;
     PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip'), sectioned ? 0.2 : 0.32);
     PV.ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
     g.hw.visible = show.bolts;
@@ -229,7 +236,7 @@
   }
 
   PV.view = {
-    set: setView, applyVisibility, placeSun, savePose, follow, tick, buttons: viewButtons,
+    set: setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange, buttons: viewButtons,
     get camera() { return cam; },
   };
 })();
