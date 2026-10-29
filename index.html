@@ -118,6 +118,26 @@
 <script src="vendor/three.min.js"></script>
 <script src="vendor/OrbitControls.js"></script>
 <script src="assets/ref-side.js"></script>
-<script src="app.js"></script>
+<!-- 普通脚本、按顺序加载，都挂在全局 PV 上（不用 ES 模块，双击打开也能用） -->
+<script src="src/core.js"></script>
+<script src="src/config.js"></script>
+<script src="src/solve.js"></script>
+<script src="src/scene.js"></script>
+<script src="src/materials.js"></script>
+<!-- 支架各构件 -->
+<script src="src/parts/bolts.js"></script>
+<script src="src/parts/post.js"></script>
+<script src="src/parts/beam.js"></script>
+<script src="src/parts/brace.js"></script>
+<script src="src/parts/purlin.js"></script>
+<script src="src/parts/module.js"></script>
+<script src="src/model.js"></script>
+<script src="src/dims.js"></script>
+<script src="src/joint-detail.js"></script>
+<script src="src/overlay.js"></script>
+<script src="src/view.js"></script>
+<script src="src/edit.js"></script>
+<script src="src/panel.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>
