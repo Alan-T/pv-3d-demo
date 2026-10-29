@@ -1,0 +1,29 @@
+# systemd 服务文件（Linux）
+# 安装：sudo cp deploy/pv-3d-demo.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable --now pv-3d-demo
+# 程序不在 /opt/pv-3d-demo 时改 WorkingDirectory；node 路径用 `which node` 查。
+
+[Unit]
+Description=PV mounting structure 3D design demo (static site)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pv-3d-demo
+Environment=PORT=257
+ExecStart=/usr/local/bin/node deploy/serve.js
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+# 257 小于 1024，普通用户默认不能监听，靠这一行授权
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>光伏支架 3D 设计 Demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <main id="stage">
+    <canvas id="c"></canvas>
+    <header id="bar">
+      <div class="title"><b>光伏支架 3D 设计 Demo</b><small>固定倾角 · 双立柱 · 组件竖排 2 块（单位 mm）</small></div>
+      <nav class="views" aria-label="视角">
+        <button data-view="3d" class="on">3D 视图</button>
+        <button data-view="side">侧视图</button>
+        <button data-view="front">正视图</button>
+        <button data-view="top">俯视图</button>
+        <button data-view="normal" title="垂直于组件面看，组件半透明，便于看檩条">垂直组件</button>
+      </nav>
+      <nav class="views vgroup" aria-label="连接节点详图">
+        <span class="glabel">连接节点</span>
+        <button class="chip on" data-jtype="foot" title="斜撑下端：连接板 + 3 颗 M12">斜撑-立柱</button>
+        <button class="chip" data-jtype="top" title="柱顶：斜梁腹板贴立柱腹板，1 颗 M12，竖向长圆孔">立柱-斜梁</button>
+        <button class="chip" data-jtype="btop" title="斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12">斜撑-斜梁</button>
+        <button class="chip" data-jtype="clip" title="L 形檩托 + 2 颗 M12；组件 M8 安装螺栓">檩条-斜梁</button>
+        <span class="sep"></span>
+        <button class="chip" data-joint="0" title="前立柱一侧（檩条-斜梁：最低一根檩条）">前侧</button>
+        <button class="chip on" data-joint="1" title="后立柱一侧（檩条-斜梁：最高一根檩条）">后侧</button>
+        <span class="sep"></span>
+        <button data-view="joint-elev" title="从东往西正对节点，同节点正视图">正视</button>
+        <button data-view="joint-iso" title="略偏一侧、偏上看，看得出螺栓和板厚">轴测</button>
+      </nav>
+    </header>
+    <input id="dimEdit" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="修改尺寸" hidden>
+    <div id="legend">
+      <span><i class="sw in"></i>蓝字 = 输入参数（点击可改）</span>
+      <span><i class="sw out"></i>黑字 = 推算值</span>
+      <span class="hint" id="hint">拖动旋转 · 滚轮/双指缩放 · 右键/双指平移</span>
+    </div>
+  </main>
+
+  <aside id="panel">
+    <button id="sheetHandle" type="button">参数 · 结果 · 图纸核对 <span>▲</span></button>
+    <div class="pbody">
+      <section>
+        <h3>参数 <button id="reset" type="button" class="link">恢复图纸参数</button></h3>
+        <label class="preset">图纸方案
+          <select id="preset">
+            <option value="A">图纸一：2 排组件（25°，2900，12 榀 × 2800）</option>
+            <option value="B">图纸二：3 排组件 + 外斜撑（15°，3700，10 榀 × 3250）</option>
+          </select>
+        </label>
+        <div id="params"></div>
+      </section>
+
+      <section>
+        <h3>显示</h3>
+        <div class="toggles">
+          <label><input type="checkbox" data-k="dims" checked>尺寸标注</label>
+          <label><input type="checkbox" data-k="buried" checked>埋地部分</label>
+          <label><input type="checkbox" data-k="modules" checked>光伏组件</label>
+          <label title="螺栓、斜撑连接板、檩托"><input type="checkbox" data-k="bolts" checked>连接件</label>
+          <label><input type="checkbox" data-k="drawingColors" checked>按图纸配色</label>
+          <label><input type="checkbox" data-k="overlay">叠加原图（侧视对照）</label>
+        </div>
+      </section>
+
+      <section>
+        <h3>计算结果</h3>
+        <ul id="warnings"></ul>
+        <dl id="results"></dl>
+      </section>
+
+      <section>
+        <h3>与图纸核对 <small>（图纸值对应所选方案的默认参数）</small></h3>
+        <table id="check">
+          <thead><tr><th>项目</th><th>图纸</th><th>模型</th><th>差</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="notes">
+        <h3>按图推算的尺寸</h3>
+        <ul>
+          <li><b>斜梁长度规则</b>（两张图都符合）：斜梁 = 第一根到最后一根檩条的距离 + 两端各伸出 114，取整到 10；立柱在斜梁上居中。图纸一：3802 + 228 = 4030（两端悬挑 415）；图纸二：6204 + 228 → 6430（两端悬挑约 1300）。</li>
+          <li><b>斜梁 4030</b> = 415 + 2900 ÷ cos25° + 415。图上只标了上端悬挑 415，下端按对称推断。</li>
+          <li><b>柱顶</b>：前柱露出 1038、后柱 2391，两者差 1353 = 2900 × tan25°，说明两个柱顶在同一条 25° 线上；柱顶取与斜梁上表面齐平。</li>
+          <li><b>后柱 4336</b> = 2391 + 145 + 1800，其中 145 = 5% × 2900：后柱按“北向坡 5%”（后柱处地面低 145）设计，仍保证埋深 1800；<b>前柱 2838</b> = 1038 + 1800，前柱处为坡度转折点。</li>
+          <li><b>250 / 350</b>：前、后斜撑连接板竖向中点（两颗立柱螺栓的中点）离 ±0 的高度；<b>1650</b>：斜撑上端连接点到斜梁两端的距离。</li>
+          <li><b>2382 / 1400</b>：组件长度（2382×1134 规格）和组件安装孔距 → 每块组件下 2 根檩条，沿坡共 4 根。</li>
+          <li><b>斜撑 1649 / 1816</b>：按理论节点“立柱内侧面、离地 250 / 350”到“斜梁中心线上节点”算得 1651 / 1816；实际斜撑从连接板上的螺栓连到斜梁上节点。</li>
+          <li><b>原点 (0,0)</b> 在组件前沿正下方的地面；前柱中心距原点约 748（图上没标，按几何推算）。</li>
+          <li><b>檩条图</b>：檩条间距 1400 / 1002 / 1400，其中 1002 = 2382 + 20 − 1400，印证了组件间缝 20；檩条总长 32392 = 796 + 11 × 2800 + 796，即 12 榀、榀距 2800、两端悬挑 796；28 列组件宽 32292（缝 20），檩条每端再伸出 50。</li>
+          <li><b>图纸二（3 排 + 外斜撑）</b>：3 块组件、6 根檩条，间距 1400 / 1002 / 1400 / 1002 / 1400；每根立柱上内、外两根斜撑共用一块双面连接板；后柱 3998 = 2124 + 74 + 1800，74 = 2% × 3700；檩条图 10 榀 × 3250、两端悬挑 994、总长 31238，按同一套规则算出来完全一致。</li>
+          <li><b>图纸二斜撑上节点</b>图上没标：按四根斜撑长度 1722 / 1900 / 1011 / 2184 反推为离斜梁端 2650 / 2656（内撑）、402 / 379（外撑）（斜撑长度同图纸一，按立柱侧面理论节点算）；前柱总长算得 2932，比图纸 2933 少 1。</li>
+        </ul>
+        <h3>假设（图上没有）</h3>
+        <ul>
+          <li>型材截面：立柱 C120×60×20×2.5（截面高 120 由斜撑长度反推），斜梁、斜撑 C80×40×15×2.0，檩条 C100×50×20×2.0。</li>
+          <li>组件 2382×1134×35；沿坡两块之间缝 20，东西向缝 20。“前沿离地 800”指组件下沿底面到 ±0。</li>
+          <li>组件阵列中心比斜梁中心沿坡向高 32（按图量取，使 1038 / 2391 与图纸吻合）。</li>
+          <li>立柱、斜梁、斜撑按腹板背靠背螺栓连接，东西向略错开。</li>
+          <li>斜撑连接板只有两种规格：单面 160×120×5.75（五边形，从立柱中心往斜撑一侧伸 141、背侧 19，下角斜切）、双面 280×120×5.75（带外斜撑时用）。孔位按节点图：立柱中心线上 2 孔间距 80；斜撑孔离立柱中心 120、比两立柱孔中点高 30，离斜撑端头 40；竖向长圆孔，M12 为假设。</li>
+          <li>立柱-斜梁：斜梁腹板贴立柱腹板，在两条中心线交点用 1 颗 M12，竖向长圆孔（可调高度）；柱顶平切。</li>
+          <li>斜撑-斜梁：斜撑腹板贴斜梁腹板，在两条中心线交点用 1 颗 M12；斜撑端头平切，伸到斜梁上缘。</li>
+          <li>檩条-斜梁：每处 1 个 L 形檩托（t=4、宽 50、底边 64、立边 80，假设），底边 1 颗 M12 接斜梁上翼缘、立边 1 颗 M12 接檩条腹板；组件用安装孔 M8 螺栓（每块 4 颗）压在檩条上翼缘。</li>
+          <li>东西向：首末跨榀距（第 1–2 榀、倒数第 2–1 榀）与中间跨榀距分别设置，默认都按檩条图取 2800；组件列数按各跨总长自动取整。檩条画成通长；檩条图里的分段（8450 / 8150 / 8400 / 7380）和立柱拉杆（3100 / 3490）暂未建模。</li>
+          <li>默认按平地；坡度可在 ±10% 间调节，后柱长度按设计坡度（图纸一 5%、图纸二 2%，点“南向坡 / 北向坡”蓝字可改）定，超出时提示埋深不足。钢材重量按假设截面估算。</li>
+          <li>双面连接板 280×120×5.75：六边形、左右对称，上边 ±140，竖直肩边到两立柱孔中点，再斜切到下边 ±30；内、外斜撑孔对称同高，斜撑中心线过各自孔；连接板竖向中点在 250 / 300。</li>
+        </ul>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="assets/ref-side.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
