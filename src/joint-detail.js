@@ -87,7 +87,7 @@
         const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * 4;
         const parts = [
           [mv(P0, 160, S.hModBot + FIX.modT / 2), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`],
-          [mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8 组件安装螺栓（安装孔距 1400）'],
+          [mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母'],
           [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
           [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), `檩托 L 形 t=${CLIP.t}，M12 螺栓 ×2`],
           [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],

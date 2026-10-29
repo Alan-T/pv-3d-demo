@@ -114,7 +114,7 @@
       ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
       ['檩托', `${L.counts.clip} 个（L 形 t=${CLIP.t}）`],
       ['M12 螺栓', `${L.counts.m12} 套`],
-      ['M8 组件安装螺栓', `${L.counts.m8} 套`],
+      ['M8×22 组件安装螺栓', `${L.counts.m8} 套`],
       ['檩条', `${r(L.purlinLen)} × ${np}`],
       ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
       ['钢材估重', `${r(steelKg)} kg`],
