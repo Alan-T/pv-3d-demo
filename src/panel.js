@@ -96,10 +96,12 @@
       chips.forEach((b) => b.addEventListener('click', () => {
         apply(b);
         chips.forEach((x) => x.classList.toggle('on', x === b));
+        updateJointChips();
         openJoint();
       }));
     };
-    chipGroup('[data-jtype]', (b) => { st.jointType = b.dataset.jtype; });
+    chipGroup('[data-jtype]', (b) => { st.jointType = b.dataset.jtype; });   // 点“檩条-组件”默认中压块
+    chipGroup('[data-clamp]', (b) => { st.jointType = b.dataset.clamp; });
     chipGroup('[data-joint]', (b) => { st.jointSel = +b.dataset.joint; });
     const panel = document.getElementById('panel');
     document.getElementById('sheetHandle').addEventListener('click', () => {
@@ -115,12 +117,13 @@
 
   function kgPerM(sec) { return ((sec.t * (sec.d + 2 * sec.f + 2 * sec.l) - 4 * sec.t * sec.t) * 7.85) / 1000; }
 
-  // 压块固定时，“檩条-组件”节点改叫“中压块”，并多出“边压块”节点；改回螺栓固定时 build() 已把边压块退回檩条-组件
+  // 压块固定且选中“檩条-组件”时，后面多出“中压块 / 边压块”两个选项（节点种类 mod / side）；
+  // 改回螺栓固定时 build() 已把边压块退回 mod
   function updateJointChips() {
-    const clamp = PV.P.fix === 'clamp';
-    document.querySelector('[data-jtype=mod]').textContent = clamp ? '中压块' : '檩条-组件';
-    document.querySelector('[data-jtype=side]').style.display = clamp ? '' : 'none';
-    document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === st.jointType));
+    const jt = st.jointType, modLike = jt === 'mod' || jt === 'side';
+    document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === (jt === 'side' ? 'mod' : jt)));
+    document.querySelectorAll('[data-clampopt]').forEach((el) => { el.style.display = PV.P.fix === 'clamp' && modLike ? '' : 'none'; });
+    document.querySelectorAll('[data-clamp]').forEach((b) => b.classList.toggle('on', b.dataset.clamp === jt));
   }
 
   function update() {

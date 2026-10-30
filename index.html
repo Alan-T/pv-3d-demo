@@ -27,7 +27,10 @@
         <button class="chip" data-jtype="btop" title="斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12">斜撑-斜梁</button>
         <button class="chip" data-jtype="clip" title="L 形檩托 + 2 颗 M12；组件 M8×22 安装螺栓">檩条-斜梁</button>
         <button class="chip" data-jtype="mod" title="相邻两块组件之间（最东一跨中部的一道组件缝）：螺栓固定时缝两侧各 1 颗 M8×22；压块固定时 1 个中压块 + M8×35 内六角螺栓">檩条-组件</button>
-        <button class="chip" data-jtype="side" title="阵列东边：边压块勾住组件边框、立在檩条伸出组件的 50 上，1 颗 M8×35 内六角螺栓（压块固定时才有）" style="display: none">边压块</button>
+        <!-- 压块固定时，檩条-组件节点再选中压块 / 边压块（默认中压块） -->
+        <span class="sep" data-clampopt style="display: none"></span>
+        <button class="chip" data-clamp="mod" data-clampopt title="组件缝上的中压块，1 颗 M8×35 内六角螺栓" style="display: none">中压块</button>
+        <button class="chip" data-clamp="side" data-clampopt title="阵列东边：边压块勾住组件边框、立在檩条伸出组件的 50 上，1 颗 M8×35 内六角螺栓" style="display: none">边压块</button>
         <span class="sep"></span>
         <button class="chip" data-joint="0" title="前立柱一侧（檩条-斜梁、檩条-组件：最低一根檩条）">前侧</button>
         <button class="chip on" data-joint="1" title="后立柱一侧（檩条-斜梁、檩条-组件：最高一根檩条）">后侧</button>
