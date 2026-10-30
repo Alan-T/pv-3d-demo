@@ -81,12 +81,13 @@
     };
   };
 
-  // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt）→ 榀数、榀位 zs（首末跨即第 1–2 榀、倒数第 2–1 榀用 pitchEnd，
-  // 中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；榀距比阵列还宽时少放一榀
+  // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
+  // 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
+  // 榀距比阵列还宽时少放一榀
   PV.layoutEW = function layoutEW(p) {
     const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
     const arrW = cols * pitchEW - FIX.modGapEW;
-    const purlinLen = arrW + 2 * FIX.purlinExt;
+    const purlinExt = FIX.purlinExt[p.fix], purlinLen = arrW + 2 * purlinExt;
     const bayAt = (i, n) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
     const spanOf = (n) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
     const warn = [];
@@ -112,6 +113,6 @@
     // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
     const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
     const ew = { i, ca, sa: i * ca };
-    return { frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ, ew, warn };
+    return { frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
   };
 })();

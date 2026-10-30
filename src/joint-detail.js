@@ -133,7 +133,7 @@
           [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
           [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
           [mv(P0, 0, top - Sd.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
-          [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}，伸出组件 ${FIX.purlinExt}`],
+          [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}，伸出组件 ${layout.purlinExt}`],
         ];
         specs.side.push({
           labelSide: 1, anchorX: ax, z: zb, zl: zb, at: mv(P0, 0, S.hModBot),
