@@ -123,6 +123,22 @@
     chipGroup('[data-clamp]', (b) => { st.jointType = b.dataset.clamp; });
     chipGroup('[data-joint]', (b) => { st.jointSel = +b.dataset.joint; });
     const panel = document.getElementById('panel');
+    // 桌面：画布右边缘的按钮收起 / 展开参数面板（记在本机浏览器里）；画布尺寸由 ResizeObserver 跟着变，视角不动
+    const app = document.getElementById('app'), tog = document.getElementById('panelToggle'), KEY = 'pv3d.panelCollapsed';
+    const setCollapsed = (on) => {
+      app.classList.toggle('pcollapsed', on);
+      const t = on ? '展开参数面板' : '收起参数面板';
+      tog.title = t;
+      tog.setAttribute('aria-label', t);
+      tog.setAttribute('aria-expanded', String(!on));
+    };
+    try { setCollapsed(localStorage.getItem(KEY) === '1'); } catch (e) { /* 无痕模式等读不到，按展开 */ }
+    tog.addEventListener('click', () => {
+      app.classList.add('anim');
+      const on = !app.classList.contains('pcollapsed');
+      setCollapsed(on);
+      try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) { /* 存不了就只在本次有效 */ }
+    });
     document.getElementById('sheetHandle').addEventListener('click', () => {
       panel.classList.toggle('open');
       setTimeout(() => { PV.resize(); PV.view.set(st.view); }, 30);   // 画布变矮了，重新取景
