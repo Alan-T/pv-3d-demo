@@ -45,14 +45,14 @@
     constructor() { this.group = new THREE.Group(); this.pos = []; this.dash = []; }
     seg(a, b, dashed) { (dashed ? this.dash : this.pos).push(a.x, a.y, a.z, b.x, b.y, b.z); }
     label(text, at, kind, px) { const l = makeLabel(text, kind, px); l.position.copy(at); this.group.add(l); return l; }
-    // a、b 为被测点，off 为尺寸线相对被测点的偏移（米）
-    dim(a, b, off, text, kind, px) {
+    // a、b 为被测点，off 为尺寸线相对被测点的偏移（米）；k：界线留空、出头和斜短线的比例（节点详图里用小的）
+    dim(a, b, off, text, kind, px, k = 1) {
       const on = off.clone().normalize();
       const A = a.clone().add(off), B = b.clone().add(off);
-      this.seg(a.clone().addScaledVector(on, 0.03), A.clone().addScaledVector(on, 0.05));
-      this.seg(b.clone().addScaledVector(on, 0.03), B.clone().addScaledVector(on, 0.05));
+      this.seg(a.clone().addScaledVector(on, 0.03 * k), A.clone().addScaledVector(on, 0.05 * k));
+      this.seg(b.clone().addScaledVector(on, 0.03 * k), B.clone().addScaledVector(on, 0.05 * k));
       this.seg(A, B);
-      const tick = B.clone().sub(A).normalize().add(on).normalize().multiplyScalar(0.045);
+      const tick = B.clone().sub(A).normalize().add(on).normalize().multiplyScalar(0.045 * k);
       this.seg(A.clone().sub(tick), A.clone().add(tick));
       this.seg(B.clone().sub(tick), B.clone().add(tick));
       const label = this.label(text, A.clone().add(B).multiplyScalar(0.5), kind, px);

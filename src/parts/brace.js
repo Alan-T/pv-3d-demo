@@ -1,7 +1,7 @@
 /* 斜撑（内斜撑，可选外斜撑）和斜撑下端连接板。
  * 斜撑-立柱：连接板贴在立柱腹板外侧，2 颗螺栓（立柱中心线上，上下排）接立柱；板向斜撑一侧伸出，
  *   斜撑腹板贴在伸出部分上用 1 颗螺栓；单面板伸出部分的下角斜切。螺栓孔为竖向长圆孔。
- * 斜撑-斜梁：斜撑腹板贴斜梁腹板，两条中心线交点 1 颗螺栓；斜撑端头平切，伸到斜梁上缘 */
+ * 斜撑-斜梁：斜撑腹板贴斜梁腹板，两条中心线交点 1 颗螺栓；斜撑端头平切。斜撑两端孔心到端头都是 35 */
 (function () {
   'use strict';
   const PV = window.PV;
@@ -9,14 +9,11 @@
 
   const geo = PV.extrudeC(FIX.brace);
 
-  // 实际斜撑：从连接板上的螺栓 Q 连到斜梁节点 T。端头 E 在 Q 下方 braceEdge；
-  // 上端过 T 继续伸长，端头（垂直切口）靠上的角点刚好到斜梁上缘
-  function braceEnds(S, Q, T) {
+  // 实际斜撑：从连接板上的螺栓 Q 连到斜梁节点 T，两端端头（垂直切口）都在孔心外 braceEdge：下端 E 在 Q 下方，上端过 T
+  function braceEnds(Q, T) {
     const dx = T.x - Q.x, dy = T.y - Q.y, len = Math.hypot(dx, dy);
-    const ax = dx / len, ay = dy / len;
+    const ax = dx / len, ay = dy / len, eTop = JOINT.braceEdge;
     const E = { x: Q.x - ax * JOINT.braceEdge, y: Q.y - ay * JOINT.braceEdge };
-    const nx = -S.s, ny = S.c, an = ax * nx + ay * ny, pn = Math.abs(-ay * nx + ax * ny);
-    const eTop = an > 0.05 ? Math.max(0, (S.hBeamTop - (FIX.brace.d / 2) * pn) / an - 2) : 0;
     return { T, E, Q, ax, ay, eTop, len: len + JOINT.braceEdge + eTop };
   }
 
@@ -41,7 +38,7 @@
     const Q = { x: U(JOINT.boltU), y: yc + JOINT.rise };
     const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q[0] * MM, q[1] * MM)));
     const plateGeo = PV.track(new THREE.ExtrudeGeometry(shape, { depth: JOINT.plateT * MM, bevelEnabled: false }));
-    const inner = braceEnds(S, Q, T), o = dbl ? braceEnds(S, Qo, To) : null;
+    const inner = braceEnds(Q, T), o = dbl ? braceEnds(Qo, To) : null;
     const bolts = [[xc, yc - JOINT.boltPitch / 2], [xc, yc + JOINT.boltPitch / 2], [Q.x, Q.y]];
     if (o) bolts.push([o.Q.x, o.Q.y]);
     const spec = `${dbl ? DBL.half * 2 : JOINT.singleW}×${JOINT.plateH}×${JOINT.plateT}`;

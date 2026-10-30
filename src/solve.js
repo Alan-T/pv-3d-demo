@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const PV = window.PV;
-  const { DEG, FIX } = PV;
+  const { DEG, FIX, JOINT } = PV;
 
   // 框架平面 (x, y) 内的所有关键点
   PV.solve = function solve(p) {
@@ -22,6 +22,8 @@
     const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
     const nodeR = nodeF + L * s / c;
     const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
+    // 立柱-斜梁螺栓：立柱中心线上、孔心距柱顶 postTopHole（比两条中心线交点略低）
+    const holeF = topF - JOINT.postTopHole, holeR = topR - JOINT.postTopHole;
     // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
     // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
     // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
@@ -75,7 +77,7 @@
     if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
 
     return {
-      c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, botF, botR,
+      c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
       lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
       modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
     };
