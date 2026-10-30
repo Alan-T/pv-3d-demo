@@ -77,6 +77,9 @@
     clampSide: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true }),
   };
 
+  // 组件螺栓、压块螺栓跟着檩条顺坡（东西坡度），其余在各榀上
+  const SLOPE_KINDS = new Set(['module', 'clampMid', 'clampSide']);
+
   // 一次重建用一个收集器：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
   function collector() {
     const mats = {};
@@ -87,8 +90,8 @@
         const z = axis.clone().normalize(), y = up.clone().normalize(), x = new V3().crossVectors(y, z);
         mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
       },
-      flush(parent) {
-        for (const k in BOLTS) for (const [g, mat] of BOLTS[k]) PV.instanced(parent, g, mat, mats[k]);
+      flush(parent, slopeParent) {
+        for (const k in BOLTS) for (const [g, mat] of BOLTS[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
         return {
           m12: mats.foot.length + mats.top.length + mats.btop.length + mats.clip.length,
           m8: mats.module.length,

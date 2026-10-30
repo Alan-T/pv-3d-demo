@@ -161,6 +161,8 @@
         const g = lead.finish(mats.line);
         g.add(cl.finish(mats.line, mats.center));
         g.userData.joint = type + fr;
+        // 东西坡度：支架节点跟着最东一榀平移，檩条-组件、边压块顺坡
+        PV.ewPlace(g, layout.ew, type === 'mod' || type === 'side' ? undefined : zLast);
         group.add(g);
       });
     }

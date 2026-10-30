@@ -30,7 +30,7 @@
       labelK: 1.25,        // 文字像素高度系数（手机上小一点），点击修改时输入框也按它定大小
       S: null,             // solve() 的结果
       layout: null,        // 东西向布置、连接节点、零件数量
-      groups: null,        // 模型分组：model / buried / modules / hw
+      groups: null,        // 模型分组：model / buried / modules / hw / slope / hwSlope，地面 ground
       dims: null,          // 标注分组
       overlay: null,
     },
@@ -46,6 +46,21 @@
     m.castShadow = m.receiveShadow = true;
     parent.add(m);
     return m;
+  };
+
+  // 东西坡度的世界变换（ew 见 layoutEW）。不给 zRef：沿檩条方向剪切 (x, y, z) → (x, y + z·sin, z·cos)，
+  // 檩条、组件、压块跟着地面顺坡；给 zRef：榀位 zRef 那一榀整体平移到坡上，立柱仍竖直、构件不变形
+  PV.ewMatrix = function ewMatrix(ew, zRef) {
+    const m = new THREE.Matrix4();
+    if (zRef === undefined) m.set(1, 0, 0, 0, 0, 1, ew.sa, 0, 0, 0, ew.ca, 0, 0, 0, 0, 1);
+    else m.makeTranslation(0, zRef * ew.sa * MM, zRef * (ew.ca - 1) * MM);
+    return m;
+  };
+  PV.ewPlace = function ewPlace(obj, ew, zRef) {
+    obj.matrixAutoUpdate = false;
+    obj.updateMatrix();
+    obj.matrix.premultiply(PV.ewMatrix(ew, zRef));
+    return obj;
   };
 
   // 连接件数量多（每榀几十个零件），全部用实例化网格

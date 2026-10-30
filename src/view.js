@@ -36,17 +36,24 @@
     g.modules.visible = show.modules;
     const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame';
     // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
-    // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱。檩条-组件、边压块的正视也剖切（看到的是封口截面），
-    // 不然最东一榀的斜梁、檩托和檩条端头都挡在前面
-    const sectioned = view === 'joint-iso' || (view === 'joint-elev' && mod);
+    // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
+    // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面
+    const ew = st.layout.ew, ca = ew.ca;   // 剖切范围是沿坡的 z，换成水平位置
+    const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || !!ew.i));
     if (sectioned) {
       const [lo, hi] = sectionRange(st.layout, key);
-      clipLo.constant = -lo * MM;
-      clipHi.constant = hi * MM;
+      clipLo.constant = -lo * ca * MM;
+      clipHi.constant = hi * ca * MM;
       renderer.clippingPlanes = [clipLo, clipHi];
+    } else if (view === 'side' && ew.i) {
+      // 侧视：有东西坡度时只看最东一榀（后面各榀高低错开），东侧的标注不切
+      clipLo.constant = -sectionRange(st.layout, 'frame')[0] * ca * MM;
+      renderer.clippingPlanes = [clipLo];
     } else {
       renderer.clippingPlanes = [];
     }
+    // 侧视里顺坡的地面会挡在最东一榀前面，不画（±0 线、实际地面线在标注里）
+    g.ground.visible = !(view === 'side' && ew.i);
     for (const cg of g.caps) cg.visible = sectioned && cg.userData.section === key;
     // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
     PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), sectioned && !mod ? 0.2 : 0.32);
@@ -64,13 +71,14 @@
     PV.applyPalette();
   }
 
-  function visibleBox(objs) {
-    const box = new THREE.Box3(), tmp = new THREE.Box3();
+  // pre：先把世界坐标再变换一次（侧视在东西坡度下按最东一榀取景用）
+  function visibleBox(objs, pre) {
+    const box = new THREE.Box3(), tmp = new THREE.Box3(), m = new THREE.Matrix4();
     const visit = (o) => {
       if (!o.visible || o.isSprite || o.userData.noBox) return;
       if (o.geometry) {
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-        tmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+        tmp.copy(o.geometry.boundingBox).applyMatrix4(pre ? m.multiplyMatrices(pre, o.matrixWorld) : o.matrixWorld);
         box.union(tmp);
       }
       for (const ch of o.children) visit(ch);
@@ -124,19 +132,21 @@
     // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
     // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
     const sp = layout.jointSpecs[st.jointType][st.jointSel];
-    const z = sp.z === undefined ? layout.zs[layout.zs.length - 1] + FIX.post.f / 2 : sp.z;
+    const zLast = layout.zs[layout.zs.length - 1], frame = sectionKey(st.jointType) === 'frame';
+    const z = sp.z === undefined ? zLast + FIX.post.f / 2 : sp.z;
+    const W = PV.ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
     const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
     const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
-    if (sectionKey(st.jointType) !== 'frame' && name === 'joint-iso') {
+    if (!frame && name === 'joint-iso') {
       // 檩条-组件 / 边压块轴测：螺栓头在半透明组件下面或压块槽里，从下坡一侧（东边）高处看组件面；
       // 以 sp.at（缝上两颗螺栓的中点或边压块螺栓）取景，看约 200 × 180 的范围，文字在右侧
       const dir = new V3(-0.7, 1, 1).normalize(), [right] = screenAxes(dir);
       const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / 200, (ch - 190) / 180));
-      const c = V(sp.at.x, sp.at.y, z).addScaledVector(right, (labelPx / 2 / scale) * MM);
+      const c = V(sp.at.x, sp.at.y, z).applyMatrix4(W).addScaledVector(right, (labelPx / 2 / scale) * MM);
       return { target: c, dir, zoom: 1 / ((ch / 2 / scale) * MM) };
     }
     const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / (xR - xL), (ch - 190) / (yT - yB)));
-    const c = V((xL + xR) / 2 + (sp.labelSide * labelPx) / 2 / scale, (yB + yT) / 2 + 40 / scale, z);
+    const c = V((xL + xR) / 2 + (sp.labelSide * labelPx) / 2 / scale, (yB + yT) / 2 + 40 / scale, z).applyMatrix4(W);
     // 轴测一般偏向文字一侧；檩托在檩条下坡一侧，所以檩条-斜梁从下坡（南）一侧看
     const sx = st.jointType === 'clip' ? -1 : sp.labelSide;
     const dir = name === 'joint-elev' ? new V3(0, 0, 1) : new V3(0.4 * sx, 0.3, 1).normalize();
@@ -176,7 +186,10 @@
     applyVisibility();
     const { model } = st.groups, d = st.dims;
     const objs = name === 'side' && PV.show.dims ? [model, d.key, d.side] : [model];
-    const box = visibleBox(objs);
+    // 侧视在东西坡度下：各榀高低错开，按最东一榀取景——先剪切回沿坡坐标（各榀叠在一起），再抬到最东一榀
+    const { ew, zs } = st.layout;
+    const pre = name === 'side' && ew.i ? PV.ewMatrix(ew, zs[zs.length - 1]).multiply(PV.ewMatrix(ew).invert()) : null;
+    const box = visibleBox(objs, pre);
     const ctr = box.getCenter(new V3()), size = box.getSize(new V3());
     const aspect = persp.aspect;
     if (FOLLOW_VIEWS.has(name)) {

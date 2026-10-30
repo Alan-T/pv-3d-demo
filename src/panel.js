@@ -129,7 +129,7 @@
   function update() {
     updateJointChips();
     const P = PV.P, S = st.S;
-    const r = Math.round, n = P.frames, L = st.layout, O = S.outer, np = S.purlins.length;
+    const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, n = P.frames, L = st.layout, O = S.outer, np = S.purlins.length;
     document.querySelector('.title small').textContent =
       `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
     document.getElementById('warnings').innerHTML = S.warn.map((w) => `<li>${w}</li>`).join('');
@@ -139,6 +139,11 @@
       (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000;
     const rows = [
       ['榀距 首末跨 / 中间跨', `${P.pitchEnd} / ${P.pitch}（总 ${r(L.spanEW)}）`],
+      // 东西坡度：榀距是沿檩条的长度，水平距离 = 榀距 × cos，相邻榀抬高 = 榀距 × sin
+      ...(L.ew.i ? [
+        ['水平榀距 首末跨 / 中间跨', `${h1(P.pitchEnd * L.ew.ca)} / ${h1(P.pitch * L.ew.ca)}（总 ${r(L.spanEW * L.ew.ca)}）`],
+        ['相邻榀高差 首末跨 / 中间跨', `${h1(P.pitchEnd * L.ew.sa)} / ${h1(P.pitch * L.ew.sa)}（首末榀 ${r(L.spanEW * L.ew.sa)}）`],
+      ] : []),
       ['斜梁', `${r(S.beamLen)} × ${n}（两端悬挑 ${r(S.ovh)}）`],
       ['前柱 总长（露出）', `${r(S.lenF)}（${r(S.topF)}）× ${n}`],
       ['后柱 总长（顶高）', `${r(S.lenR)}（${r(S.topR)}）× ${n}`],

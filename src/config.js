@@ -17,8 +17,8 @@
   // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
   const PRESETS = {
     A: {
-      tilt: 25, span: 2900, h0: 800, frames: 12, pitch: 2800, pitchEnd: 2800, slope: 0,
-      rows: 2,            // 沿坡组件排数（竖排）
+      tilt: 25, span: 2900, h0: 800, frames: 12, pitch: 2800, pitchEnd: 2800, slope: 0, slopeEW: 0,
+      rows: 2,           // 沿坡组件排数（竖排）
       outer: 0,           // 是否带外斜撑（立柱外侧、撑斜梁悬挑段）
       designSlope: 5,     // 设计坡度 %，后柱按“北向坡”时后柱处地面低 designSlope×间距 来定长度
       braceHF: 250,       // 前柱斜撑下节点离 ±0（内、外斜撑共用一块连接板）
@@ -35,7 +35,7 @@
     },
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
-      tilt: 15, span: 3700, h0: 800, frames: 10, pitch: 3250, pitchEnd: 3250, slope: 0,
+      tilt: 15, span: 3700, h0: 800, frames: 10, pitch: 3250, pitchEnd: 3250, slope: 0, slopeEW: 0,
       rows: 3, outer: 1, designSlope: 2,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
       embed: 1800, modL: 2382, hole: 1400, fix: 'bolt', clampL: 50,
@@ -90,6 +90,8 @@
       hint: '第 1–2 榀、倒数第 2–1 榀之间的距离' },
     { key: 'slope',  label: '地面南北坡度',    unit: '%',  min: -10,  max: 10,   step: 0.5,
       hint: '正 = 南向坡（北高南低），负 = 北向坡（北低南高）' },
+    { key: 'slopeEW', label: '地面东西坡度',  unit: '%',  min: -10,  max: 10,   step: 0.5,
+      hint: '正 = 东高西低，负 = 东低西高。各榀立柱竖直、跟着地面抬高，檩条顺坡；榀距、阵列宽、檩条长都是沿檩条量的长度，水平距离 = 长度 ÷ √(1 + 坡度²)' },
   ];
   const EXTRA_LIMITS = {
     braceHF: [100, 800], braceHR: [100, 1200], braceTopF: [600, 5000], braceTopR: [600, 5000],

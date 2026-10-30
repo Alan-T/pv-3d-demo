@@ -45,7 +45,7 @@
     PV.instanced(c.hw, clipGeo, M.clip, clipMats);
 
     for (const t of S.purlins) {
-      addMember(c.model, geo, M.purlin, origin(c, t, -layout.purlinLen / 2), n, u, EZ.clone().multiplyScalar(layout.purlinLen * MM));
+      addMember(c.slope, geo, M.purlin, origin(c, t, -layout.purlinLen / 2), n, u, EZ.clone().multiplyScalar(layout.purlinLen * MM));
     }
     return clipMats.length;
   }

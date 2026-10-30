@@ -153,12 +153,16 @@
     deep.dim(v(S.xf, S.botF), v(S.xf, S.topF), off(-470, 0), r(S.lenF), 'out');
     deep.dim(v(S.xr, S.botR), v(S.xr, S.topR), off(480, 0), r(S.lenR), 'out');
 
-    // 东西向：榀距、组件阵列
-    const xs = -500;
+    // 东西向：榀距、组件阵列（有东西坡度时顺坡标，即沿檩条的长度，括号里是水平距离）
+    const xs = -500, ca = layout.ew.ca;
+    const hz = (l) => (layout.ew.i ? `（水平 ${r(l * ca)}）` : '');
     const zsE = layout.zs;
-    if (zsE.length > 1) ed(ew.dim(V(xs, 0, zsE[0]), V(xs, 0, zsE[1]), off(-300, 0), `首末跨榀距 ${P.pitchEnd}`, 'in'), 'pitchEnd');
-    if (zsE.length > 3) ed(ew.dim(V(xs, 0, zsE[1]), V(xs, 0, zsE[2]), off(-300, 0), `中间跨榀距 ${P.pitch}`, 'in'), 'pitch');
+    if (zsE.length > 1) ed(ew.dim(V(xs, 0, zsE[0]), V(xs, 0, zsE[1]), off(-300, 0), `首末跨榀距 ${P.pitchEnd}${hz(P.pitchEnd)}`, 'in'), 'pitchEnd');
+    if (zsE.length > 3) ed(ew.dim(V(xs, 0, zsE[1]), V(xs, 0, zsE[2]), off(-300, 0), `中间跨榀距 ${P.pitch}${hz(P.pitch)}`, 'in'), 'pitch');
     ew.dim(V(xs, 0, -layout.arrW / 2), V(xs, 0, layout.arrW / 2), off(-750, 0), `组件阵列 ${r(layout.arrW)}（${layout.cols} 列）`, 'out');
+    if (layout.ew.i) {   // 写在阵列中心偏东、地面以下，避开上面几条文字和最东一榀的侧视标注
+      ew.label(`实际地面 ${P.slopeEW > 0 ? '东高西低' : '东低西高'} ${Math.abs(P.slopeEW)}%`, V(xs, -450, layout.arrW * 0.3), 'ref', 13);
+    }
 
     // 垂直组件视图：标注放在组件面上方 150 的平行平面内（t 沿坡、z 东西向）
     const nrm = new DimSet();
@@ -203,6 +207,10 @@
     const ewG = ew.finish(dimLineMat);
     const normalG = nrm.finish(dimLineMat);
     normalG.add(purlinLines.finish(purlinLineMat), beamLines.finish(beamLineMat));
+    // 东西坡度：侧视标注跟着最东一榀平移，东西向、垂直组件视图的标注顺坡
+    const zLast = layout.zs[layout.zs.length - 1];
+    for (const gr of [keyG, sideG]) PV.ewPlace(gr, layout.ew, zLast);
+    for (const gr of [ewG, normalG]) PV.ewPlace(gr, layout.ew);
     const rootG = new THREE.Group();
     rootG.add(keyG, sideG, ewG, normalG, jointG);
     root.add(rootG);

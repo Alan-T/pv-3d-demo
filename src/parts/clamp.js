@@ -67,8 +67,8 @@
       for (const z of gaps) { put(mid, z, 1); bolt('clampMid', z); }
       for (const sx of [-1, 1]) { put(side, sx * e, sx); bolt('clampSide', sx * (e + sideBoltX)); }
     }
-    PV.instanced(c.hw, midGeo, M.clamp, mid);
-    PV.instanced(c.hw, sideGeo, M.clamp, side);
+    PV.instanced(c.hwSlope, midGeo, M.clamp, mid);
+    PV.instanced(c.hwSlope, sideGeo, M.clamp, side);
     return { mid: mid.length, side: side.length };
   }
 

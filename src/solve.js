@@ -98,6 +98,10 @@
     const clear = (g) => Math.min(...zs.map((z) => Math.abs(g - z)));
     const inBay = gaps.filter((g) => g > zW && g < zE), pool = inBay.length ? inBay : gaps;
     const gapZ = pool.length ? pool.reduce((a, g) => (clear(g) > clear(a) ? g : a)) : arrW / 2 + FIX.modGapEW / 2;
-    return { zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ };
+    // 东西坡度：上面东西向的 z 都是沿檩条（沿坡）量的，榀距 = 两榀之间的檩条长度。
+    // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
+    const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
+    const ew = { i, ca, sa: i * ca };
+    return { zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ, ew };
   };
 })();

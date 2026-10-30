@@ -41,6 +41,7 @@
     const zs = PV.state.layout.zs;
     mesh.position.copy(V(cx, cy, zs[zs.length - 1] + 600));
     mesh.renderOrder = 900;
+    PV.ewPlace(mesh, PV.state.layout.ew, zs[zs.length - 1]);   // 跟着最东一榀
     overlay.add(mesh);
   }
 
