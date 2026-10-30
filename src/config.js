@@ -40,7 +40,8 @@
     },
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
-      tilt: 15, span: 3700, h0: 800, pitch: 3250, pitchEnd: 3250, slope: 0, slopeEW: 0,
+      tilt: 15, span: 3700, h0: 800, pitch: 3250, pitchEnd: 3250, slopeEW: 0,
+      slope: -2,          // 图纸二按北向坡 2% 设计（后柱 3998 = 2124 + 74 + 1800）
       rows: 3, cols: 27, outer: 1,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
       embed: 1800, modL: 2382, modW: 1134, modT: 35, hole: 1400, fix: 'bolt', clampL: 50,
