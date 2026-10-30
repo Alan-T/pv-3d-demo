@@ -3,7 +3,7 @@
 把一张固定倾角地面光伏支架的二维侧视图，做成可交互、可改参数的 three.js 3D 模型。
 
 - 打开方式：直接双击 `index.html`（不需要服务器），或在本目录起任意静态服务器，例如 `python -m http.server 8765`。
-- 不依赖网络：three.js r128 和 OrbitControls 在 `vendor/`（自带一份，不依赖其他项目），原图（去底色）以 data URI 形式放在 `assets/ref-side.js`，供“叠加原图”对照用。
+- 不依赖网络：three.js r128 和 OrbitControls 在 `vendor/`（自带一份，不依赖其他项目），原图（去底色）以 data URI 形式放在 `assets/ref-side.js`，供“叠加原图”对照用，第一次勾选时才加载。
 - 图纸尺寸和假设在 `src/config.js`，尺寸推算在 `src/solve.js`；页面右侧“与图纸核对”和“推算 / 假设”两栏列出了每个尺寸的来源。
 
 独立项目，整个文件夹可以直接拷走使用。

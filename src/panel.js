@@ -64,7 +64,10 @@
       cb.addEventListener('change', () => {
         PV.show[cb.dataset.k] = cb.checked;
         PV.view.applyVisibility();
-        if (cb.dataset.k === 'overlay' && cb.checked && st.view !== 'side') PV.view.set('side');
+        if (cb.dataset.k === 'overlay' && cb.checked) {
+          PV.overlay.ensure();
+          if (st.view !== 'side') PV.view.set('side');
+        }
       });
     });
     PV.view.buttons.forEach((b) => b.addEventListener('click', () => PV.view.set(b.dataset.view)));

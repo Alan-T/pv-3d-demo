@@ -4,6 +4,23 @@
   const PV = window.PV;
   const { MM, V, root } = PV;
 
+  // 原图数据约 70 KB（压缩后），占首次加载的四分之一，所以第一次打开“叠加原图”时才加载。
+  // 用普通 script 标签，双击打开（file://）也能用；加载完补画叠加
+  let requested = false;
+  function ensure() {
+    if (window.PV_REF_SIDE || requested) return;
+    requested = true;
+    const s = document.createElement('script');
+    s.src = 'assets/ref-side.js';
+    s.onload = () => {
+      root.remove(PV.state.overlay);
+      build();
+      PV.view.applyVisibility();
+    };
+    s.onerror = () => { requested = false; };
+    document.head.appendChild(s);
+  }
+
   let refTexture = null;
   function build() {
     const R = window.PV_REF_SIDE;
@@ -27,5 +44,5 @@
     overlay.add(mesh);
   }
 
-  PV.overlay = { build };
+  PV.overlay = { build, ensure };
 })();

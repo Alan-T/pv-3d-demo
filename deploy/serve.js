@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.PORT) || 8765;
@@ -20,7 +21,7 @@ const TYPES = {
   '.ico': 'image/x-icon',
 };
 const HIDDEN = new Set(['deploy']);   // 部署脚本不对外
-const cache = new Map();              // 文件 → { mtime, raw, gz }
+const cache = new Map();              // 文件 → { mtime, raw, gz, etag }
 
 const typeOf = (file) => TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
 
@@ -29,7 +30,10 @@ function load(file, st) {
   if (hit && hit.mtime === st.mtimeMs) return hit;
   const raw = fs.readFileSync(file);
   const zip = /^text\/|json|svg/.test(typeOf(file));
-  const entry = { mtime: st.mtimeMs, raw, gz: zip ? zlib.gzipSync(raw, { level: 9 }) : null };
+  // ETag 按内容算：部署包用 git archive 打，所有文件的时间都是提交时间，按时间判断的话每次部署后
+  // three.min.js 这些没改的大文件也要重新下载；按内容判断，没改的文件部署后照样 304
+  const etag = 'W/"' + crypto.createHash('md5').update(raw).digest('hex').slice(0, 16) + '"';
+  const entry = { mtime: st.mtimeMs, raw, gz: zip ? zlib.gzipSync(raw, { level: 9 }) : null, etag };
   cache.set(file, entry);
   return entry;
 }
@@ -63,15 +67,14 @@ http.createServer((req, res) => {
     } catch {
       return send(res, 500, 'Read Error');
     }
-    const lastMod = new Date(Math.floor(st.mtimeMs / 1000) * 1000).toUTCString();
     const headers = {
       'Content-Type': typeOf(file),
-      'Last-Modified': lastMod,
+      ETag: entry.etag,
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
       Vary: 'Accept-Encoding',
     };
-    if (req.headers['if-modified-since'] === lastMod) {
+    if ((req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(entry.etag)) {
       res.writeHead(304, headers);
       return res.end();
     }
