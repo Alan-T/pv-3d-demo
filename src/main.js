@@ -11,12 +11,14 @@
   if ('ResizeObserver' in window) new ResizeObserver(PV.resize).observe(stage);
   else window.addEventListener('resize', PV.resize);
 
+  const loading = document.getElementById('loading');
   function loop(now) {
     requestAnimationFrame(loop);
     PV.view.tick(now);
     PV.dims.updateLabels(PV.view.camera);
     PV.edit.update();
     renderer.render(scene, PV.view.camera);
+    if (loading) loading.classList.add('done');   // 第一帧画好了，淡出“正在加载”
   }
   requestAnimationFrame(loop);
 

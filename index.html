@@ -10,6 +10,7 @@
 <div id="app">
   <main id="stage">
     <canvas id="c"></canvas>
+    <div id="loading" role="status"><i></i><span>正在加载 3D 模型…</span></div>
     <header id="bar">
       <div class="title"><b>光伏支架 3D 设计 Demo</b><small>固定倾角 · 双立柱 · 组件竖排 2 块（单位 mm）</small></div>
       <nav class="views" aria-label="视角">
@@ -116,6 +117,15 @@
   </aside>
 </div>
 
+<script>
+  // 脚本出错（比如浏览器不支持 WebGL）时，把“正在加载”换成提示，不要一直转
+  window.addEventListener('error', function () {
+    var el = document.getElementById('loading');
+    if (!el || el.classList.contains('done')) return;
+    el.classList.add('fail');
+    el.lastChild.textContent = '3D 模型加载失败，请用最新版 Chrome / Edge 打开后刷新';
+  });
+</script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/OrbitControls.js"></script>
 <script src="assets/ref-side.js"></script>

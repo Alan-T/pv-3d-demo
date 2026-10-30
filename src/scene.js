@@ -5,7 +5,8 @@
 
   const canvas = document.getElementById('c');
   const stage = document.getElementById('stage');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  // alpha：画布在第一帧画出来之前是透明的，露出页面底色和“正在加载”；不透明的 WebGL 画布在这之前是一大片黑
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;

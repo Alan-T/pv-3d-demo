@@ -20,6 +20,22 @@ html, body {
 #stage { position: relative; flex: 1; min-width: 0; min-height: 0; }
 #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
 
+/* 首次加载：three.js 下载、建模、编译着色器期间显示，第一帧画好后淡出（main.js） */
+#loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--muted); font-size: 14px; pointer-events: none;
+  transition: opacity .35s, visibility 0s .35s;
+}
+#loading i {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--blue);
+  animation: spin .8s linear infinite;
+}
+#loading.done { opacity: 0; visibility: hidden; }
+#loading.fail { color: var(--bad); }
+#loading.fail i { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 #bar {
   position: absolute; top: 0; left: 0; right: 0;
   padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
