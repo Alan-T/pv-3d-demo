@@ -160,7 +160,7 @@
       ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
       ['钢材估重', `${r(steelKg)} kg`],
       ['前沿实际离地', `${r(S.clearEdge)}`],
-      ['后柱实际埋深', `${r(S.embedR)}`],
+      ['后柱处地面（相对 ±0）', `${S.gR > 0 ? '+' : ''}${r(S.gR)}`],
     ];
     document.getElementById('results').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
 

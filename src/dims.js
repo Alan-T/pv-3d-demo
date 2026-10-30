@@ -148,8 +148,9 @@
 
     // 地下部分
     ed(deep.dim(v(S.xf, S.botF), v(S.xf, 0), off(230, 0), P.embed, 'in'), 'embed');
-    ed(deep.dim(v(S.xr, S.botR), v(S.xr, -S.drop), off(-260, 0), P.embed, 'in'), 'embed');
-    deep.dim(v(S.xr, -S.drop), v(S.xr, 0), off(230, 0), r(S.drop), 'out');
+    // 后柱按实际地面埋深；有南北坡度时标出后柱处地面与 ±0 的高差
+    ed(deep.dim(v(S.xr, S.botR), v(S.xr, S.gR), off(-260, 0), P.embed, 'in'), 'embed');
+    if (Math.abs(S.gR) >= 0.5) deep.dim(v(S.xr, S.gR), v(S.xr, 0), off(230, 0), r(Math.abs(S.gR)), 'out');
     deep.dim(v(S.xf, S.botF), v(S.xf, S.topF), off(-470, 0), r(S.lenF), 'out');
     deep.dim(v(S.xr, S.botR), v(S.xr, S.topR), off(480, 0), r(S.lenR), 'out');
 

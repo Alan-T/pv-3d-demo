@@ -22,8 +22,14 @@
     const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
     const nodeR = nodeF + L * s / c;
     const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
+    // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
+    // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深。
+    // 设计坡度只画参考线（图纸后柱 4336 = 2391 + 5% × 2900 + 1800，按北向坡 5% 设计）
+    const sp = p.slope / 100;
+    const gy = (x) => sp * (x - xf);
+    const gR = gy(xr);
     const drop = (p.designSlope / 100) * L;
-    const botF = -p.embed, botR = -drop - p.embed;
+    const botF = -p.embed, botR = gR - p.embed;
     const along = (t) => ({ x: xf + (t - ovh) * c, y: nodeF + (t - ovh) * s }); // t：距斜梁下端
     const warn = [];
     if (ovh < 150) warn.push(`立柱间距太大：斜梁两端悬挑只剩 ${Math.round(ovh)}`);
@@ -64,19 +70,15 @@
     const pf = FIX.purlin.f / 2, pLast = purlins[purlins.length - 1];
     if (purlins[0] - pf < 0 || pLast + pf > beamLen) warn.push(`檩条（按组件安装孔距 ${p.hole} 布置）超出了斜梁端部`);
 
-    const sp = p.slope / 100;
-    const gy = (x) => sp * (x - xf);                         // 实际地面高度（前柱处为转折点）
-    const embedR = gy(xr) - botR;
     const clearEdge = p.h0 - gy(0);
-    const clearBraceR = p.braceHR - gy(xr);
-    if (embedR < p.embed - 0.5) warn.push(`后柱实际埋深只有 ${Math.round(embedR)}（北向坡超过设计的 ${p.designSlope}%）`);
+    const clearBraceR = p.braceHR - gR;
     if (clearBraceR < 100) warn.push(`后斜撑下端离地只有 ${Math.round(clearBraceR)}`);
     if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
 
     return {
       c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, drop, botF, botR,
       lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
-      modStarts, purlins, sp, gy, embedR, clearEdge, clearBraceR, warn,
+      modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
     };
   };
 
