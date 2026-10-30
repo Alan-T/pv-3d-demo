@@ -88,8 +88,9 @@
     });
     PV.view.buttons.forEach((b) => b.addEventListener('click', () => PV.view.set(b.dataset.view)));
     // 节点详图：先选节点种类、前/后侧，再选正视/轴测；不在节点视图时点种类直接进正视。
-    // 檩条-组件直接进轴测：正视沿檩条看，组件缝看不出来
-    const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : st.jointType === 'mod' ? 'joint-iso' : 'joint-elev');
+    // 檩条-组件、边压块直接进轴测：正视沿檩条看，组件缝、压块看不出来
+    const isoFirst = new Set(['mod', 'side']);
+    const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : isoFirst.has(st.jointType) ? 'joint-iso' : 'joint-elev');
     const chipGroup = (sel, apply) => {
       const chips = document.querySelectorAll(sel);
       chips.forEach((b) => b.addEventListener('click', () => {
@@ -114,7 +115,16 @@
 
   function kgPerM(sec) { return ((sec.t * (sec.d + 2 * sec.f + 2 * sec.l) - 4 * sec.t * sec.t) * 7.85) / 1000; }
 
+  // 压块固定时，“檩条-组件”节点改叫“中压块”，并多出“边压块”节点；改回螺栓固定时 build() 已把边压块退回檩条-组件
+  function updateJointChips() {
+    const clamp = PV.P.fix === 'clamp';
+    document.querySelector('[data-jtype=mod]').textContent = clamp ? '中压块' : '檩条-组件';
+    document.querySelector('[data-jtype=side]').style.display = clamp ? '' : 'none';
+    document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === st.jointType));
+  }
+
   function update() {
+    updateJointChips();
     const P = PV.P, S = st.S;
     const r = Math.round, n = P.frames, L = st.layout, O = S.outer, np = S.purlins.length;
     document.querySelector('.title small').textContent =

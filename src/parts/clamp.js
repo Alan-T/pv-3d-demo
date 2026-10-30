@@ -72,5 +72,5 @@
     return { mid: mid.length, side: side.length };
   }
 
-  PV.parts.clamp = { build };
+  PV.parts.clamp = { build, sideBoltX };
 })();

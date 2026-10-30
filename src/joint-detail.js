@@ -1,4 +1,4 @@
-/* 连接节点详图（最东一榀的 4 种节点 + 最东一跨里一道组件缝处的檩条-组件，各前/后一组）：引线标注 + 红色点划中心线。
+/* 连接节点详图（最东一榀的 4 种节点 + 最东一跨里一道组件缝处的檩条-组件 + 阵列东边的边压块，各前/后一组）：引线标注 + 红色点划中心线。
  * 每组的 box（框架平面 mm）、labelSide（文字在节点哪一侧）和 z（节点东西向位置，不给就是最东一榀）也给 view.js 取景用 */
 (function () {
   'use strict';
@@ -16,7 +16,7 @@
     const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
     const sec = (s) => `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}`;
     const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
-    const specs = { foot: [], top: [], btop: [], clip: [], mod: [] };
+    const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [] };
     for (const fr of [0, 1]) {
       const J = layout.joints[fr];
       if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
@@ -120,6 +120,24 @@
           leaders: parts.map(([p, text, pz], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text, pz]),
           lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + FIX.modT + 60))],
           box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
+        });
+      }
+      { // 边压块（只在压块固定时有）：阵列东边，前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面，
+        // 引线画在螺栓所在平面里；组件、压块那两根指到组件边里面一点和压块上沿
+        const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
+        const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 3;
+        const e = layout.arrW / 2, zb = e + PV.parts.clamp.sideBoltX, top = S.hModBot + FIX.modT, Sd = CLAMP.side;
+        const parts = [
+          [mv(P0, 60, top), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`, e - 60],
+          [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
+          [mv(P0, 0, top - Sd.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
+          [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}，伸出组件 ${FIX.purlinExt}`],
+        ];
+        specs.side.push({
+          labelSide: 1, anchorX: ax, z: zb, zl: zb, at: mv(P0, 0, S.hModBot),
+          leaders: parts.map(([p, text, pz], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text, pz]),
+          lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, top + 60))],
+          box: [P0.x - 130, ax, yLow - 30, P0.y + (top + 70) / cosT],
         });
       }
     }

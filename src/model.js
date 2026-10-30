@@ -28,6 +28,7 @@
     const st = PV.state, P = PV.P;
     // 先记下旧几何下的取景，重建后让垂直组件 / 节点视图跟着新几何走
     const oldPose = PV.view.savePose();
+    if (P.fix !== 'clamp' && st.jointType === 'side') st.jointType = 'mod';   // 改回螺栓固定就没有边压块了
     clearDynamic();
     const S = (st.S = PV.solve(P));
     const layout = (st.layout = PV.layoutEW(P));
@@ -58,13 +59,13 @@
     const clamps = P.fix === 'clamp' ? parts.clamp.build(c) : null;
     layout.counts = Object.assign({ clip, clamps }, bolts.flush(g.hw));
 
-    // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。支架节点、檩条-组件（mod）两种剖切范围各一套。
+    // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。支架节点、檩条-组件、边压块三种剖切范围各一套。
     // 略往保留的一侧挪 0.5，免得被剖切面自己裁掉；组件的封口放进组件分组，跟着“光伏组件”开关
     g.caps = [];
-    for (const mod of [false, true]) {
-      const [lo, hi] = PV.view.sectionRange(layout, mod);
+    for (const key of ['frame', 'mod', 'side']) {
+      const [lo, hi] = PV.view.sectionRange(layout, key);
       const pc = new THREE.Group(), mc = new THREE.Group();
-      pc.userData.mod = mc.userData.mod = mod;
+      pc.userData.section = mc.userData.section = key;
       g.model.add(pc);
       g.modules.add(mc);
       g.caps.push(pc, mc);
