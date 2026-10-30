@@ -28,7 +28,7 @@
             [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(FIX.brace)}`],
             [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(FIX.brace)}`],
             [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(FIX.post)}`],
-            [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×4，长圆孔'],
+            [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×4（平垫 + 弹垫），长圆孔'],
             [J.xc - J.side * 30, J.yc - 25, ly(4), `双面斜撑连接板 ${J.spec}`],
           ],
           lines: [[J.xc, yBot - 70, J.xc, J.yTop + 130],
@@ -42,7 +42,7 @@
           leaders: [
             [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 70, `立柱 ${sec(FIX.post)}`],
             [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 15, `斜撑 ${sec(FIX.brace)}`],
-            [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12 螺栓 ×3，长圆孔'],
+            [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12 螺栓 ×3（平垫 + 弹垫），长圆孔'],
             [J.B.x - J.side * 25, J.yc - J.hh + 22, J.yc - 20, `斜撑连接板 ${J.spec}`],
           ],
           lines: [[J.xc, J.yc - J.hh - 70, J.xc, J.yc + J.hh + 130],

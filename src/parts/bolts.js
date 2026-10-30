@@ -7,14 +7,25 @@
   // 螺栓组：局部 z 为螺栓轴线、指向螺母一侧，z=0 在螺母一侧被连接件的外表面。
   // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，画在开孔那块板的表面上，at 为这些表面的局部 z）。
   // opt.len：按公称长度（螺栓头支承面到杆端）画杆长，不给就在螺母外露 out；opt.headWasher：螺栓头下也垫一个平垫；
-  // opt.socket：内六角圆柱头（sk：头径 d、头高 k、内六角对边 s）
+  // opt.socket：内六角圆柱头（sk：头径 d、头高 k、内六角对边 s）；opt.spring：平垫和螺母之间加一个弹垫（sw：内外半径、厚，GB 93）
   const BOLT_SIZE = {
-    12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6 },
+    12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6, sw: { ri: 6.1, ro: 9.2, t: 3.1 } },
     8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sk: { d: 13, k: 8, s: 6 } },
   };
+  // 弹垫：开口的圆环，开口在局部 x-y 平面的左上方（节点正视图里看得见），从 z0 起厚 sw.t
+  function springWasher(sw, z0) {
+    const gap = 0.12, a0 = (3 * Math.PI) / 4 + gap, a1 = a0 + 2 * Math.PI - 2 * gap;
+    const s = new THREE.Shape();
+    s.absarc(0, 0, sw.ro * MM, a0, a1, false);
+    s.absarc(0, 0, sw.ri * MM, a1, a0, true);
+    const g = new THREE.ExtrudeGeometry(s, { depth: sw.t * MM, bevelEnabled: false, curveSegments: 32 });
+    g.translate(0, 0, z0 * MM);
+    return g;
+  }
   function boltKind(size, stack, slot, opt) {
-    const b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3), top = b.wt + b.nh;
-    const o = opt || {}, back = -stack - (o.headWasher ? b.wt : 0);    // 螺栓头支承面
+    const o = opt || {}, b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3);
+    const nut = b.wt + (o.spring ? b.sw.t : 0), top = nut + b.nh;   // 螺母底面、顶面
+    const back = -stack - (o.headWasher ? b.wt : 0);    // 螺栓头支承面
     const hh = o.socket ? b.sk.k : b.hh;
     const cyl = (r, z0, z1, seg, r1) => {   // r1：z1 一端的半径（倒角用），不给就是圆柱
       const g = new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg);
@@ -24,11 +35,12 @@
     };
     const parts = [
       [cyl(b.wr, 0, b.wt, 24), M.boltSteel],
-      [cyl(hexR, b.wt, top, 6), M.boltSteel],
+      [cyl(hexR, nut, top, 6), M.boltSteel],
       [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), M.boltSteel],
       o.socket ? [cyl(b.sk.d / 2, back - hh + 0.6, back, 24), M.boltSteel] : [cyl(hexR, back - hh, back, 6), M.boltSteel],
     ];
     if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), M.boltSteel]);
+    if (o.spring) parts.push([springWasher(b.sw, b.wt), M.boltSteel]);
     if (o.socket) {
       parts.push([cyl(b.sk.d / 2 - 0.6, back - hh, back - hh + 0.6, 24, b.sk.d / 2), M.boltSteel]);   // 头顶倒角
       parts.push([cyl(b.sk.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), M.slot]);           // 内六角孔
@@ -50,7 +62,8 @@
     return parts;
   }
   const BOLTS = {
-    foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [0.4], len: JOINT.slotL }),     // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）
+    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）；螺母下一个平垫、一个弹垫（节点图）
+    foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [0.4], len: JOINT.slotL }, { spring: true }),
     // 立柱-斜梁：螺母在斜梁腹板一侧，竖向长圆孔开在立柱腹板上：画在立柱腹板贴着斜梁的那面（节点图里斜梁半透明，看得见）
     // 和立柱槽里那面
     top: boltKind(12, FIX.beam.t + FIX.post.t, { at: [-FIX.beam.t, -FIX.beam.t - FIX.post.t - 0.4], len: 40 }),
