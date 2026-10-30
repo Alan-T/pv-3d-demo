@@ -68,8 +68,9 @@
       });
     });
     PV.view.buttons.forEach((b) => b.addEventListener('click', () => PV.view.set(b.dataset.view)));
-    // 节点详图：先选节点种类、前/后侧，再选正视/轴测；不在节点视图时点种类直接进正视
-    const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : 'joint-elev');
+    // 节点详图：先选节点种类、前/后侧，再选正视/轴测；不在节点视图时点种类直接进正视。
+    // 檩条-组件直接进轴测：正视沿檩条看，组件缝看不出来
+    const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : st.jointType === 'mod' ? 'joint-iso' : 'joint-elev');
     const chipGroup = (sel, apply) => {
       const chips = document.querySelectorAll(sel);
       chips.forEach((b) => b.addEventListener('click', () => {

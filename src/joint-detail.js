@@ -1,5 +1,5 @@
-/* 连接节点详图（最东一榀，4 种节点 × 前/后各一组）：引线标注 + 红色点划中心线。
- * 每组的 box（框架平面 mm）和 labelSide（文字在节点哪一侧）也给 view.js 取景用 */
+/* 连接节点详图（最东一榀的 4 种节点 + 最东一跨里一道组件缝处的檩条-组件，各前/后一组）：引线标注 + 红色点划中心线。
+ * 每组的 box（框架平面 mm）、labelSide（文字在节点哪一侧）和 z（节点东西向位置，不给就是最东一榀）也给 view.js 取景用 */
 (function () {
   'use strict';
   const PV = window.PV;
@@ -16,7 +16,7 @@
     const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
     const sec = (s) => `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}`;
     const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
-    const specs = { foot: [], top: [], btop: [], clip: [] };
+    const specs = { foot: [], top: [], btop: [], clip: [], mod: [] };
     for (const fr of [0, 1]) {
       const J = layout.joints[fr];
       if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
@@ -99,22 +99,39 @@
           box: [P0.x - 220, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
         });
       }
+      { // 檩条-组件：在 layout.gapZ 那道组件缝处，缝两侧组件各 1 颗 M8×22；前侧取最低一根檩条、后侧取最高一根。
+        // 文字放在右侧檩条下面，引线画在缝西侧那颗螺栓的平面里
+        const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
+        const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 2;
+        // 引线指到组件面、螺栓头、檩条腹板（轴测从下坡一侧高处看，这几处都看得见）
+        const parts = [
+          [mv(P0, 60, S.hModBot + FIX.modT), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}，缝 ${FIX.modGapEW}`],
+          [mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母'],
+          [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}`],
+        ];
+        specs.mod.push({
+          labelSide: 1, anchorX: ax, z: layout.gapZ, zl: layout.gapZ - FIX.modGapEW / 2 - 18, at: mv(P0, 0, S.hModBot),
+          leaders: parts.map(([p, text], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text]),
+          lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + FIX.modT + 60))],
+          box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
+        });
+      }
     }
     layout.jointSpecs = specs;
 
     const group = new THREE.Group();
     for (const type in specs) {
       specs[type].forEach((sp, fr) => {
-        const lead = new DimSet(), cl = new DimSet();
+        const lead = new DimSet(), cl = new DimSet(), zl = sp.zl === undefined ? zj : sp.zl;
         for (const [px, py, ly, text] of sp.leaders) {
-          const a = V(px, py, zj), b = V(sp.anchorX, ly, zj);
+          const a = V(px, py, zl), b = V(sp.anchorX, ly, zl);
           lead.seg(a, b);
           const d = b.clone().sub(a).normalize().multiplyScalar(0.012), w = new V3(-d.y, d.x, 0).multiplyScalar(0.4);
           lead.seg(a, a.clone().add(d).add(w));
           lead.seg(a, a.clone().add(d).sub(w));
           lead.label(text, b, 'out', 13).userData.outside = { at: b, dir: new V3(sp.labelSide, 0, 0) };
         }
-        for (const [x1, y1, x2, y2] of sp.lines) cl.seg(V(x1, y1, zj), V(x2, y2, zj), true);
+        for (const [x1, y1, x2, y2] of sp.lines) cl.seg(V(x1, y1, zl), V(x2, y2, zl), true);
         const g = lead.finish(mats.line);
         g.add(cl.finish(mats.line, mats.center));
         g.userData.joint = type + fr;

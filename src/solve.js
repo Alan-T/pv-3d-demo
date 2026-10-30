@@ -91,6 +91,13 @@
     const cols = Math.max(1, Math.round((spanEW + 0.6 * p.pitchEnd) / pitchEW));
     const arrW = cols * pitchEW - FIX.modGapEW;
     const purlinLen = arrW + 2 * FIX.purlinExt;
-    return { zs, bays, spanEW, pitchEW, cols, arrW, purlinLen };
+    // 檩条-组件节点详图取的组件缝：最东一跨里离两榀最远的一道（离檩托、斜梁远，画面里只有组件和檩条）；只有 1 列组件时取阵列东边
+    const gaps = [];
+    for (let j = 1; j < cols; j++) gaps.push(-arrW / 2 + j * pitchEW - FIX.modGapEW / 2);
+    const zE = zs[zs.length - 1], zW = zs.length > 1 ? zs[zs.length - 2] : -Infinity;
+    const clear = (g) => Math.min(...zs.map((z) => Math.abs(g - z)));
+    const inBay = gaps.filter((g) => g > zW && g < zE), pool = inBay.length ? inBay : gaps;
+    const gapZ = pool.length ? pool.reduce((a, g) => (clear(g) > clear(a) ? g : a)) : arrW / 2 + FIX.modGapEW / 2;
+    return { zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ };
   };
 })();

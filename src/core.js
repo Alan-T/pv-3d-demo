@@ -25,7 +25,7 @@
     state: {
       preset: 'A',
       view: '3d',
-      jointType: 'foot',   // 节点详图：foot 斜撑-立柱，top 立柱-斜梁，btop 斜撑-斜梁，clip 檩条-斜梁
+      jointType: 'foot',   // 节点详图：foot 斜撑-立柱，top 立柱-斜梁，btop 斜撑-斜梁，clip 檩条-斜梁，mod 檩条-组件
       jointSel: 1,         // 0 前侧，1 后侧（斜撑-立柱的后侧与节点图同向）
       labelK: 1.25,        // 文字像素高度系数（手机上小一点），点击修改时输入框也按它定大小
       S: null,             // solve() 的结果

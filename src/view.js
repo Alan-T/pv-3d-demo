@@ -9,9 +9,11 @@
   let tween = null;
 
   // ---------- 显示开关 ----------
-  // 轴测节点图的剖切范围：最东一榀往西 400、往东 300（mm）；剖切面上的封口在 model.js 里画
-  const SECTION = { below: 400, above: 300 };
-  function sectionRange(layout) {
+  // 轴测节点图的剖切范围（mm）：支架节点取最东一榀往西 400、往东 300；檩条-组件（mod）取 layout.gapZ 那道组件缝两侧各 100。
+  // 剖切面上的封口在 model.js 里画
+  const SECTION = { below: 400, above: 300, gap: 100 };
+  function sectionRange(layout, mod) {
+    if (mod) return [layout.gapZ - SECTION.gap, layout.gapZ + SECTION.gap];
     const z = layout.zs[layout.zs.length - 1];
     return [z - SECTION.below, z + SECTION.above];
   }
@@ -29,20 +31,22 @@
     d.deep.visible = show.buried;
     g.buried.visible = show.buried;
     g.modules.visible = show.modules;
-    const inJoint = view.startsWith('joint'), sectioned = view === 'joint-iso';
-    // 轴测节点图只看最东一榀前后 700 mm 的一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
-    // 正视不剖切：正视里组件、檩条只看得到端面，剖掉端面后侧面全是“侧着”的，会整个看不见；
-    // 而正视下相邻榀正好重合在后面，本来也不乱
+    const inJoint = view.startsWith('joint'), mod = st.jointType === 'mod';
+    // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
+    // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱。檩条-组件的正视也剖切（看到的是封口截面），
+    // 不然最东一榀的斜梁、檩托和檩条端头都挡在组件缝前面
+    const sectioned = view === 'joint-iso' || (view === 'joint-elev' && mod);
     if (sectioned) {
-      const [lo, hi] = sectionRange(st.layout);
+      const [lo, hi] = sectionRange(st.layout, mod);
       clipLo.constant = -lo * MM;
       clipHi.constant = hi * MM;
       renderer.clippingPlanes = [clipLo, clipHi];
     } else {
       renderer.clippingPlanes = [];
     }
-    for (const cg of g.caps) cg.visible = sectioned;
-    PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip'), sectioned ? 0.2 : 0.32);
+    for (const cg of g.caps) cg.visible = sectioned && cg.userData.mod === mod;
+    // 檩条-组件的螺栓头压在组件边框里，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
+    PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), sectioned && !mod ? 0.2 : 0.32);
     PV.ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
     g.hw.visible = show.bolts;
     st.overlay.visible = show.overlay && st.preset === 'A';   // 原图只有图纸一（2 排）的侧视图
@@ -113,12 +117,20 @@
       const half = (Math.max(w / pw, h / ph) * canvas.clientHeight) / 2;
       return { target: c, dir: n, zoom: 1 / half };
     }
-    // 最东一榀的连接节点。正视：从东往西正对节点（同节点正视图）；轴测：略偏向文字一侧、偏上，看得出螺栓和板厚。
+    // 最东一榀的连接节点（檩条-组件在 sp.z 那道组件缝）。正视：从东往西正对节点（同节点正视图）；轴测：略偏向文字一侧、偏上，看得出螺栓和板厚。
     // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
     // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
-    const sp = layout.jointSpecs[st.jointType][st.jointSel], z = layout.zs[layout.zs.length - 1] + FIX.post.f / 2;
+    const sp = layout.jointSpecs[st.jointType][st.jointSel];
+    const z = sp.z === undefined ? layout.zs[layout.zs.length - 1] + FIX.post.f / 2 : sp.z;
     const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
     const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
+    if (st.jointType === 'mod' && name === 'joint-iso') {
+      // 檩条-组件轴测：螺栓头在半透明组件下面，从下坡一侧高处看组件面；以缝上两颗螺栓的中点取景，看约 200 × 180 的范围，文字在右侧
+      const dir = new V3(-0.7, 1, 1).normalize(), [right] = screenAxes(dir);
+      const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / 200, (ch - 190) / 180));
+      const c = V(sp.at.x, sp.at.y, z).addScaledVector(right, (labelPx / 2 / scale) * MM);
+      return { target: c, dir, zoom: 1 / ((ch / 2 / scale) * MM) };
+    }
     const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / (xR - xL), (ch - 190) / (yT - yB)));
     const c = V((xL + xR) / 2 + (sp.labelSide * labelPx) / 2 / scale, (yB + yT) / 2 + 40 / scale, z);
     // 轴测一般偏向文字一侧；檩托在檩条下坡一侧，所以檩条-斜梁从下坡（南）一侧看
