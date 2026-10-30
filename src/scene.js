@@ -38,13 +38,18 @@
   const root = new THREE.Group();
   scene.add(root);
 
+  // 改画布尺寸会清空画布，尺寸没变就不动（返回是否改了）
+  let lastW = 0, lastH = 0;
   function resize() {
     const w = stage.clientWidth || 1, h = stage.clientHeight || 1;
+    if (w === lastW && h === lastH) return false;
+    lastW = w; lastH = h;
     renderer.setSize(w, h, false);
     persp.aspect = w / h;
     persp.updateProjectionMatrix();
     ortho.left = -w / h; ortho.right = w / h; ortho.top = 1; ortho.bottom = -1;
     ortho.updateProjectionMatrix();
+    return true;
   }
 
   Object.assign(PV, { canvas, stage, renderer, scene, persp, ortho, controls, sun, root, resize });

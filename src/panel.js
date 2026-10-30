@@ -141,7 +141,7 @@
     });
     document.getElementById('sheetHandle').addEventListener('click', () => {
       panel.classList.toggle('open');
-      setTimeout(() => { PV.resize(); PV.view.set(st.view); }, 30);   // 画布变矮了，重新取景
+      setTimeout(() => { PV.fitCanvas(); PV.view.set(st.view); }, 30);   // 画布变矮了，重新取景
     });
   }
 
