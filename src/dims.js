@@ -88,14 +88,10 @@
     const ed = (d, k) => { (d.label || d).userData.edit = k; return d; };
     const groundLine = new DimSet();
 
-    // ±0 线、设计坡度包络、倾角
-    ref.seg(v(-900, 0), v(S.xr + 1100, 0));
-    ref.label('±0.000', v(-900, 60), 'ref', 13);
-    const ext = P.span + 900, dz = (P.designSlope / 100) * ext;
-    ref.seg(v(S.xf, 0), v(S.xf + ext, dz), true);
-    ref.seg(v(S.xf, 0), v(S.xf + ext, -dz), true);
-    ed(ref.label(`南向坡 ${P.designSlope}%`, v(S.xf + ext + 380, dz + 40), 'in', 13), 'designSlope');
-    ed(ref.label(`北向坡 ${P.designSlope}%`, v(S.xf + ext + 380, -dz - 40), 'in', 13), 'designSlope');
+    // ±0 水平线（不随坡度动）、倾角
+    const gx0 = -900, gx1 = S.xr + 1100;
+    ref.seg(v(gx0, 0), v(gx1, 0));
+    ref.label('±0.000', v(gx0, 60), 'ref', 13);
     // 倾角（同 CAD 角度标注）：圆心在斜梁中心线与 ±0 线的交点，圆弧从 ±0 线画到斜梁，
     // 半径取到前后立柱之间（离前柱 0.6 倍间距处落地），两端斜短线，文字在圆弧中点
     const th = P.tilt * DEG, x0 = S.xf - S.nodeF / Math.tan(th), R = S.xf + 0.6 * P.span - x0;
@@ -106,10 +102,12 @@
       key.seg(p.clone().sub(tick), p.clone().add(tick));
     }
     ed(key.label(`${P.tilt}°`, arcAt(th / 2), 'in'), 'tilt');
+    // 南北坡度不为 0 时才画坡度线（实际地面，过前柱处 ±0），坡度写在北端；后柱处标出 ±0 到坡度线的高差
     if (P.slope) {
-      const x0 = -900, x1 = S.xr + 1100;
-      groundLine.seg(v(x0, S.gy(x0)), v(x1, S.gy(x1)));
-      groundLine.label(`实际地面 ${P.slope > 0 ? '南向坡' : '北向坡'} ${Math.abs(P.slope)}%`, v(-150, S.gy(-150) - 120), 'ref', 13);
+      const up = P.slope > 0;
+      groundLine.seg(v(gx0, S.gy(gx0)), v(gx1, S.gy(gx1)));
+      ed(groundLine.label(`${up ? '南向坡' : '北向坡'} ${Math.abs(P.slope)}%`, v(gx1 + 380, S.gy(gx1) + (up ? 40 : -40)), 'in', 13), 'slope');
+      side.dim(v(S.xr, 0), v(S.xr, S.gR), off(620, 0), r(Math.abs(S.gR)), 'out');
     }
 
     // 高度与间距
@@ -148,9 +146,7 @@
 
     // 地下部分
     ed(deep.dim(v(S.xf, S.botF), v(S.xf, 0), off(230, 0), P.embed, 'in'), 'embed');
-    // 后柱按实际地面埋深；有南北坡度时标出后柱处地面与 ±0 的高差
-    ed(deep.dim(v(S.xr, S.botR), v(S.xr, S.gR), off(-260, 0), P.embed, 'in'), 'embed');
-    if (Math.abs(S.gR) >= 0.5) deep.dim(v(S.xr, S.gR), v(S.xr, 0), off(230, 0), r(Math.abs(S.gR)), 'out');
+    ed(deep.dim(v(S.xr, S.botR), v(S.xr, S.gR), off(-260, 0), P.embed, 'in'), 'embed');   // 后柱从实际地面埋深
     deep.dim(v(S.xf, S.botF), v(S.xf, S.topF), off(-470, 0), r(S.lenF), 'out');
     deep.dim(v(S.xr, S.botR), v(S.xr, S.topR), off(480, 0), r(S.lenR), 'out');
 

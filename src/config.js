@@ -20,7 +20,6 @@
       tilt: 25, span: 2900, h0: 800, frames: 12, pitch: 2800, pitchEnd: 2800, slope: 0, slopeEW: 0,
       rows: 2,           // 沿坡组件排数（竖排）
       outer: 0,           // 是否带外斜撑（立柱外侧、撑斜梁悬挑段）
-      designSlope: 5,     // 设计坡度 %：只画 ±designSlope 的参考线（图纸后柱 4336 按北向坡 5% 设计；模型里后柱按实际南北坡度算）
       braceHF: 250,       // 前柱斜撑下节点离 ±0（内、外斜撑共用一块连接板）
       braceHR: 350,       // 后柱斜撑下节点离 ±0
       braceTopF: 1650,    // 前斜撑上节点到斜梁下端
@@ -36,7 +35,7 @@
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
       tilt: 15, span: 3700, h0: 800, frames: 10, pitch: 3250, pitchEnd: 3250, slope: 0, slopeEW: 0,
-      rows: 3, outer: 1, designSlope: 2,
+      rows: 3, outer: 1,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
       embed: 1800, modL: 2382, hole: 1400, fix: 'bolt', clampL: 50,
     },
@@ -95,15 +94,15 @@
   ];
   const EXTRA_LIMITS = {
     braceHF: [100, 800], braceHR: [100, 1200], braceTopF: [600, 5000], braceTopR: [600, 5000],
-    braceOutF: [100, 3000], braceOutR: [100, 3000], designSlope: [0, 10],
+    braceOutF: [100, 3000], braceOutR: [100, 3000],
     embed: [800, 3000], modL: [1600, 2600], hole: [600, 2400],
   };
   // 返回 [最小, 最大, 步长]；安装孔距不能超过组件长度 − 200
   function limits(key) {
     const d = PARAMS.find((q) => q.key === key);
-    if (d) return [d.min, d.max, key === 'tilt' ? 0.1 : 1];
+    if (d) return [d.min, d.max, key === 'tilt' || d.unit === '%' ? 0.1 : 1];
     const [lo, hi] = EXTRA_LIMITS[key];
-    return [lo, key === 'hole' ? Math.min(hi, PV.P.modL - 200) : hi, key === 'designSlope' ? 0.5 : 1];
+    return [lo, key === 'hole' ? Math.min(hi, PV.P.modL - 200) : hi, 1];
   }
 
   Object.assign(PV, {

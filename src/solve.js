@@ -23,12 +23,11 @@
     const nodeR = nodeF + L * s / c;
     const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
     // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
-    // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深。
-    // 设计坡度只画参考线（图纸后柱 4336 = 2391 + 5% × 2900 + 1800，按北向坡 5% 设计）
+    // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
+    // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
     const sp = p.slope / 100;
     const gy = (x) => sp * (x - xf);
     const gR = gy(xr);
-    const drop = (p.designSlope / 100) * L;
     const botF = -p.embed, botR = gR - p.embed;
     const along = (t) => ({ x: xf + (t - ovh) * c, y: nodeF + (t - ovh) * s }); // t：距斜梁下端
     const warn = [];
@@ -76,7 +75,7 @@
     if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
 
     return {
-      c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, drop, botF, botR,
+      c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, botF, botR,
       lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
       modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
     };
