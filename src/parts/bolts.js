@@ -61,14 +61,15 @@
     }
     return parts;
   }
+  // M12 螺栓的螺母下都是一个平垫、一个弹垫（节点图）
   const BOLTS = {
-    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）；螺母下一个平垫、一个弹垫（节点图）
+    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）
     foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [0.4], len: JOINT.slotL }, { spring: true }),
     // 立柱-斜梁：螺母在斜梁腹板一侧，竖向长圆孔开在立柱腹板上：画在立柱腹板贴着斜梁的那面（节点图里斜梁半透明，看得见）
     // 和立柱槽里那面
-    top: boltKind(12, FIX.beam.t + FIX.post.t, { at: [-FIX.beam.t, -FIX.beam.t - FIX.post.t - 0.4], len: 40 }),
-    btop: boltKind(12, FIX.beam.t + FIX.brace.t, null),                                // 斜撑-斜梁
-    clip: boltKind(12, CLIP.t + FIX.beam.t, null),                                     // 檩托两处叠层都是 4+2
+    top: boltKind(12, FIX.beam.t + FIX.post.t, { at: [-FIX.beam.t, -FIX.beam.t - FIX.post.t - 0.4], len: 40 }, { spring: true }),
+    btop: boltKind(12, FIX.beam.t + FIX.brace.t, null, { spring: true }),              // 斜撑-斜梁
+    clip: boltKind(12, CLIP.t + FIX.beam.t, null, { spring: true }),                   // 檩托两处叠层都是 4+2
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
     module: boltKind(8, FIX.purlin.t + 2, null, { len: 22, headWasher: true }),
     // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同

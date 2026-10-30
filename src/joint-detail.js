@@ -59,11 +59,12 @@
           leaders: [
             [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
             [node.x - FIX.post.d / 2 + 15, ty - 4, y0 - 65, '柱顶平切，与斜梁上表面齐平'],   // 下坡一侧的柱顶角露在斜梁上方
-            [node.x, node.y, y0 - 130, 'M12 螺栓，立柱上竖向长圆孔'],
-            [node.x, node.y - 190, y0 - 195, `立柱 ${sec(FIX.post)}`],
+            [node.x, node.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫）'],
+            [node.x, node.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
+            [node.x, node.y - 190, y0 - 260, `立柱 ${sec(FIX.post)}`],
           ],
           lines: [[node.x, node.y - 280, node.x, ty + 70], seg2(mv(node, -320, 0), mv(node, 320, 0))],
-          box: [node.x - ls * 260, ax, y0 - 225, ty + 90],
+          box: [node.x - ls * 260, ax, y0 - 290, ty + 90],
         });
       }
       { // 斜撑-斜梁：文字放在斜撑另一侧、斜梁下面
@@ -74,7 +75,7 @@
           leaders: [
             [end.x, end.y, y0, '斜撑端头平切，伸到斜梁上缘'],
             [bp.x, bp.y, y0 - 65, `斜梁 ${sec(FIX.beam)}`],
-            [T.x, T.y, y0 - 130, 'M12 螺栓，在两条中心线交点'],
+            [T.x, T.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫），中心线交点'],
             [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(FIX.brace)}`],
           ],
           lines: [seg2(mv(T, -340, 0), mv(T, 340, 0)),
@@ -84,15 +85,16 @@
       }
       { // 檩条-斜梁：前侧取最低一根檩条、后侧取最高一根；文字放在右侧斜梁下面
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 220, web = -FIX.purlin.f / 2;
-        const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * 4;
-        // 压块固定时这里没有组件螺栓（压块在组件缝上，见檩条-组件节点）
+        // 压块固定时这里没有组件螺栓（压块在组件缝上，见檩条-组件节点）。檩托指到立边上部，M12 指到立边上那颗螺栓
         const parts = [
           [mv(P0, 160, S.hModBot + FIX.modT / 2), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`],
           ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']]),
           [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
-          [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), `檩托 L 形 t=${CLIP.t}，M12 螺栓 ×2`],
+          [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 L 形 t=${CLIP.t}`],
+          [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), 'M12 螺栓 ×2（平垫 + 弹垫）'],
           [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],
         ];
+        const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * (parts.length - 1);
         specs.clip.push({
           labelSide: 1, anchorX: ax,
           leaders: parts.map(([p, text], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text]),
