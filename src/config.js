@@ -65,11 +65,12 @@
   // 中压块：U 形槽外宽 = 组件缝，两翼压住两侧组件边框 press，翼板上表面根部高 top、翼尖高 tip，翼板底面带齿；
   //   槽壁厚 wall，槽底上表面（螺栓头支承面）在 floor，槽底板厚 plate
   // 边压块：从组件边往外共宽 w（檩条伸出组件 50，放得下）。上沿勾住边框 press、底面带齿；内立板厚 wall，
-  //   底板上表面（螺栓头支承面）在 floor、厚 plate，外端一只宽 foot 的脚落在檩条上、底面带齿；螺栓在立板和脚之间居中
+  //   底板上表面（螺栓头支承面）在 floor、厚 plate。外端一只倒 T 形的脚：底板外端大圆角转下来成宽 stem 的短立柱，
+  //   下面是宽 foot、厚 pad 的脚垫（两边各比立柱宽出一截，底面带齿）落在檩条上；螺栓在立板和底板外端之间居中
   const CLAMP = {
     bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
     mid: { press: 12, top: 3.2, tip: 2, wall: 2.5, floor: 14, plate: 3 },
-    side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 23, plate: 3.5, foot: 8.5 },
+    side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 25, plate: 3.5, foot: 8.5, stem: 3.7, pad: 1.6 },
   };
 
   // ---------- 可调参数 ----------

@@ -39,13 +39,15 @@
   const midGeo = extrude([...halfM, ...halfM.map(([x, y, r]) => [-x, y, r]).reverse(),
     [-gi, -Mi.floor, 0.8], [gi, -Mi.floor, 0.8]]);
 
-  // 边压块：局部 x 从组件边往外。上沿勾住边框（底面带齿），内立板贴着边框外侧下到底板，
-  // 底板上放螺栓头，外端一只脚落在檩条上（底面带齿），脚顶比底板高一点
-  const Sd = CLAMP.side, fx = Sd.w - Sd.foot, sideBoltX = (Sd.wall + fx) / 2;
+  // 边压块：局部 x 从组件边往外。上沿勾住边框（底面带齿），内立板贴着边框外侧下到底板，底板上放螺栓头。
+  // 外端是倒 T 形的脚：底板上表面在外端大圆角转下来成短立柱（x 从 s0 到 s1），立柱下面是更宽的脚垫（x 从 p0 到 w），
+  // 脚垫底面带齿落在檩条上
+  const Sd = CLAMP.side, p0 = Sd.w - Sd.foot, s0 = Sd.w - (Sd.foot + Sd.stem) / 2, s1 = s0 + Sd.stem;
+  const padTop = -H + T.h + Sd.pad, floorBot = -Sd.floor - Sd.plate, sideBoltX = (Sd.wall + s1) / 2;
   const sideGeo = extrude([[-Sd.press, Sd.tip, 0.6], [-1, Sd.top], [Sd.wall, Sd.top, 1.2], [Sd.wall, -Sd.floor, 0.8],
-    [fx, -Sd.floor, 0.8], [fx, -Sd.floor + 2, 0.6], [Sd.w, -Sd.floor + 2, 1], [Sd.w, -H + T.h],
-    ...teeth(Sd.w - 0.5, fx + 0.5, -H + T.h, -H), [fx, -H + T.h], [fx, -Sd.floor - Sd.plate, 0.6], [0, -Sd.floor - Sd.plate, 1.5],
-    [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]);
+    [s1, -Sd.floor, 2], [s1, padTop, 0.8], [Sd.w, padTop, 0.8], [Sd.w, -H + T.h],
+    ...teeth(Sd.w - 0.4, p0 + 0.4, -H + T.h, -H), [p0, -H + T.h], [p0, padTop, 0.8], [s0, padTop, 0.6], [s0, floorBot, 0.8],
+    [0, floorBot, 1.5], [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]);
 
   // 返回中压块、边压块个数
   function build(c) {
