@@ -16,8 +16,8 @@
     const b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3), top = b.wt + b.nh;
     const o = opt || {}, back = -stack - (o.headWasher ? b.wt : 0);    // 螺栓头支承面
     const hh = o.socket ? b.sk.k : b.hh;
-    const cyl = (r, z0, z1, seg) => {
-      const g = new THREE.CylinderGeometry(r * MM, r * MM, (z1 - z0) * MM, seg);
+    const cyl = (r, z0, z1, seg, r1) => {   // r1：z1 一端的半径（倒角用），不给就是圆柱
+      const g = new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg);
       g.rotateX(Math.PI / 2);
       g.translate(0, 0, ((z0 + z1) / 2) * MM);
       return g;
@@ -26,10 +26,13 @@
       [cyl(b.wr, 0, b.wt, 24), M.boltSteel],
       [cyl(hexR, b.wt, top, 6), M.boltSteel],
       [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), M.boltSteel],
-      o.socket ? [cyl(b.sk.d / 2, back - hh, back, 24), M.boltSteel] : [cyl(hexR, back - hh, back, 6), M.boltSteel],
+      o.socket ? [cyl(b.sk.d / 2, back - hh + 0.6, back, 24), M.boltSteel] : [cyl(hexR, back - hh, back, 6), M.boltSteel],
     ];
     if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), M.boltSteel]);
-    if (o.socket) parts.push([cyl(b.sk.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), M.slot]);   // 内六角孔
+    if (o.socket) {
+      parts.push([cyl(b.sk.d / 2 - 0.6, back - hh, back - hh + 0.6, 24, b.sk.d / 2), M.boltSteel]);   // 头顶倒角
+      parts.push([cyl(b.sk.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), M.slot]);           // 内六角孔
+    }
     if (slot) {
       const w = (JOINT.slotW / 2) * MM, l = ((slot.len - JOINT.slotW) / 2) * MM;
       const s = new THREE.Shape();
@@ -51,8 +54,9 @@
     clip: boltKind(12, CLIP.t + FIX.beam.t, null),                                     // 檩托两处叠层都是 4+2
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
     module: boltKind(8, FIX.purlin.t + 2, null, { len: 22, headWasher: true }),
-    // 压块：M8×35 内六角（压块节点图），螺栓头沉在压块槽底，杆穿过组件缝下面的空当和檩条上翼缘
-    clamp: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.pocket, null, { len: CLAMP.bolt, socket: true }),
+    // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同
+    clampMid: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true }),
+    clampSide: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true }),
   };
 
   // 一次重建用一个收集器：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
@@ -70,7 +74,7 @@
         return {
           m12: mats.foot.length + mats.top.length + mats.btop.length + mats.clip.length,
           m8: mats.module.length,
-          m8c: mats.clamp.length,
+          m8c: mats.clampMid.length + mats.clampSide.length,
         };
       },
     };

@@ -110,8 +110,8 @@
         const parts = [
           [mv(P0, 60, top), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}，缝 ${FIX.modGapEW}`],
           ...(clamp ? [
-            [mv(P0, 0, top + CLAMP.t), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.press / 2],
-            [mv(P0, 0, top - CLAMP.pocket + 8), 'M8×35 内六角螺栓 + 螺母'],
+            [mv(P0, 0, top + CLAMP.mid.top), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.mid.press / 2],
+            [mv(P0, 0, top - CLAMP.mid.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
           ] : [[mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母']]),
           [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}`],
         ];

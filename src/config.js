@@ -61,9 +61,16 @@
   // 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
   const DBL = { half: 140, botHalf: 30 };
   const CLIP = { t: 4, base: 64, height: 80, width: 50, baseBolt: 32, webBolt: 50 };   // 檩托（假设）
-  // 压块（截面为假设，螺栓按压块节点图 M8×35 内六角）：t 顶板厚，press 压住组件边框的宽度，wall 立板厚，
-  // pocket 螺栓头支承面（槽底）离组件上表面，plate 槽底板厚，sideW 边压块从组件边往外的宽度（檩条伸出组件 50，放得下）
-  const CLAMP = { t: 4, press: 12, wall: 2.5, pocket: 12, plate: 4, sideW: 24, bolt: 35 };
+  // 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
+  // 中压块：U 形槽外宽 = 组件缝，两翼压住两侧组件边框 press，翼板上表面根部高 top、翼尖高 tip，翼板底面带齿；
+  //   槽壁厚 wall，槽底上表面（螺栓头支承面）在 floor，槽底板厚 plate
+  // 边压块：从组件边往外共宽 w（檩条伸出组件 50，放得下）。上沿勾住边框 press、底面带齿；内立板厚 wall，
+  //   底板上表面（螺栓头支承面）在 floor、厚 plate，外端一只宽 foot 的脚落在檩条上、底面带齿；螺栓在立板和脚之间居中
+  const CLAMP = {
+    bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
+    mid: { press: 12, top: 3.2, tip: 2, wall: 2.5, floor: 14, plate: 3 },
+    side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 23, plate: 3.5, foot: 8.5 },
+  };
 
   // ---------- 可调参数 ----------
   // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
