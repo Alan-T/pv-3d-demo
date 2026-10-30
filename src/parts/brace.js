@@ -19,7 +19,8 @@
 
   // 斜撑下端连接板。B：内斜撑理论节点（立柱内侧面，高 braceH）；T：内斜撑上节点；Bo/To：外斜撑（可无）。
   // 连接板竖向中点（= 两颗立柱螺栓的中点）就在 braceH，也就是图上“离地 250 / 350”标的位置。
-  // 只有内斜撑：单面五边形板 160×120，斜撑一侧下角斜切；带外斜撑：对称六边形双面板 280×120（Bracing Connector）。
+  // 只有内斜撑：单面五边形板 160×120，斜撑一侧竖直板边高 55，斜切到宽 50 的下边；
+  // 带外斜撑：对称六边形双面板 280×120（Bracing Connector），两侧竖直板边高 55，斜切到宽 60 的下边。
   // 孔位两种板相同：立柱中心线上 2 孔（间距 boltPitch），斜撑孔离立柱中心 ±boltU、比两立柱孔中点高 rise
   function braceJoint(S, B, T, Bo, To) {
     const dbl = !!Bo, side = Math.sign(T.x - B.x);            // +1 前柱（内斜撑向北），−1 后柱
@@ -27,12 +28,13 @@
     const hh = JOINT.plateH / 2, yTop = yc + hh;
     const U = (u) => xc + side * u;                             // u：离立柱中心线、朝内斜撑一侧的水平距离
     let pts, Qo = null;
+    const yc5 = yc + JOINT.chamferY;
     if (!dbl) {
       const back = -JOINT.singleBack, out = JOINT.singleW - JOINT.singleBack;
-      pts = [[U(back), yc - hh], [U(FIX.post.d / 2), yc - hh], [U(out), yc + JOINT.chamferY], [U(out), yTop], [U(back), yTop]];
+      pts = [[U(back), yc - hh], [U(JOINT.singleBot), yc - hh], [U(out), yc5], [U(out), yTop], [U(back), yTop]];
     } else {
-      pts = [[U(-DBL.half), yTop], [U(DBL.half), yTop], [U(DBL.half), yc], [U(DBL.botHalf), yc - hh],
-        [U(-DBL.botHalf), yc - hh], [U(-DBL.half), yc]];
+      pts = [[U(-DBL.half), yTop], [U(DBL.half), yTop], [U(DBL.half), yc5], [U(DBL.botHalf), yc - hh],
+        [U(-DBL.botHalf), yc - hh], [U(-DBL.half), yc5]];
       Qo = { x: U(-JOINT.boltU), y: yc + JOINT.rise };
     }
     const Q = { x: U(JOINT.boltU), y: yc + JOINT.rise };
