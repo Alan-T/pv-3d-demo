@@ -44,6 +44,7 @@
   const steel = () => new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.18 });
   const M = {
     post: steel(), beam: steel(), brace: steel(), purlin: steel(), buried: steel(), bracket: steel(), clip: steel(),
+    clamp: new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.45 }),   // 铝压块
     ground: new THREE.MeshLambertMaterial({ map: gridTexture() }),
     boltSteel: new THREE.MeshStandardMaterial({ color: 0xd3d8dd, roughness: 0.32, metalness: 0.55 }),
     slot: new THREE.MeshStandardMaterial({
@@ -52,8 +53,8 @@
     }),
   };
   const PALETTE = {
-    drawing: { post: 0xb3b7bb, beam: 0xf0a020, brace: 0x96a6a5, purlin: 0x3d7a50, buried: 0x858c92, bracket: 0x2f8fd8, clip: 0x38b26a },
-    steel:   { post: 0xb8bfc5, beam: 0xb8bfc5, brace: 0xb1b8be, purlin: 0xa9b1b8, buried: 0x7d858c, bracket: 0x98a1a9, clip: 0xa3abb3 },
+    drawing: { post: 0xb3b7bb, beam: 0xf0a020, brace: 0x96a6a5, purlin: 0x3d7a50, buried: 0x858c92, bracket: 0x2f8fd8, clip: 0x38b26a, clamp: 0x8a63d2 },
+    steel:   { post: 0xb8bfc5, beam: 0xb8bfc5, brace: 0xb1b8be, purlin: 0xa9b1b8, buried: 0x7d858c, bracket: 0x98a1a9, clip: 0xa3abb3, clamp: 0xc4cad0 },
   };
   // 剖切面封口（轴测节点图里被切开的檩条、组件补画的截面）：双面，转到背面看也在
   M.purlinCap = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.18, side: THREE.DoubleSide });

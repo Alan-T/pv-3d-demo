@@ -6,6 +6,8 @@
   const st = PV.state;
 
   const inputs = {};
+  const conditional = [];   // 带 when 的参数行：只在条件成立时显示（比如压块长度只在“压块”时）
+  const refreshRows = () => { for (const [row, d] of conditional) row.style.display = d.when(PV.P) ? '' : 'none'; };
   let pending = false;
   function scheduleBuild() {
     if (pending) return;
@@ -19,6 +21,18 @@
     for (const d of PV.PARAMS) {
       const row = document.createElement('div');
       row.className = 'prow';
+      if (d.when) conditional.push([row, d]);
+      if (d.type === 'select') {
+        row.innerHTML = `<span class="pl">${d.label}</span>` +
+          `<select aria-label="${d.label}">${d.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>` +
+          (d.hint ? `<small>${d.hint}</small>` : '');
+        const sel = row.querySelector('select');
+        sel.value = P[d.key];
+        sel.addEventListener('change', () => { P[d.key] = sel.value; refreshRows(); scheduleBuild(); });
+        inputs[d.key] = { show: (v) => { sel.value = v; } };
+        box.appendChild(row);
+        continue;
+      }
       if (d.type === 'bool') {
         row.classList.add('pbool');
         row.innerHTML = `<label class="pl"><input type="checkbox"${P[d.key] ? ' checked' : ''}>${d.label}</label>` +
@@ -48,11 +62,13 @@
       inputs[d.key] = { show: (v) => { num.value = v; range.value = v; } };
       box.appendChild(row);
     }
+    refreshRows();
     // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值。原图叠加只有图纸一
     const presetEl = document.getElementById('preset'), overlayCb = document.querySelector('[data-k=overlay]');
     const applyPreset = () => {
       Object.assign(P, PV.PRESETS[st.preset]);
       for (const k in inputs) inputs[k].show(P[k]);
+      refreshRows();
       overlayCb.disabled = st.preset !== 'A';
       overlayCb.closest('label').classList.toggle('off', st.preset !== 'A');
       PV.build();
@@ -118,7 +134,10 @@
       ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
       ['檩托', `${L.counts.clip} 个（L 形 t=${CLIP.t}）`],
       ['M12 螺栓', `${L.counts.m12} 套`],
-      ['M8×22 组件安装螺栓', `${L.counts.m8} 套`],
+      ...(L.counts.clamps ? [
+        ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],
+        ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],
+      ] : [['M8×22 组件安装螺栓', `${L.counts.m8} 套`]]),
       ['檩条', `${r(L.purlinLen)} × ${np}`],
       ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
       ['钢材估重', `${r(steelKg)} kg`],

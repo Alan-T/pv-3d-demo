@@ -26,7 +26,7 @@
         <button class="chip" data-jtype="top" title="柱顶：斜梁腹板贴立柱腹板，1 颗 M12，竖向长圆孔">立柱-斜梁</button>
         <button class="chip" data-jtype="btop" title="斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12">斜撑-斜梁</button>
         <button class="chip" data-jtype="clip" title="L 形檩托 + 2 颗 M12；组件 M8×22 安装螺栓">檩条-斜梁</button>
-        <button class="chip" data-jtype="mod" title="相邻两块组件之间（最东一跨中部的一道组件缝）：缝两侧各 1 颗 M8×22 外六角螺栓压在檩条上翼缘">檩条-组件</button>
+        <button class="chip" data-jtype="mod" title="相邻两块组件之间（最东一跨中部的一道组件缝）：螺栓固定时缝两侧各 1 颗 M8×22；压块固定时 1 个中压块 + M8×35 内六角螺栓">檩条-组件</button>
         <span class="sep"></span>
         <button class="chip" data-joint="0" title="前立柱一侧（檩条-斜梁、檩条-组件：最低一根檩条）">前侧</button>
         <button class="chip on" data-joint="1" title="后立柱一侧（檩条-斜梁、檩条-组件：最高一根檩条）">后侧</button>
@@ -63,7 +63,7 @@
           <label><input type="checkbox" data-k="dims" checked>尺寸标注</label>
           <label><input type="checkbox" data-k="buried" checked>埋地部分</label>
           <label><input type="checkbox" data-k="modules" checked>光伏组件</label>
-          <label title="螺栓、斜撑连接板、檩托"><input type="checkbox" data-k="bolts" checked>连接件</label>
+          <label title="螺栓、斜撑连接板、檩托、压块"><input type="checkbox" data-k="bolts" checked>连接件</label>
           <label><input type="checkbox" data-k="drawingColors" checked>按图纸配色</label>
           <label><input type="checkbox" data-k="overlay">叠加原图（侧视对照）</label>
         </div>
@@ -108,6 +108,7 @@
           <li>立柱-斜梁：斜梁腹板贴立柱腹板，在两条中心线交点用 1 颗 M12，竖向长圆孔（可调高度）；柱顶平切。</li>
           <li>斜撑-斜梁：斜撑腹板贴斜梁腹板，在两条中心线交点用 1 颗 M12；斜撑端头平切，伸到斜梁上缘。</li>
           <li>檩条-斜梁：每处 1 个 L 形檩托（t=4、宽 50、底边 64、立边 80，假设），底边 1 颗 M12 接斜梁上翼缘、立边 1 颗 M12 接檩条腹板；组件用安装孔压在檩条上翼缘，每块 4 颗 M8×22 外六角螺栓 + 螺母（规格按组件节点图），螺栓头、螺母下各一个平垫；组件边框翼缘厚按 2 算。</li>
+          <li>组件固定方式可选“压块”（按压块节点图，M8×35 内六角螺栓 + 螺母）：东西向每道组件缝上一个中压块，阵列两端各一个边压块（立在檩条伸出组件的 50 上），沿坡对齐每根檩条，每个压块 1 颗螺栓穿过檩条上翼缘。压块截面为假设：顶板厚 4、压住组件边框 12、立板厚 2.5，螺栓头沉在槽底、离组件上表面 12；边压块宽 24。压块长度默认 50，可改。</li>
           <li>东西向：首末跨榀距（第 1–2 榀、倒数第 2–1 榀）与中间跨榀距分别设置，默认都按檩条图取 2800；组件列数按各跨总长自动取整。檩条画成通长；檩条图里的分段（8450 / 8150 / 8400 / 7380）和立柱拉杆（3100 / 3490）暂未建模。</li>
           <li>默认按平地；坡度可在 ±10% 间调节，后柱长度按设计坡度（图纸一 5%、图纸二 2%，点“南向坡 / 北向坡”蓝字可改）定，超出时提示埋深不足。钢材重量按假设截面估算。</li>
           <li>双面连接板 280×120×5.75：六边形、左右对称，上边 ±140，竖直肩边到两立柱孔中点，再斜切到下边 ±30；内、外斜撑孔对称同高，斜撑中心线过各自孔；连接板竖向中点在 250 / 300。</li>
@@ -141,6 +142,7 @@
 <script src="src/parts/brace.js"></script>
 <script src="src/parts/purlin.js"></script>
 <script src="src/parts/module.js"></script>
+<script src="src/parts/clamp.js"></script>
 <script src="src/model.js"></script>
 <script src="src/dims.js"></script>
 <script src="src/joint-detail.js"></script>

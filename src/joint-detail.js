@@ -3,12 +3,12 @@
 (function () {
   'use strict';
   const PV = window.PV;
-  const { DEG, V3, V, FIX, JOINT, DBL, CLIP } = PV;
+  const { DEG, V3, V, FIX, JOINT, DBL, CLIP, CLAMP } = PV;
   const { DimSet, mats } = PV.dims;
 
   // 返回节点详图分组；各组规格写到 layout.jointSpecs
   function build(S, layout) {
-    const P = PV.P;
+    const P = PV.P, clamp = P.fix === 'clamp';
     const zLast = layout.zs[layout.zs.length - 1];
     const zj = zLast + FIX.post.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
     const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
@@ -85,9 +85,10 @@
       { // 檩条-斜梁：前侧取最低一根檩条、后侧取最高一根；文字放在右侧斜梁下面
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 220, web = -FIX.purlin.f / 2;
         const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * 4;
+        // 压块固定时这里没有组件螺栓（压块在组件缝上，见檩条-组件节点）
         const parts = [
           [mv(P0, 160, S.hModBot + FIX.modT / 2), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`],
-          [mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母'],
+          ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']]),
           [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
           [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), `檩托 L 形 t=${CLIP.t}，M12 螺栓 ×2`],
           [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],
@@ -99,19 +100,24 @@
           box: [P0.x - 220, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
         });
       }
-      { // 檩条-组件：在 layout.gapZ 那道组件缝处，缝两侧组件各 1 颗 M8×22；前侧取最低一根檩条、后侧取最高一根。
-        // 文字放在右侧檩条下面，引线画在缝西侧那颗螺栓的平面里
+      { // 檩条-组件：在 layout.gapZ 那道组件缝处；前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面。
+        // 螺栓固定：缝两侧组件各 1 颗 M8×22，引线画在缝西侧那颗螺栓的平面里；
+        // 压块固定：缝上 1 个中压块 + M8×35，引线画在缝中线平面里，压块那根指到西侧翼板
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
-        const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 2;
-        // 引线指到组件面、螺栓头、檩条腹板（轴测从下坡一侧高处看，这几处都看得见）
+        const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * (clamp ? 3 : 2);
+        const zl = clamp ? layout.gapZ : layout.gapZ - FIX.modGapEW / 2 - 18, top = S.hModBot + FIX.modT;
+        // 引线指到组件面、压块、螺栓头、檩条腹板（轴测从下坡一侧高处看，这几处都看得见）
         const parts = [
-          [mv(P0, 60, S.hModBot + FIX.modT), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}，缝 ${FIX.modGapEW}`],
-          [mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母'],
+          [mv(P0, 60, top), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}，缝 ${FIX.modGapEW}`],
+          ...(clamp ? [
+            [mv(P0, 0, top + CLAMP.t), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.press / 2],
+            [mv(P0, 0, top - CLAMP.pocket + 8), 'M8×35 内六角螺栓 + 螺母'],
+          ] : [[mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母']]),
           [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}`],
         ];
         specs.mod.push({
-          labelSide: 1, anchorX: ax, z: layout.gapZ, zl: layout.gapZ - FIX.modGapEW / 2 - 18, at: mv(P0, 0, S.hModBot),
-          leaders: parts.map(([p, text], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text]),
+          labelSide: 1, anchorX: ax, z: layout.gapZ, zl, at: mv(P0, 0, S.hModBot),
+          leaders: parts.map(([p, text, pz], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text, pz]),
           lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + FIX.modT + 60))],
           box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
         });
@@ -123,8 +129,8 @@
     for (const type in specs) {
       specs[type].forEach((sp, fr) => {
         const lead = new DimSet(), cl = new DimSet(), zl = sp.zl === undefined ? zj : sp.zl;
-        for (const [px, py, ly, text] of sp.leaders) {
-          const a = V(px, py, zl), b = V(sp.anchorX, ly, zl);
+        for (const [px, py, ly, text, pz] of sp.leaders) {   // pz：引线端点不在标注平面里时单独给
+          const a = V(px, py, pz === undefined ? zl : pz), b = V(sp.anchorX, ly, zl);
           lead.seg(a, b);
           const d = b.clone().sub(a).normalize().multiplyScalar(0.012), w = new V3(-d.y, d.x, 0).multiplyScalar(0.4);
           lead.seg(a, a.clone().add(d).add(w));

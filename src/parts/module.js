@@ -1,5 +1,5 @@
-/* 光伏组件：沿坡 rows 块竖排，东西向 cols 列；每块 4 颗 M8 安装螺栓（两根檩条 × 两条长边框），
- * 用安装孔压在檩条上翼缘，螺母在檩条上翼缘下面 */
+/* 光伏组件：沿坡 rows 块竖排，东西向 cols 列。螺栓固定时每块 4 颗 M8 安装螺栓（两根檩条 × 两条长边框），
+ * 用安装孔压在檩条上翼缘，螺母在檩条上翼缘下面；压块固定见 clamp.js */
 (function () {
   'use strict';
   const PV = window.PV;
@@ -22,6 +22,7 @@
         mesh.matrix.makeBasis(u, n, EZ).setPosition(center(c, r, z));
         mesh.castShadow = mesh.receiveShadow = true;
         c.modules.add(mesh);
+        if (P.fix === 'clamp') continue;
         for (const t of [S.purlins[2 * r], S.purlins[2 * r + 1]]) {
           const q = S.along(t);
           for (const k of [-1, 1]) {

@@ -2,18 +2,20 @@
 (function () {
   'use strict';
   const PV = window.PV;
-  const { MM, V3, FIX, JOINT, CLIP, M } = PV;
+  const { MM, V3, FIX, JOINT, CLIP, CLAMP, M } = PV;
 
   // 螺栓组：局部 z 为螺栓轴线、指向螺母一侧，z=0 在螺母一侧被连接件的外表面。
   // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，front 在螺母一侧、back 在螺栓头一侧）。
-  // opt.len：按公称长度（螺栓头支承面到杆端）画杆长，不给就在螺母外露 out；opt.headWasher：螺栓头下也垫一个平垫
+  // opt.len：按公称长度（螺栓头支承面到杆端）画杆长，不给就在螺母外露 out；opt.headWasher：螺栓头下也垫一个平垫；
+  // opt.socket：内六角圆柱头（sk：头径 d、头高 k、内六角对边 s）
   const BOLT_SIZE = {
     12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6 },
-    8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4 },
+    8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sk: { d: 13, k: 8, s: 6 } },
   };
   function boltKind(size, stack, slot, opt) {
     const b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3), top = b.wt + b.nh;
     const o = opt || {}, back = -stack - (o.headWasher ? b.wt : 0);    // 螺栓头支承面
+    const hh = o.socket ? b.sk.k : b.hh;
     const cyl = (r, z0, z1, seg) => {
       const g = new THREE.CylinderGeometry(r * MM, r * MM, (z1 - z0) * MM, seg);
       g.rotateX(Math.PI / 2);
@@ -23,10 +25,11 @@
     const parts = [
       [cyl(b.wr, 0, b.wt, 24), M.boltSteel],
       [cyl(hexR, b.wt, top, 6), M.boltSteel],
-      [cyl(b.r, back - b.hh, o.len ? back + o.len : top + b.out, 16), M.boltSteel],
-      [cyl(hexR, back - b.hh, back, 6), M.boltSteel],
+      [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), M.boltSteel],
+      o.socket ? [cyl(b.sk.d / 2, back - hh, back, 24), M.boltSteel] : [cyl(hexR, back - hh, back, 6), M.boltSteel],
     ];
     if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), M.boltSteel]);
+    if (o.socket) parts.push([cyl(b.sk.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), M.slot]);   // 内六角孔
     if (slot) {
       const w = (JOINT.slotW / 2) * MM, l = ((slot.len - JOINT.slotW) / 2) * MM;
       const s = new THREE.Shape();
@@ -48,9 +51,11 @@
     clip: boltKind(12, CLIP.t + FIX.beam.t, null),                                     // 檩托两处叠层都是 4+2
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
     module: boltKind(8, FIX.purlin.t + 2, null, { len: 22, headWasher: true }),
+    // 压块：M8×35 内六角（压块节点图），螺栓头沉在压块槽底，杆穿过组件缝下面的空当和檩条上翼缘
+    clamp: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.pocket, null, { len: CLAMP.bolt, socket: true }),
   };
 
-  // 一次重建用一个收集器：add() 登记一颗螺栓，flush() 画出全部并返回 M12 / M8 套数
+  // 一次重建用一个收集器：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
   function collector() {
     const mats = {};
     for (const k in BOLTS) mats[k] = [];
@@ -65,6 +70,7 @@
         return {
           m12: mats.foot.length + mats.top.length + mats.btop.length + mats.clip.length,
           m8: mats.module.length,
+          m8c: mats.clamp.length,
         };
       },
     };

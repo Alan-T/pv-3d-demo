@@ -30,13 +30,15 @@
       embed: 1800,        // 立柱埋深
       modL: 2382,         // 组件长度（沿坡）
       hole: 1400,         // 组件安装孔距 = 同一块组件下两根檩条的间距
+      fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
+      clampL: 50,         // 压块长度（沿坡）
     },
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
       tilt: 15, span: 3700, h0: 800, frames: 10, pitch: 3250, pitchEnd: 3250, slope: 0,
       rows: 3, outer: 1, designSlope: 2,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
-      embed: 1800, modL: 2382, hole: 1400,
+      embed: 1800, modL: 2382, hole: 1400, fix: 'bolt', clampL: 50,
     },
   };
   const DEFAULTS = PRESETS.A;
@@ -59,6 +61,9 @@
   // 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
   const DBL = { half: 140, botHalf: 30 };
   const CLIP = { t: 4, base: 64, height: 80, width: 50, baseBolt: 32, webBolt: 50 };   // 檩托（假设）
+  // 压块（截面为假设，螺栓按压块节点图 M8×35 内六角）：t 顶板厚，press 压住组件边框的宽度，wall 立板厚，
+  // pocket 螺栓头支承面（槽底）离组件上表面，plate 槽底板厚，sideW 边压块从组件边往外的宽度（檩条伸出组件 50，放得下）
+  const CLAMP = { t: 4, press: 12, wall: 2.5, pocket: 12, plate: 4, sideW: 24, bolt: 35 };
 
   // ---------- 可调参数 ----------
   // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
@@ -66,6 +71,9 @@
     { key: 'tilt',   label: '组件倾角',        unit: '°',  min: 10,   max: 40,   step: 0.5 },
     { key: 'span',   label: '前后立柱间距',    unit: 'mm', min: 2000, max: 4500, step: 50 },
     { key: 'h0',     label: '组件前沿离地高度', unit: 'mm', min: 300,  max: 1500, step: 10 },
+    { key: 'fix',    label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
+      hint: '螺栓固定：组件安装孔 M8×22；压块：缝上中压块、两端边压块，M8×35 内六角' },
+    { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
     { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
     { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },
     { key: 'frames', label: '榀数（东西向）',  unit: '榀', min: 1,    max: 20,   step: 1 },
@@ -89,7 +97,7 @@
   }
 
   Object.assign(PV, {
-    FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, PARAMS, limits,
+    FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits,
     P: Object.assign({}, DEFAULTS),   // 当前参数
     show: { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, overlay: false },
   });
