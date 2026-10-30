@@ -121,7 +121,7 @@
       // 沿组件法向看：屏幕横向 = 东西向，纵向 = 沿坡向上（倾角 > 0 时世界 y 投影到屏幕正好朝上坡）
       const n = new V3(-S.s, S.c, 0), u = new V3(S.c, S.s, 0);
       const q = S.along((S.modStarts[0] + S.modStarts[S.modStarts.length - 1] + P.modL) / 2);
-      const c = V(q.x, q.y, 0).addScaledVector(n, (S.hModBot + FIX.modT) * MM).addScaledVector(u, 0.25);
+      const c = V(q.x, q.y, 0).addScaledVector(n, (S.hModBot + P.modT) * MM).addScaledVector(u, 0.25);
       // 标注文字是固定像素大小，所以按屏幕像素留边：左右 64px、上下 72px
       const w = (layout.purlinLen + 700) * MM, h = (P.rows * P.modL + (P.rows - 1) * FIX.modGap + 800) * MM;
       const pw = Math.max(80, canvas.clientWidth - 128), ph = Math.max(80, canvas.clientHeight - 144);

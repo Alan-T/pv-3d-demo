@@ -81,17 +81,26 @@
     };
   };
 
-  // 东西向：榀位 zs（首末跨即第 1–2 榀、倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）、组件列数、檩条长度
+  // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt）→ 榀数、榀位 zs（首末跨即第 1–2 榀、倒数第 2–1 榀用 pitchEnd，
+  // 中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；榀距比阵列还宽时少放一榀
   PV.layoutEW = function layoutEW(p) {
-    const bays = [];
-    for (let i = 0; i < p.frames - 1; i++) bays.push(i === 0 || i === p.frames - 2 ? p.pitchEnd : p.pitch);
-    const spanEW = bays.reduce((a, b) => a + b, 0);
-    const zs = [-spanEW / 2];
-    for (const b of bays) zs.push(zs[zs.length - 1] + b);
-    const pitchEW = FIX.modW + FIX.modGapEW;
-    const cols = Math.max(1, Math.round((spanEW + 0.6 * p.pitchEnd) / pitchEW));
+    const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
     const arrW = cols * pitchEW - FIX.modGapEW;
     const purlinLen = arrW + 2 * FIX.purlinExt;
+    const bayAt = (i, n) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
+    const spanOf = (n) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
+    const warn = [];
+    let frames = 1;
+    while ((purlinLen - spanOf(frames)) / 2 > FIX.maxOverhang * p.pitchEnd) frames++;
+    if (frames > 1 && spanOf(frames) > purlinLen - FIX.purlin.f) {
+      frames--;
+      warn.push(`组件列数太少：檩条两端悬挑 ${Math.round((purlinLen - spanOf(frames)) / 2)}，再加一榀又放不下`);
+    }
+    const bays = [];
+    for (let i = 0; i < frames - 1; i++) bays.push(bayAt(i, frames));
+    const spanEW = spanOf(frames);
+    const zs = [-spanEW / 2];
+    for (const b of bays) zs.push(zs[zs.length - 1] + b);
     // 檩条-组件节点详图取的组件缝：最东一跨里离两榀最远的一道（离檩托、斜梁远，画面里只有组件和檩条）；只有 1 列组件时取阵列东边
     const gaps = [];
     for (let j = 1; j < cols; j++) gaps.push(-arrW / 2 + j * pitchEW - FIX.modGapEW / 2);
@@ -103,6 +112,6 @@
     // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
     const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
     const ew = { i, ca, sa: i * ca };
-    return { zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ, ew };
+    return { frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinLen, gapZ, ew, warn };
   };
 })();

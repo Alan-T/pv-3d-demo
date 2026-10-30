@@ -8,15 +8,15 @@
   // 第 r 排组件在东西向 z 处的中心（组件厚度中面）
   function center(c, r, z) {
     const { P, S, n } = c, p = S.along(S.modStarts[r] + P.modL / 2);
-    return V(p.x, p.y, z).addScaledVector(n, (S.hModBot + FIX.modT / 2) * MM);
+    return V(p.x, p.y, z).addScaledVector(n, (S.hModBot + P.modT / 2) * MM);
   }
 
   function build(c) {
     const { P, S, layout, u, n } = c;
-    const modGeo = PV.track(new THREE.BoxGeometry(P.modL * MM, FIX.modT * MM, FIX.modW * MM));   // 组件长度可改，每次重建
+    const modGeo = PV.track(new THREE.BoxGeometry(P.modL * MM, P.modT * MM, P.modW * MM));   // 组件长度可改，每次重建
     S.modStarts.forEach((m0, r) => {
       for (let j = 0; j < layout.cols; j++) {
-        const z = -layout.arrW / 2 + j * layout.pitchEW + FIX.modW / 2;
+        const z = -layout.arrW / 2 + j * layout.pitchEW + P.modW / 2;
         const mesh = new THREE.Mesh(modGeo, PV.modMats);
         mesh.matrixAutoUpdate = false;
         mesh.matrix.makeBasis(u, n, EZ).setPosition(center(c, r, z));
@@ -26,7 +26,7 @@
         for (const t of [S.purlins[2 * r], S.purlins[2 * r + 1]]) {
           const q = S.along(t);
           for (const k of [-1, 1]) {
-            c.bolts.add('module', V(q.x, q.y, z + k * (FIX.modW / 2 - 18)).addScaledVector(n, (S.hModBot - FIX.purlin.t) * MM),
+            c.bolts.add('module', V(q.x, q.y, z + k * (P.modW / 2 - 18)).addScaledVector(n, (S.hModBot - FIX.purlin.t) * MM),
               n.clone().negate(), u);
           }
         }
@@ -38,8 +38,8 @@
   function cap(c, z, parent) {
     const { P, layout } = c;
     const j = Math.floor((z + layout.arrW / 2) / layout.pitchEW), z0 = -layout.arrW / 2 + j * layout.pitchEW;
-    if (j < 0 || j >= layout.cols || z >= z0 + FIX.modW) return;
-    const geo = PV.track(new THREE.PlaneGeometry(P.modL * MM, FIX.modT * MM));
+    if (j < 0 || j >= layout.cols || z >= z0 + P.modW) return;
+    const geo = PV.track(new THREE.PlaneGeometry(P.modL * MM, P.modT * MM));
     c.S.modStarts.forEach((m0, r) => {
       const mesh = new THREE.Mesh(geo, PV.M.moduleCap);
       mesh.matrixAutoUpdate = false;

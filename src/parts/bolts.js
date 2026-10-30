@@ -72,18 +72,27 @@
     clip: boltKind(12, CLIP.t + FIX.beam.t, null, { spring: true }),                   // 檩托两处叠层都是 4+2
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
     module: boltKind(8, FIX.purlin.t + 2, null, { len: 22, headWasher: true }),
-    // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同
-    clampMid: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true }),
-    clampSide: boltKind(8, FIX.purlin.t + FIX.modT - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true }),
   };
+  // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同。
+  // 叠层厚度跟组件厚度 H 走，按厚度缓存
+  const clampKinds = {};
+  function kinds(H) {
+    if (!clampKinds[H]) {
+      clampKinds[H] = {
+        clampMid: boltKind(8, FIX.purlin.t + H - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true }),
+        clampSide: boltKind(8, FIX.purlin.t + H - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true }),
+      };
+    }
+    return Object.assign({}, BOLTS, clampKinds[H]);
+  }
 
   // 组件螺栓、压块螺栓跟着檩条顺坡（东西坡度），其余在各榀上
   const SLOPE_KINDS = new Set(['module', 'clampMid', 'clampSide']);
 
-  // 一次重建用一个收集器：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
-  function collector() {
-    const mats = {};
-    for (const k in BOLTS) mats[k] = [];
+  // 一次重建用一个收集器（modT：组件厚度）：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
+  function collector(modT) {
+    const K = kinds(modT), mats = {};
+    for (const k in K) mats[k] = [];
     return {
       // axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）
       add(kind, p, axis, up) {
@@ -91,7 +100,7 @@
         mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
       },
       flush(parent, slopeParent) {
-        for (const k in BOLTS) for (const [g, mat] of BOLTS[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
+        for (const k in K) for (const [g, mat] of K[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
         return {
           m12: mats.foot.length + mats.top.length + mats.btop.length + mats.clip.length,
           m8: mats.module.length,

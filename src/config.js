@@ -6,9 +6,10 @@
   // ---------- 图纸尺寸与假设 ----------
   const FIX = {
     beamPastPurlin: 114,  // 斜梁伸出第一根、最后一根檩条（两张图：3802+228→4030，6204+228→6430，长度取整到 10）
-    modW: 1134, modT: 35, modGap: 20, modGapEW: 20,
+    modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
     arrayShift: 32.1,     // 组件阵列中心相对斜梁中心沿坡向上移（按图量取，两张图柱高都在 1 mm 内吻合）
-    purlinExt: 50,        // 檩条伸出组件阵列（檩条图：32392 = 28 列组件 32292 + 2×50）
+    purlinExt: 100,       // 檩条总长 = 组件阵列宽 + 两端各 100（檩条图是各 50：32392 = 28 列组件 32292 + 2×50）
+    maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
     post:   { d: 120, f: 60, l: 20, t: 2.5 },
     beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
     brace:  { d: 80,  f: 40, l: 15, t: 2.0 },
@@ -17,8 +18,9 @@
   // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
   const PRESETS = {
     A: {
-      tilt: 25, span: 2900, h0: 800, frames: 12, pitch: 2800, pitchEnd: 2800, slope: 0, slopeEW: 0,
+      tilt: 25, span: 2900, h0: 800, pitch: 2800, pitchEnd: 2800, slope: 0, slopeEW: 0,
       rows: 2,           // 沿坡组件排数（竖排）
+      cols: 28,           // 东西向组件列数（榀数由它算出）
       outer: 0,           // 是否带外斜撑（立柱外侧、撑斜梁悬挑段）
       braceHF: 250,       // 前柱斜撑下节点离 ±0（内、外斜撑共用一块连接板）
       braceHR: 350,       // 后柱斜撑下节点离 ±0
@@ -28,16 +30,18 @@
       braceOutR: 400,     // 后外斜撑上节点到斜梁上端
       embed: 1800,        // 立柱埋深
       modL: 2382,         // 组件长度（沿坡）
-      hole: 1400,         // 组件安装孔距 = 同一块组件下两根檩条的间距
+      modW: 1134,         // 组件宽度（东西向）
+      modT: 35,           // 组件厚度
+      hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
       fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
       clampL: 50,         // 压块长度（沿坡）
     },
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
-      tilt: 15, span: 3700, h0: 800, frames: 10, pitch: 3250, pitchEnd: 3250, slope: 0, slopeEW: 0,
-      rows: 3, outer: 1,
+      tilt: 15, span: 3700, h0: 800, pitch: 3250, pitchEnd: 3250, slope: 0, slopeEW: 0,
+      rows: 3, cols: 27, outer: 1,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
-      embed: 1800, modL: 2382, hole: 1400, fix: 'bolt', clampL: 50,
+      embed: 1800, modL: 2382, modW: 1134, modT: 35, hole: 1400, fix: 'bolt', clampL: 50,
     },
   };
   const DEFAULTS = PRESETS.A;
@@ -63,7 +67,7 @@
   // 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
   // 中压块：U 形槽外宽 = 组件缝，两翼压住两侧组件边框 press，翼板上表面根部高 top、翼尖高 tip，翼板底面带齿；
   //   槽壁厚 wall，槽底上表面（螺栓头支承面）在 floor，槽底板厚 plate
-  // 边压块：从组件边往外共宽 w（檩条伸出组件 50，放得下）。上沿勾住边框 press、底面带齿；内立板厚 wall，
+  // 边压块：从组件边往外共宽 w（檩条伸出组件 100，放得下）。上沿勾住边框 press、底面带齿；内立板厚 wall，
   //   底板上表面（螺栓头支承面）在 floor、厚 plate。外端一只倒 T 形的脚：底板外端大圆角转下来成宽 stem 的短立柱，
   //   下面是宽 foot、厚 pad 的脚垫（两边各比立柱宽出一截，底面带齿）落在檩条上；螺栓在立板和底板外端之间居中
   const CLAMP = {
@@ -78,12 +82,15 @@
     { key: 'tilt',   label: '组件倾角',        unit: '°',  min: 10,   max: 40,   step: 0.5 },
     { key: 'span',   label: '前后立柱间距',    unit: 'mm', min: 2000, max: 4500, step: 50 },
     { key: 'h0',     label: '组件前沿离地高度', unit: 'mm', min: 300,  max: 1500, step: 10 },
-    { key: 'fix',    label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
+    { keys: ['modL', 'modW', 'modT'], label: '组件尺寸', type: 'size', unit: 'mm',
+      hint: '长（沿坡）× 宽（东西向）× 厚；组件间隙固定 20' },
+    { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
       hint: '螺栓固定：组件安装孔 M8×22；压块：缝上中压块、两端边压块，M8×35 内六角' },
     { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
     { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
     { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },
-    { key: 'frames', label: '榀数（东西向）',  unit: '榀', min: 1,    max: 20,   step: 1 },
+    { key: 'cols',   label: '组件列数（东西向）', unit: '列', min: 1,  max: 60,   step: 1,
+      hint: '榀数由列数算出：檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数' },
     { key: 'pitch',  label: '中间跨榀距',      unit: 'mm', min: 2000, max: 4500, step: 100 },
     { key: 'pitchEnd', label: '首末跨榀距',    unit: 'mm', min: 1500, max: 4500, step: 100,
       hint: '第 1–2 榀、倒数第 2–1 榀之间的距离' },
@@ -95,7 +102,7 @@
   const EXTRA_LIMITS = {
     braceHF: [100, 800], braceHR: [100, 1200], braceTopF: [600, 5000], braceTopR: [600, 5000],
     braceOutF: [100, 3000], braceOutR: [100, 3000],
-    embed: [800, 3000], modL: [1600, 2600], hole: [600, 2400],
+    embed: [800, 3000], modL: [1600, 2600], modW: [900, 1400], modT: [25, 50], hole: [600, 2400],
   };
   // 返回 [最小, 最大, 步长]；安装孔距不能超过组件长度 − 200
   function limits(key) {

@@ -87,7 +87,7 @@
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 220, web = -FIX.purlin.f / 2;
         // 压块固定时这里没有组件螺栓（压块在组件缝上，见檩条-组件节点）。檩托指到立边上部，M12 指到立边上那颗螺栓
         const parts = [
-          [mv(P0, 160, S.hModBot + FIX.modT / 2), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`],
+          [mv(P0, 160, S.hModBot + P.modT / 2), `组件 ${P.modL}×${P.modW}×${P.modT}`],
           ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']]),
           [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
           [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 L 形 t=${CLIP.t}`],
@@ -98,8 +98,8 @@
         specs.clip.push({
           labelSide: 1, anchorX: ax,
           leaders: parts.map(([p, text], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text]),
-          lines: [seg2(mv(P0, -320, 0), mv(P0, 320, 0)), seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + FIX.modT + 60))],
-          box: [P0.x - 220, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
+          lines: [seg2(mv(P0, -320, 0), mv(P0, 320, 0)), seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + P.modT + 60))],
+          box: [P0.x - 220, ax, yLow - 30, P0.y + (S.hModBot + P.modT + 70) / cosT],
         });
       }
       { // 檩条-组件：在 layout.gapZ 那道组件缝处；前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面。
@@ -107,10 +107,10 @@
         // 压块固定：缝上 1 个中压块 + M8×35，引线画在缝中线平面里，压块那根指到西侧翼板
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
         const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * (clamp ? 3 : 2);
-        const zl = clamp ? layout.gapZ : layout.gapZ - FIX.modGapEW / 2 - 18, top = S.hModBot + FIX.modT;
+        const zl = clamp ? layout.gapZ : layout.gapZ - FIX.modGapEW / 2 - 18, top = S.hModBot + P.modT;
         // 引线指到组件面、压块、螺栓头、檩条腹板（轴测从下坡一侧高处看，这几处都看得见）
         const parts = [
-          [mv(P0, 60, top), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}，缝 ${FIX.modGapEW}`],
+          [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}，缝 ${FIX.modGapEW}`],
           ...(clamp ? [
             [mv(P0, 0, top + CLAMP.mid.top), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.mid.press / 2],
             [mv(P0, 0, top - CLAMP.mid.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
@@ -120,17 +120,17 @@
         specs.mod.push({
           labelSide: 1, anchorX: ax, z: layout.gapZ, zl, at: mv(P0, 0, S.hModBot),
           leaders: parts.map(([p, text, pz], k) => [p.x, p.y, yLow + 45 * (parts.length - 1 - k), text, pz]),
-          lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + FIX.modT + 60))],
-          box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + FIX.modT + 70) / cosT],
+          lines: [seg2(mv(P0, 0, S.hBeamTop - 30), mv(P0, 0, S.hModBot + P.modT + 60))],
+          box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + P.modT + 70) / cosT],
         });
       }
       { // 边压块（只在压块固定时有）：阵列东边，前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面，
         // 引线画在螺栓所在平面里；组件、压块那两根指到组件边里面一点和压块上沿
         const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
         const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 3;
-        const e = layout.arrW / 2, zb = e + PV.parts.clamp.sideBoltX, top = S.hModBot + FIX.modT, Sd = CLAMP.side;
+        const e = layout.arrW / 2, zb = e + PV.parts.clamp.sideBoltX, top = S.hModBot + P.modT, Sd = CLAMP.side;
         const parts = [
-          [mv(P0, 60, top), `组件 ${P.modL}×${FIX.modW}×${FIX.modT}`, e - 60],
+          [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
           [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
           [mv(P0, 0, top - Sd.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
           [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}，伸出组件 ${FIX.purlinExt}`],

@@ -130,7 +130,7 @@
     }
 
     // 组件与檩条
-    const hTop = S.hModBot + FIX.modT;
+    const hTop = S.hModBot + P.modT;
     for (const m0 of S.modStarts) ed(side.dim(at(m0, hTop), at(m0 + P.modL, hTop), offN(560), P.modL, 'in'), 'modL');
     ed(side.dim(at(S.purlins[0], S.hModBot), at(S.purlins[1], S.hModBot), offN(330), P.hole, 'in'), 'hole');
 
@@ -156,14 +156,14 @@
     const zsE = layout.zs;
     if (zsE.length > 1) ed(ew.dim(V(xs, 0, zsE[0]), V(xs, 0, zsE[1]), off(-300, 0), `首末跨榀距 ${P.pitchEnd}${hz(P.pitchEnd)}`, 'in'), 'pitchEnd');
     if (zsE.length > 3) ed(ew.dim(V(xs, 0, zsE[1]), V(xs, 0, zsE[2]), off(-300, 0), `中间跨榀距 ${P.pitch}${hz(P.pitch)}`, 'in'), 'pitch');
-    ew.dim(V(xs, 0, -layout.arrW / 2), V(xs, 0, layout.arrW / 2), off(-750, 0), `组件阵列 ${r(layout.arrW)}（${layout.cols} 列）`, 'out');
+    ed(ew.dim(V(xs, 0, -layout.arrW / 2), V(xs, 0, layout.arrW / 2), off(-750, 0), `组件阵列 ${r(layout.arrW)}（${layout.cols} 列）`, 'in'), 'cols');
     if (layout.ew.i) {   // 写在阵列中心偏东、地面以下，避开上面几条文字和最东一榀的侧视标注
       ew.label(`实际地面 ${P.slopeEW > 0 ? '东高西低' : '东低西高'} ${Math.abs(P.slopeEW)}%`, V(xs, -450, layout.arrW * 0.3), 'ref', 13);
     }
 
     // 垂直组件视图：标注放在组件面上方 150 的平行平面内（t 沿坡、z 东西向）
     const nrm = new DimSet();
-    const hN = S.hModBot + FIX.modT + 150;
+    const hN = S.hModBot + P.modT + 150;
     const pS = (t, z) => { const q = S.along(t); return V(q.x - S.s * hN, q.y + S.c * hN, z); };
     const offU = (k) => new V3(S.c, S.s, 0).multiplyScalar(k * MM);
     const offZ = (k) => new V3(0, 0, k * MM);

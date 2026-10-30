@@ -80,7 +80,7 @@
     // 各构件共用的构建上下文：u 沿坡向上、n 垂直斜梁向上；zw 是立柱腹板所在平面（框架平面东侧），
     // zBeamWeb 是斜梁腹板内表面（相对榀位 z0），柱顶、撑顶螺栓的螺母在这一侧
     const zw = FIX.post.f / 2;
-    const bolts = parts.bolts.collector();
+    const bolts = parts.bolts.collector(P.modT);
     const c = {
       P, S, layout, bolts, ...g,
       u: new V3(S.c, S.s, 0), n: new V3(-S.s, S.c, 0),

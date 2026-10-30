@@ -103,6 +103,9 @@ button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: no
 .prow small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -2px; }
 .prow.pbool .pl { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .prow.pbool input { accent-color: var(--blue); margin: 0; }
+.prow.psize .pl { white-space: nowrap; }
+.prow.psize .pv input { width: 54px; padding: 2px 4px; }
+.prow.psize .pv b { font-weight: normal; color: var(--muted); font-size: 12px; }
 .prow select { justify-self: end; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--blue); }
 .preset { display: grid; gap: 4px; margin-bottom: 12px; font-size: 13px; }
 .preset select { font: inherit; font-size: 13px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }

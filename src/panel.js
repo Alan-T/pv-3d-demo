@@ -33,6 +33,25 @@
         box.appendChild(row);
         continue;
       }
+      if (d.type === 'size') {   // 一行几个数（组件 长 × 宽 × 厚），范围见 EXTRA_LIMITS
+        row.classList.add('psize');
+        row.innerHTML = `<span class="pl">${d.label}</span><span class="pv">` +
+          d.keys.map((k) => { const [lo, hi] = PV.limits(k); return `<input type="number" min="${lo}" max="${hi}" step="1" value="${P[k]}" data-k="${k}">`; }).join('<b>×</b>') +
+          `<i>${d.unit}</i></span>` + (d.hint ? `<small>${d.hint}</small>` : '');
+        row.querySelectorAll('input').forEach((num) => {
+          const k = num.dataset.k;
+          num.addEventListener('change', () => {
+            const [lo, hi] = PV.limits(k);
+            if (!isFinite(+num.value) || num.value === '') { num.value = P[k]; return; }
+            P[k] = num.value = Math.min(hi, Math.max(lo, Math.round(+num.value)));
+            if (k === 'modL') P.hole = Math.min(P.hole, P.modL - 200);
+            scheduleBuild();
+          });
+          inputs[k] = { show: (v) => { num.value = v; } };
+        });
+        box.appendChild(row);
+        continue;
+      }
       if (d.type === 'bool') {
         row.classList.add('pbool');
         row.innerHTML = `<label class="pl"><input type="checkbox"${P[d.key] ? ' checked' : ''}>${d.label}</label>` +
@@ -129,15 +148,16 @@
   function update() {
     updateJointChips();
     const P = PV.P, S = st.S;
-    const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, n = P.frames, L = st.layout, O = S.outer, np = S.purlins.length;
+    const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, L = st.layout, n = L.frames, O = S.outer, np = S.purlins.length;
     document.querySelector('.title small').textContent =
       `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
-    document.getElementById('warnings').innerHTML = S.warn.map((w) => `<li>${w}</li>`).join('');
+    document.getElementById('warnings').innerHTML = [...S.warn, ...L.warn].map((w) => `<li>${w}</li>`).join('');
     const braceSum = S.braceF + S.braceR + (O ? O.braceOF + O.braceOR : 0);
     const steelKg =
       n * ((S.lenF + S.lenR) * kgPerM(FIX.post) + S.beamLen * kgPerM(FIX.beam) + braceSum * kgPerM(FIX.brace)) / 1000 +
       (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000;
     const rows = [
+      ['榀数（按组件列数）', `${n} 榀（檩条两端悬挑 ${r((L.purlinLen - L.spanEW) / 2)}）`],
       ['榀距 首末跨 / 中间跨', `${P.pitchEnd} / ${P.pitch}（总 ${r(L.spanEW)}）`],
       // 东西坡度：榀距是沿檩条的长度，水平距离 = 榀距 × cos，相邻榀抬高 = 榀距 × sin
       ...(L.ew.i ? [

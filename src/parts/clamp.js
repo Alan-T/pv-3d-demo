@@ -4,7 +4,7 @@
   'use strict';
   const PV = window.PV;
   const { MM, V, EZ, FIX, CLAMP, M } = PV;
-  const T = CLAMP.teeth, H = FIX.modT, V2 = THREE.Vector2;
+  const T = CLAMP.teeth, V2 = THREE.Vector2;
 
   // 一排锯齿：从 x0 到 x1，齿根在 yb、齿尖在 yt
   function teeth(x0, x1, yb, yt) {
@@ -41,18 +41,23 @@
 
   // 边压块：局部 x 从组件边往外。上沿勾住边框（底面带齿），内立板贴着边框外侧下到底板，底板上放螺栓头。
   // 外端是倒 T 形的脚：底板上表面在外端大圆角转下来成短立柱（x 从 s0 到 s1），立柱下面是更宽的脚垫（x 从 p0 到 w），
-  // 脚垫底面带齿落在檩条上
+  // 脚垫底面带齿落在檩条上。脚落在檩条上，高度跟组件厚度 H 走，按厚度缓存
   const Sd = CLAMP.side, p0 = Sd.w - Sd.foot, s0 = Sd.w - (Sd.foot + Sd.stem) / 2, s1 = s0 + Sd.stem;
-  const padTop = -H + T.h + Sd.pad, floorBot = -Sd.floor - Sd.plate, sideBoltX = (Sd.wall + s1) / 2;
-  const sideGeo = extrude([[-Sd.press, Sd.tip, 0.6], [-1, Sd.top], [Sd.wall, Sd.top, 1.2], [Sd.wall, -Sd.floor, 0.8],
-    [s1, -Sd.floor, 2], [s1, padTop, 0.8], [Sd.w, padTop, 0.8], [Sd.w, -H + T.h],
-    ...teeth(Sd.w - 0.4, p0 + 0.4, -H + T.h, -H), [p0, -H + T.h], [p0, padTop, 0.8], [s0, padTop, 0.6], [s0, floorBot, 0.8],
-    [0, floorBot, 1.5], [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]);
+  const floorBot = -Sd.floor - Sd.plate, sideBoltX = (Sd.wall + s1) / 2;
+  const sideGeos = {};
+  function sideGeo(H) {
+    if (sideGeos[H]) return sideGeos[H];
+    const padTop = -H + T.h + Sd.pad;
+    return (sideGeos[H] = extrude([[-Sd.press, Sd.tip, 0.6], [-1, Sd.top], [Sd.wall, Sd.top, 1.2], [Sd.wall, -Sd.floor, 0.8],
+      [s1, -Sd.floor, 2], [s1, padTop, 0.8], [Sd.w, padTop, 0.8], [Sd.w, -H + T.h],
+      ...teeth(Sd.w - 0.4, p0 + 0.4, -H + T.h, -H), [p0, -H + T.h], [p0, padTop, 0.8], [s0, padTop, 0.6], [s0, floorBot, 0.8],
+      [0, floorBot, 1.5], [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]));
+  }
 
   // 返回中压块、边压块个数
   function build(c) {
     const { P, S, layout, u, n } = c;
-    const L = P.clampL, e = layout.arrW / 2;
+    const L = P.clampL, e = layout.arrW / 2, H = P.modT;
     const gaps = [];
     for (let j = 1; j < layout.cols; j++) gaps.push(-e + j * layout.pitchEW - FIX.modGapEW / 2);
     const mid = [], side = [];
@@ -68,7 +73,7 @@
       for (const sx of [-1, 1]) { put(side, sx * e, sx); bolt('clampSide', sx * (e + sideBoltX)); }
     }
     PV.instanced(c.hwSlope, midGeo, M.clamp, mid);
-    PV.instanced(c.hwSlope, sideGeo, M.clamp, side);
+    PV.instanced(c.hwSlope, sideGeo(H), M.clamp, side);
     return { mid: mid.length, side: side.length };
   }
 
