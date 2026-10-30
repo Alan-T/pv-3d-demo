@@ -5,7 +5,7 @@
   const { MM, V3, FIX, JOINT, CLIP, CLAMP, M } = PV;
 
   // 螺栓组：局部 z 为螺栓轴线、指向螺母一侧，z=0 在螺母一侧被连接件的外表面。
-  // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，front 在螺母一侧、back 在螺栓头一侧）。
+  // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，画在开孔那块板的表面上，at 为这些表面的局部 z）。
   // opt.len：按公称长度（螺栓头支承面到杆端）画杆长，不给就在螺母外露 out；opt.headWasher：螺栓头下也垫一个平垫；
   // opt.socket：内六角圆柱头（sk：头径 d、头高 k、内六角对边 s）
   const BOLT_SIZE = {
@@ -41,15 +41,19 @@
       s.absarc(0, l, w, 0, Math.PI, false);
       s.lineTo(-w, -l);
       s.absarc(0, -l, w, Math.PI, Math.PI * 2, false);
-      const g = new THREE.ShapeGeometry(s, 12);
-      g.translate(0, 0, (slot.side === 'front' ? 0.4 : -stack - 0.4) * MM);
-      parts.unshift([g, M.slot]);
+      for (const z of slot.at) {
+        const g = new THREE.ShapeGeometry(s, 12);
+        g.translate(0, 0, z * MM);
+        parts.unshift([g, M.slot]);
+      }
     }
     return parts;
   }
   const BOLTS = {
-    foot: boltKind(12, JOINT.plateT + FIX.post.t, { side: 'front', len: JOINT.slotL }),  // 斜撑-立柱：连接板 + 腹板
-    top: boltKind(12, FIX.beam.t + FIX.post.t, { side: 'front', len: 40 }),            // 立柱-斜梁：竖向长圆孔（画在看得见的螺母一侧）
+    foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [0.4], len: JOINT.slotL }),     // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）
+    // 立柱-斜梁：螺母在斜梁腹板一侧，竖向长圆孔开在立柱腹板上：画在立柱腹板贴着斜梁的那面（节点图里斜梁半透明，看得见）
+    // 和立柱槽里那面
+    top: boltKind(12, FIX.beam.t + FIX.post.t, { at: [-FIX.beam.t, -FIX.beam.t - FIX.post.t - 0.4], len: 40 }),
     btop: boltKind(12, FIX.beam.t + FIX.brace.t, null),                                // 斜撑-斜梁
     clip: boltKind(12, CLIP.t + FIX.beam.t, null),                                     // 檩托两处叠层都是 4+2
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）

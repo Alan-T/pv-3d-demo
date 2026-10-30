@@ -59,7 +59,7 @@
           leaders: [
             [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
             [node.x - FIX.post.d / 2 + 15, ty - 4, y0 - 65, '柱顶平切，与斜梁上表面齐平'],   // 下坡一侧的柱顶角露在斜梁上方
-            [node.x, node.y, y0 - 130, 'M12 螺栓，竖向长圆孔'],
+            [node.x, node.y, y0 - 130, 'M12 螺栓，立柱上竖向长圆孔'],
             [node.x, node.y - 190, y0 - 195, `立柱 ${sec(FIX.post)}`],
           ],
           lines: [[node.x, node.y - 280, node.x, ty + 70], seg2(mv(node, -320, 0), mv(node, 320, 0))],
