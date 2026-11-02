@@ -63,8 +63,9 @@
   }
   // M12 螺栓的螺母下都是一个平垫、一个弹垫（节点图）
   const BOLTS = {
-    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺母一侧）
-    foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [0.4], len: JOINT.slotL }, { spring: true }),
+    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺栓头一侧）
+    foot: boltKind(12, JOINT.plateT + FIX.post.t, { at: [-JOINT.plateT - FIX.post.t - 0.4], len: JOINT.slotL }, { spring: true }),
+    footBrace: boltKind(12, JOINT.plateT + FIX.brace.t, { at: [-JOINT.plateT - FIX.brace.t - 0.4], len: JOINT.slotL }, { spring: true }),
     // 立柱-斜梁：螺母在斜梁腹板一侧，竖向长圆孔开在立柱腹板上：画在立柱腹板贴着斜梁的那面（节点图里斜梁半透明，看得见）
     // 和立柱槽里那面
     top: boltKind(12, FIX.beam.t + FIX.post.t, { at: [-FIX.beam.t, -FIX.beam.t - FIX.post.t - 0.4], len: 40 }, { spring: true }),
@@ -104,7 +105,7 @@
       flush(parent, slopeParent) {
         for (const k in K) for (const [g, mat] of K[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
         return {
-          m12: mats.foot.length + mats.top.length + mats.btop.length + mats.clip.length + mats.clipWeb.length + mats.splice.length,
+          m12: mats.foot.length + mats.footBrace.length + mats.top.length + mats.btop.length + mats.clip.length + mats.clipWeb.length + mats.splice.length,
           spliceBolts: mats.splice.length,
           m8: mats.module.length,
           m8c: mats.clampMid.length + mats.clampSide.length,

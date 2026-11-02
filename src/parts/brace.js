@@ -61,13 +61,18 @@
         for (const b of J.o ? [J, J.o] : [J]) {
           addMember(c.model, geo, M.brace, V(b.E.x, b.E.y, z0 + zw),
             new V3(-b.ay, b.ax, 0), NZ, new V3(b.ax, b.ay, 0).multiplyScalar(b.len * MM));
-          c.bolts.add('btop', V(b.T.x, b.T.y, z0 + c.zBeamWeb), EZ, u);
+          // 头在斜梁腹板侧，螺母、平垫和弹垫在斜撑槽内。
+          c.bolts.add('btop', V(b.T.x, b.T.y, z0 + zw - FIX.brace.t), NZ, u);
         }
         const plate = new THREE.Mesh(J.plateGeo, M.bracket);
         plate.position.z = (z0 + zw) * MM;
         plate.castShadow = plate.receiveShadow = true;
         c.hw.add(plate);
-        for (const [x, y] of J.bolts) c.bolts.add('foot', V(x, y, z0 + zw + JOINT.plateT), EZ, EY);
+        // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
+        J.bolts.forEach(([x, y], i) => {
+          const thickness = i < 2 ? FIX.post.t : FIX.brace.t;
+          c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY);
+        });
       }
     }
   }
