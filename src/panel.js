@@ -82,6 +82,45 @@
       box.appendChild(row);
     }
     refreshRows();
+    // 构件截面：四个构件共用一份选型库（config.js 的 SECTION_LIB）；输入框 + datalist，输入时模糊过滤，
+    // 回车/失焦时先精确匹配、再按包含匹配（分隔符 x / × / * 通用，忽略大小写和空格），匹配不到就还原
+    const secBox = document.getElementById('sections');
+    const dl = document.createElement('datalist');
+    dl.id = 'sectionLib';
+    dl.innerHTML = PV.SECTION_LIB.map((s) => `<option value="${s.name}">`).join('');
+    secBox.appendChild(dl);
+    const normSec = (s) => String(s).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
+    const LIB_NORM = PV.SECTION_LIB.map((s) => normSec(s.name));
+    const findSection = (txt) => {
+      const q = normSec(txt);
+      if (!q) return null;
+      let i = LIB_NORM.indexOf(q);
+      if (i < 0) i = LIB_NORM.findIndex((n) => n.includes(q));
+      return i < 0 ? null : PV.SECTION_LIB[i];
+    };
+    const curSecName = (key) => {
+      const c = FIX[key];
+      const hit = PV.SECTION_LIB.find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
+      return hit ? hit.name : `C${c.d}×${c.f}×${c.l}×${c.t}`;
+    };
+    for (const key of Object.keys(PV.SECTION_LABEL)) {
+      const row = document.createElement('div');
+      row.className = 'prow';
+      row.innerHTML = `<span class="pl">${PV.SECTION_LABEL[key]}</span>` +
+        `<input class="psec" type="text" list="sectionLib" placeholder="如 C80×40" autocomplete="off" spellcheck="false"` +
+        ` aria-label="${PV.SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
+      const inp = row.querySelector('input');
+      inp.value = curSecName(key);
+      inp.addEventListener('focus', () => inp.select());
+      inp.addEventListener('change', () => {
+        const s = findSection(inp.value);
+        if (!s) { inp.value = curSecName(key); return; }
+        inp.value = s.name;
+        Object.assign(FIX[key], s);   // 原地改，保住 FIX 引用
+        scheduleBuild();
+      });
+      secBox.appendChild(row);
+    }
     // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值。原图叠加只有图纸一
     const presetEl = document.getElementById('preset'), overlayCb = document.querySelector('[data-k=overlay]');
     const applyPreset = () => {
