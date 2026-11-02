@@ -13,8 +13,9 @@
   // 檩条-组件 / 中压块（mod）取 layout.gapZ 那道组件缝两侧各 100；边压块（side）取阵列东边往西 100，往东到檩条端头外（不切）。
   // 剖切面上的封口在 model.js 里画
   const SECTION = { below: 400, above: 300, gap: 100, end: 100 };
-  const sectionKey = (type) => (type === 'mod' || type === 'side' || type === 'splice' ? type : 'frame');
+  const sectionKey = (type) => (type === 'mod' || type === 'side' || type === 'splice' || type === 'clip' ? type : 'frame');
   function sectionRange(layout, key) {
+    if (key === 'clip') { const z = layout.zs.at(-1); return [z - 150, z + 150]; }
     if (key === 'splice') { const z = layout.cuts.positions.at(-1) || 0; return [z - 280, z + 280]; }
     if (key === 'mod') return [layout.gapZ - SECTION.gap, layout.gapZ + SECTION.gap];
     if (key === 'side') return [layout.arrW / 2 - SECTION.end, layout.purlinLen / 2 + SECTION.end];
@@ -35,12 +36,12 @@
     d.deep.visible = show.buried;
     g.buried.visible = show.buried;
     g.modules.visible = show.modules;
-    const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame';
+    const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
     // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
     // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
     // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面
     const ew = st.layout.ew, ca = ew.ca;   // 剖切范围是沿坡的 z，换成水平位置
-    const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || !!ew.i));
+    const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
     if (sectioned) {
       const [lo, hi] = sectionRange(st.layout, key);
       clipLo.constant = -lo * ca * MM;
@@ -133,7 +134,7 @@
     // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
     // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
     const sp = layout.jointSpecs[st.jointType][st.jointSel];
-    const zLast = layout.zs[layout.zs.length - 1], frame = sectionKey(st.jointType) === 'frame';
+    const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
     const z = sp.z === undefined ? zLast + FIX.post.f / 2 : sp.z;
     const W = PV.ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
     const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
