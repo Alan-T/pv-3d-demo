@@ -192,6 +192,8 @@
         ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],
         ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],
       ] : [['M8×22 组件安装螺栓', `${L.counts.m8} 套`]]),
+      ['檩条切割（每根）', L.cuts.valid ? L.cuts.segments.map(s=>s.length).join(' / ') + ' mm（缝4）' : '无可行方案'],
+      ['檩条连接件', L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套'],
       ['檩条', `${r(L.purlinLen)} × ${np}`],
       ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
       ['钢材估重', `${r(steelKg)} kg`],

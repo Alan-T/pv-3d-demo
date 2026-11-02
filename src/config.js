@@ -14,7 +14,7 @@
     post:   { d: 120, f: 60, l: 20, t: 2.5 },
     beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
     brace:  { d: 80,  f: 40, l: 15, t: 2.0 },
-    purlin: { d: 100, f: 50, l: 20, t: 2.0 },
+    purlin: { d: 108, f: 55, l: 0, t: 3.0 },
   };
   // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
   const PRESETS = {
@@ -36,7 +36,7 @@
       modT: 35,           // 组件厚度
       hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
       fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
-      clampL: 50,         // 压块长度（沿坡）
+      maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
     },
     // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
     B: {
@@ -44,7 +44,7 @@
       slope: -2,          // 图纸二按北向坡 2% 设计（后柱 3998 = 2124 + 74 + 1800）
       rows: 3, cols: 27, outer: 1,
       braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
-      embed: 1800, modL: 2382, modW: 1134, modT: 35, hole: 1400, fix: 'bolt', clampL: 50,
+      embed: 1800, modL: 2382, modW: 1134, modT: 35, hole: 1400, fix: 'bolt', maxPurlin: 9000, clampL: 50,
     },
   };
   const DEFAULTS = PRESETS.A;
@@ -91,6 +91,7 @@
       hint: '长（沿坡）× 宽（东西向）× 厚；组件间隙固定 20' },
     { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
       hint: '螺栓固定：组件安装孔 M8×22，檩条两端各伸出组件 50；压块：缝上中压块、两端边压块，M8×35 内六角，檩条两端各伸出 100' },
+    { key: 'maxPurlin', label: '檩条最大长度', type: 'select', options: [['5700', '5700 mm'], ['7200', '7200 mm'], ['9000', '9000 mm']] },
     { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
     { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
     { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },

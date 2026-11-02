@@ -115,6 +115,29 @@
     // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
     const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
     const ew = { i, ca, sa: i * ca };
-    return { frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
+    const cuts = PV.cutPurlin(p, purlinLen, zs, gaps, arrW);
+    if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
+    return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
+  };
+  PV.cutPurlin = function(p,total,posts,gaps,width) {
+    const max=Number(p.maxPurlin), half=total/2;
+    const fallback={valid:false,positions:[],segments:[{start:-half,length:total}]};
+    if(!(max>0)) return fallback;
+    if(total<=max) return {...fallback,valid:true};
+    const fixtures=p.fix==='clamp'?[...gaps,-width/2,width/2]:Array.from({length:p.cols},(_,j)=>-width/2+j*(p.modW+20)).flatMap(z=>[z+18,z+p.modW-18]);
+    const candidates=[];
+    for(let x=50;x<total;x+=50){const z=x-half,d=Math.min(...posts.map(v=>Math.abs(z-v)));if(d>=300&&d<=1000&&fixtures.every(v=>Math.abs(z-v)>=300))candidates.push(x);}
+    for(let count=Math.ceil(total/max);count<=Math.min(candidates.length+1,Math.ceil(total/max)+20);count++){
+      let states=[{x:0,cost:0,path:[]}];
+      for(let k=1;k<count&&states.length;k++){
+        const next=[];
+        for(const x of candidates){let best;for(const prev of states){const len=x-prev.x-(k===1?2:4);if(len<=0||len>max||(k>1&&x-prev.x<400))continue;const cost=prev.cost+(len-total/count)**2;if(!best||cost<best.cost)best={x,cost,path:[...prev.path,x]};}if(best)next.push(best);}states=next;
+      }
+      const good=states.filter(v=>total-v.x-2>0&&total-v.x-2<=max);
+      if(!good.length)continue;
+      good.sort((a,b)=>(a.cost+(total-a.x-2-total/count)**2)-(b.cost+(total-b.x-2-total/count)**2));
+      const positions=good[0].path.map(x=>x-half),segments=[];let start=-half;
+      for(const z of positions){segments.push({start,length:z-2-start});start=z+2;}segments.push({start,length:half-start});return {valid:true,positions,segments};
+    }return fallback;
   };
 })();

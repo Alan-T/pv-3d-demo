@@ -6,6 +6,14 @@
   const { MM, V, EZ, FIX, CLIP, M, addMember } = PV;
 
   const geo = PV.extrudeC(FIX.purlin);
+  // 无卷边 U128×53×3.0，外包檩条；长度400和孔距仍为建模假设。
+  const splice = { depth: 128, length: 400, thickness: 3, flange: 53, webBolt: 100, flangeBolts: [60, 140] };
+  const connectorGeo = (() => {
+    const h = splice.depth / 2, t = splice.thickness, f = splice.flange - t;
+    const shape = new THREE.Shape([[-h,-t],[h,-t],[h,f],[h-t,f],[h-t,0],[-h+t,0],[-h+t,f],[-h,f]]
+      .map(([a,b]) => new THREE.Vector2(a*MM,b*MM)));
+    return new THREE.ExtrudeGeometry(shape,{depth:1,bevelEnabled:false});
+  })();
   const capGeo = new THREE.ShapeGeometry(PV.cShape(FIX.purlin));
   // 檩托截面：局部 x 从檩条腹板外表面往下坡，局部 y 从斜梁上表面往上；沿局部 z 拉伸单位长度
   const clipGeo = (() => {
@@ -38,23 +46,38 @@
         clipMats.push(new THREE.Matrix4()
           .makeBasis(u.clone().negate(), n, EZ.clone().multiplyScalar(-CLIP.width * MM))
           .setPosition(at(0, 0, zClip + CLIP.width / 2)));
-        c.bolts.add('clip', at(-CLIP.baseBolt, CLIP.t, zClip), n, u);
-        c.bolts.add('clip', at(-CLIP.t, CLIP.webBolt, zClip), u.clone().negate(), n);
+        // 底边：头在檩托上方，螺母和垫圈在斜梁翼缘下方。
+        c.bolts.add('clip', at(-CLIP.baseBolt, -FIX.beam.t, zClip), n.clone().negate(), u);
+        // 立边：头在檩托外侧，螺母和垫圈在檩条槽内。
+        c.bolts.add('clipWeb', at(FIX.purlin.t, CLIP.webBolt, zClip), u, n);
       }
     }
     PV.instanced(c.hw, clipGeo, M.clip, clipMats);
 
     for (const t of S.purlins) {
-      addMember(c.slope, geo, M.purlin, origin(c, t, -layout.purlinLen / 2), n, u, EZ.clone().multiplyScalar(layout.purlinLen * MM));
+      for(const seg of layout.cuts.segments) addMember(c.slope, geo, M.purlin, origin(c,t,seg.start),n,u,EZ.clone().multiplyScalar(seg.length*MM));
+      for(const z of layout.cuts.positions){
+        addMember(c.hwSlope,connectorGeo,M.purlinConnector,origin(c,t,z-splice.length/2),n,u,EZ.clone().multiplyScalar(splice.length*MM));
+        const at=(du,dn,dz)=>origin(c,t,z+dz).addScaledVector(u,du*MM).addScaledVector(n,dn*MM);
+        for(const side of [-1,1]){
+          // 中间竖向螺栓：头在上，螺母朝槽内；翻转时原点移到另一夹紧面。
+          const stack = FIX.purlin.t + splice.thickness;
+          c.bolts.add('splice',at(23,splice.depth/2-stack,side*splice.webBolt),n.clone().negate(),u);
+          // 两旁各一颗横穿腹板，轴线沿坡向；俯视显示杆、螺母和垫圈的侧面。
+          // 横向螺栓：头在腹板外侧，平垫、弹垫和螺母朝槽内。
+          for(const distance of splice.flangeBolts)
+            c.bolts.add('splice',at(FIX.purlin.t,0,side*distance),u,n);
+        }
+      }
     }
     return clipMats.length;
   }
 
   // 剖切面封口：在东西向 z 处给每根檩条补一块 C 型截面
   function cap(c, z, parent) {
-    if (Math.abs(z) >= c.layout.purlinLen / 2) return;
+    if (!c.layout.cuts.segments.some(s=>z>s.start && z<s.start+s.length)) return;
     for (const t of c.S.purlins) addMember(parent, capGeo, M.purlinCap, origin(c, t, z), c.n, c.u, EZ);
   }
 
-  PV.parts.purlin = { build, cap };
+  PV.parts.purlin = { build, cap, splice };
 })();

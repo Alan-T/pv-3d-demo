@@ -14,7 +14,7 @@
     const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
     const mv = (p, du, dn) => ({ x: p.x + S.c * du - S.s * dn, y: p.y + S.s * du + S.c * dn });   // 沿坡 du、法向 dn
     const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
-    const sec = (s) => `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}`;
+    const sec = (s) => s.l ? `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}` : `U${s.d}×${s.f}×${s.t.toFixed(1)}`;
     const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
     const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [] };
     for (const fr of [0, 1]) {

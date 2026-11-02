@@ -47,6 +47,7 @@
     clamp: new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.45 }),   // 铝压块
     ground: new THREE.MeshLambertMaterial({ map: gridTexture() }),
     boltSteel: new THREE.MeshStandardMaterial({ color: 0xd3d8dd, roughness: 0.32, metalness: 0.55 }),
+    purlinConnector: new THREE.MeshStandardMaterial({ color: 0xff287d, roughness: 0.5, metalness: 0.12 }),
     slot: new THREE.MeshStandardMaterial({
       color: 0x15202b, roughness: 0.9, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
