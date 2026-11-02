@@ -6,8 +6,8 @@
   const { MM, V, EZ, FIX, CLIP, M, addMember } = PV;
 
   const geo = PV.extrudeC(FIX.purlin);
-  // 无卷边 U128×53×3.0，外包檩条；长度400和孔距仍为建模假设。
-  const splice = { depth: 128, length: 400, thickness: 3, flange: 53, webBolt: 100, flangeBolts: [60, 140] };
+  // 无卷边 U108×55×3.0，长240；纵向孔位暂按每侧30/60/90，待孔距详图确认。
+  const splice = { depth: 108, length: 240, thickness: 3, flange: 55, webBolt: 60, flangeBolts: [30, 90] };
   const connectorGeo = (() => {
     const h = splice.depth / 2, t = splice.thickness, f = splice.flange - t;
     const shape = new THREE.Shape([[-h,-t],[h,-t],[h,f],[h-t,f],[h-t,0],[-h+t,0],[-h+t,f],[-h,f]]

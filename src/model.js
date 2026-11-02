@@ -62,6 +62,7 @@
     clearDynamic();
     const S = (st.S = PV.solve(P));
     const layout = (st.layout = PV.layoutEW(P));
+    if (st.jointType === 'splice' && !layout.cuts.positions.length) st.jointType = 'mod';
     layout.joints = parts.brace.joints(S);
 
     const g = (st.groups = {
@@ -97,7 +98,7 @@
     // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。支架节点、檩条-组件、边压块三种剖切范围各一套。
     // 略往保留的一侧挪 0.5，免得被剖切面自己裁掉；组件的封口放进组件分组，跟着“光伏组件”开关
     g.caps = [];
-    for (const key of ['frame', 'mod', 'side']) {
+    for (const key of ['frame', 'mod', 'side', 'splice']) {
       const [lo, hi] = PV.view.sectionRange(layout, key);
       const pc = new THREE.Group(), mc = new THREE.Group();
       pc.userData.section = mc.userData.section = key;

@@ -13,8 +13,9 @@
   // 檩条-组件 / 中压块（mod）取 layout.gapZ 那道组件缝两侧各 100；边压块（side）取阵列东边往西 100，往东到檩条端头外（不切）。
   // 剖切面上的封口在 model.js 里画
   const SECTION = { below: 400, above: 300, gap: 100, end: 100 };
-  const sectionKey = (type) => (type === 'mod' || type === 'side' ? type : 'frame');
+  const sectionKey = (type) => (type === 'mod' || type === 'side' || type === 'splice' ? type : 'frame');
   function sectionRange(layout, key) {
+    if (key === 'splice') { const z = layout.cuts.positions.at(-1) || 0; return [z - 280, z + 280]; }
     if (key === 'mod') return [layout.gapZ - SECTION.gap, layout.gapZ + SECTION.gap];
     if (key === 'side') return [layout.arrW / 2 - SECTION.end, layout.purlinLen / 2 + SECTION.end];
     const z = layout.zs[layout.zs.length - 1];
@@ -141,7 +142,7 @@
       // 檩条-组件 / 边压块轴测：螺栓头在半透明组件下面或压块槽里，从下坡一侧（东边）高处看组件面；
       // 以 sp.at（缝上两颗螺栓的中点或边压块螺栓）取景，看约 200 × 180 的范围，文字在右侧
       const dir = new V3(-0.7, 1, 1).normalize(), [right] = screenAxes(dir);
-      const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / 200, (ch - 190) / 180));
+      const scale = Math.max(0.2, Math.min(3, (cw - labelPx - 40) / (st.jointType === 'splice' ? 640 : 200), (ch - 190) / (st.jointType === 'splice' ? 320 : 180)));
       const c = V(sp.at.x, sp.at.y, z).applyMatrix4(W).addScaledVector(right, (labelPx / 2 / scale) * MM);
       return { target: c, dir, zoom: 1 / ((ch / 2 / scale) * MM) };
     }

@@ -16,7 +16,7 @@
     const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
     const sec = (s) => s.l ? `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}` : `U${s.d}×${s.f}×${s.t.toFixed(1)}`;
     const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
-    const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [] };
+    const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [] };
     for (const fr of [0, 1]) {
       const J = layout.joints[fr];
       if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
@@ -147,6 +147,18 @@
         });
       }
     }
+    for (const fr of [0,1]) {
+      const p=S.along(S.purlins[fr?S.purlins.length-1:0]), z=layout.cuts.positions.at(-1)||0;
+      const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+160;
+      specs.splice.push({labelSide:1,anchorX:ax,z,zl:z+240,at:q,
+        leaders:[
+          [q.x,q.y,q.y-60,'檩条 1 '+sec(FIX.purlin),z-230],
+          [q.x,q.y,q.y-110,'檩条 2 '+sec(FIX.purlin),z+230],
+          [q.x,q.y,q.y-160,'U108×55×3.0 连接件（长240）',z],
+          [q.x,q.y,q.y-210,'M12×35 ×6（平垫 + 弹垫）',z+60],
+          [q.x,q.y,q.y-260,'檩条接缝 4 mm',z]
+        ],lines:[],box:[q.x-160,ax,q.y-290,q.y+130]});
+    }
     layout.jointSpecs = specs;
 
     const group = new THREE.Group();
@@ -171,7 +183,7 @@
         g.add(cl.finish(mats.line, mats.center));
         g.userData.joint = type + fr;
         // 东西坡度：支架节点跟着最东一榀平移，檩条-组件、边压块顺坡
-        PV.ewPlace(g, layout.ew, type === 'mod' || type === 'side' ? undefined : zLast);
+        PV.ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
         group.add(g);
       });
     }

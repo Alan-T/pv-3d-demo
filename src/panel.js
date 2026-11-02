@@ -108,7 +108,7 @@
     PV.view.buttons.forEach((b) => b.addEventListener('click', () => PV.view.set(b.dataset.view)));
     // 节点详图：先选节点种类、前/后侧，再选正视/轴测；不在节点视图时点种类直接进正视。
     // 檩条-组件、边压块直接进轴测：正视沿檩条看，组件缝、压块看不出来
-    const isoFirst = new Set(['mod', 'side']);
+    const isoFirst = new Set(['mod', 'side', 'splice']);
     const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : isoFirst.has(st.jointType) ? 'joint-iso' : 'joint-elev');
     const chipGroup = (sel, apply) => {
       const chips = document.querySelectorAll(sel);
@@ -155,6 +155,9 @@
   // 压块固定且选中“檩条-组件”时，后面多出“中压块 / 边压块”两个选项（节点种类 mod / side）；
   // 改回螺栓固定时 build() 已把边压块退回 mod
   function updateJointChips() {
+    const spliceButton = document.querySelector('[data-jtype=splice]');
+    spliceButton.disabled = !st.layout.cuts.positions.length;
+    spliceButton.title = spliceButton.disabled ? '当前檩条没有切割接头' : '预览实际檩条切割接头';
     const jt = st.jointType, modLike = jt === 'mod' || jt === 'side';
     document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === (jt === 'side' ? 'mod' : jt)));
     document.querySelectorAll('[data-clampopt]').forEach((el) => { el.style.display = PV.P.fix === 'clamp' && modLike ? '' : 'none'; });
