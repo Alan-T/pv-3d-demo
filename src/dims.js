@@ -170,7 +170,15 @@
     const halfL = layout.purlinLen / 2;
     const tLow = S.modStarts[0], tHigh = S.modStarts[S.modStarts.length - 1] + P.modL;
     const pSec = `C${FIX.purlin.d}×${FIX.purlin.f}×${FIX.purlin.l}×${FIX.purlin.t.toFixed(1)}`;
-    nrm.dim(pS(tHigh, -halfL), pS(tHigh, halfL), offU(450), `檩条 ×${S.purlins.length}　${pSec}　总长 ${r(layout.purlinLen)}`, 'out', 13);
+    nrm.dim(pS(tHigh, -halfL), pS(tHigh, halfL), offU(700), `檩条 ×${S.purlins.length}　${pSec}　总长 ${r(layout.purlinLen)}`, 'out', 13);
+    // 每根檩条使用相同切割方案；标注材料净长，不含段间4 mm接缝。
+    const topCuts = new DimSet();
+    if (layout.cuts.valid) for (const seg of layout.cuts.segments) {
+      const text = String(Math.round(seg.length * 10) / 10);
+      nrm.dim(pS(tHigh, seg.start), pS(tHigh, seg.start + seg.length), offU(350), text, 'out', 13);
+      topCuts.dim(pS(tHigh, seg.start), pS(tHigh, seg.start + seg.length), offU(350), text, 'out', 13);
+    }
+    topCuts.dim(pS(tHigh,-halfL),pS(tHigh,halfL),offU(700),`檩条总长 ${r(layout.purlinLen)}（接缝4）`,'out',13);
     const stops = [-halfL, ...layout.zs, halfL], last = stops.length - 2;
     for (let i = 0; i <= last; i++) {
       const d = nrm.dim(pS(tLow, stops[i]), pS(tLow, stops[i + 1]), offU(-350), r(stops[i + 1] - stops[i]), i === 0 || i === last ? 'out' : 'in');
@@ -203,15 +211,16 @@
     keyG.add(key.finish(dimLineMat), groundLine.finish(groundLineMat));
     const ewG = ew.finish(dimLineMat);
     const normalG = nrm.finish(dimLineMat);
+    const topCutsG = topCuts.finish(dimLineMat);
     normalG.add(purlinLines.finish(purlinLineMat), beamLines.finish(beamLineMat));
     // 东西坡度：侧视标注跟着最东一榀平移，东西向、垂直组件视图的标注顺坡
     const zLast = layout.zs[layout.zs.length - 1];
     for (const gr of [keyG, sideG]) PV.ewPlace(gr, layout.ew, zLast);
-    for (const gr of [ewG, normalG]) PV.ewPlace(gr, layout.ew);
+    for (const gr of [ewG, normalG, topCutsG]) PV.ewPlace(gr, layout.ew);
     const rootG = new THREE.Group();
-    rootG.add(keyG, sideG, ewG, normalG, jointG);
+    rootG.add(keyG, sideG, ewG, normalG, jointG, topCutsG);
     root.add(rootG);
-    PV.state.dims = { root: rootG, key: keyG, side: sideG, deep: deepG, ew: ewG, normal: normalG, joint: jointG };
+    PV.state.dims = { root: rootG, key: keyG, side: sideG, deep: deepG, ew: ewG, normal: normalG, joint: jointG, topCuts: topCutsG };
   }
 
   // 标注文字保持固定的屏幕像素高度（每帧调用）

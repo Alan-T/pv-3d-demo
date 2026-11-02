@@ -31,6 +31,7 @@
     d.side.visible = view === 'side';
     d.ew.visible = view === '3d' || view === 'front' || view === 'top';
     d.normal.visible = view === 'normal';
+    d.topCuts.visible = view === 'top';
     d.joint.visible = view.startsWith('joint');
     d.joint.children.forEach((j) => { j.visible = j.userData.joint === st.jointType + st.jointSel; });
     d.deep.visible = show.buried;
