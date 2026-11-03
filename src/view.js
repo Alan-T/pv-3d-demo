@@ -46,13 +46,20 @@
     // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
     // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面
     const ew = st.layout.ew, ca = ew.ca;   // 剖切范围是沿坡的 z，换成水平位置
+    const sideSlope = view === 'side' && !!ew.i;
+    // 侧视对照按最东一榀作截面展示：通长构件不再投影成高低叠加的带状区域。
+    // 只改变展示矩阵，各榀位置、实际顺坡模型和计算结果保持原值。
+    for (const k of ['modules', 'slope', 'hwSlope']) {
+      g[k].matrix.copy(PV.ewMatrix(ew, sideSlope ? st.layout.zs.at(-1) : undefined));
+      g[k].matrixWorldNeedsUpdate = true;
+    }
     const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
     if (sectioned) {
       const [lo, hi] = sectionRange(st.layout, key);
       clipLo.constant = -lo * ca * MM;
       clipHi.constant = hi * ca * MM;
       renderer.clippingPlanes = [clipLo, clipHi];
-    } else if (view === 'side' && ew.i) {
+    } else if (sideSlope) {
       // 侧视：有东西坡度时只看最东一榀（后面各榀高低错开），东侧的标注不切
       clipLo.constant = -sectionRange(st.layout, 'frame')[0] * ca * MM;
       renderer.clippingPlanes = [clipLo];
