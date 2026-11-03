@@ -149,15 +149,15 @@
     }
     for (const fr of [0,1]) {
       const p=S.along(S.purlins[fr?S.purlins.length-1:0]), z=layout.cuts.positions.at(-1)||0;
-      const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+160;
-      specs.splice.push({labelSide:1,anchorX:ax,z,zl:z+240,at:q,
+      const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+100;
+      specs.splice.push({labelSide:1,anchorX:ax,z,zl:z+160,at:q,
         leaders:[
-          [q.x,q.y,q.y-60,'檩条 1 '+sec(FIX.purlin),z-230],
-          [q.x,q.y,q.y-110,'檩条 2 '+sec(FIX.purlin),z+230],
-          [q.x,q.y,q.y-160,'U108×55×3.0 连接件（长240）',z],
-          [q.x,q.y,q.y-210,'M12×35 ×6（平垫 + 弹垫）',z+60],
-          [q.x,q.y,q.y-260,'檩条接缝 4 mm',z]
-        ],lines:[],box:[q.x-160,ax,q.y-290,q.y+130]});
+          [q.x,q.y,q.y+80,'檩条 1 '+sec(FIX.purlin),z-230],
+          [q.x,q.y,q.y+30,'檩条 2 '+sec(FIX.purlin),z+230],
+          [q.x,q.y,q.y-30,'U108×55×3.0 连接件（长240）',z],
+          [q.x,q.y,q.y-85,'M12×35 ×6（平垫 + 弹垫）',z+60],
+          [q.x,q.y,q.y-140,'檩条接缝 4 mm',z]
+        ],lines:[],box:[q.x-160,ax,q.y-170,q.y+130]});
     }
     layout.jointSpecs = specs;
 

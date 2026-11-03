@@ -70,7 +70,8 @@
     g.ground.visible = !(view === 'side' && ew.i);
     for (const cg of g.caps) cg.visible = sectioned && cg.userData.section === key;
     // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
-    PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), sectioned && !mod ? 0.2 : 0.32);
+    const moduleOpacity = sectioned && !mod ? 0.2 : 0.32;
+    PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
     PV.ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
     g.hw.visible = show.bolts;
     st.overlay.visible = show.overlay && st.preset === 'A';   // 原图只有图纸一（2 排）的侧视图
@@ -162,6 +163,23 @@
     const W = PV.ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
     const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
     const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
+    if (st.jointType === 'splice') {
+      // 接头独立取景：把构件、引线端点及标注锚点一起投影，预留完整文字宽度。
+      const dir = name === 'joint-elev' ? new V3(-S.c,-S.s,0) : new V3(-0.85,0.65,0.65).normalize();
+      const [right, up] = screenAxes(dir), points = [];
+      for (const x of [xL,xR]) for (const y of [yB,yT]) for (const dz of [-280,280])
+        points.push(V(x,y,z+dz).applyMatrix4(W));
+      for (const [x,y,ly,,pz] of sp.leaders) {
+        points.push(V(x,y,pz === undefined ? sp.zl : pz).applyMatrix4(W));
+        points.push(V(sp.anchorX,ly,sp.zl).applyMatrix4(W));
+      }
+      const xs=points.map(p=>p.dot(right)), ys=points.map(p=>p.dot(up));
+      const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+      const scale=Math.max(0.05,Math.min(2,(cw-labelPx-80)/((maxX-minX)/MM),(ch-240)/((maxY-minY)/MM)));
+      const center=points[0].clone().addScaledVector(right,(minX+maxX)/2-xs[0]+labelPx/2/scale*MM)
+        .addScaledVector(up,(minY+maxY)/2-ys[0]);
+      return {target:center,dir,zoom:1/(ch/2/scale*MM)};
+    }
     if (!frame && name === 'joint-iso') {
       // 檩条-组件 / 边压块轴测：螺栓头在半透明组件下面或压块槽里，从下坡一侧（东边）高处看组件面；
       // 以 sp.at（缝上两颗螺栓的中点或边压块螺栓）取景，看约 200 × 180 的范围，文字在右侧
