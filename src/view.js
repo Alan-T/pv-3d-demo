@@ -25,6 +25,10 @@
   const clipLo = new THREE.Plane(new V3(0, 0, 1), 0), clipHi = new THREE.Plane(new V3(0, 0, -1), 0);
   function applyVisibility() {
     const g = st.groups, d = st.dims, view = st.view, show = PV.show;
+    // 垂直组件为展开对照视图：抵消东西顺坡变换，组件及尺寸保持固定。
+    PV.root.matrixAutoUpdate = false;
+    PV.root.matrix.copy(view === 'normal' ? PV.ewMatrix(st.layout.ew).invert() : new THREE.Matrix4());
+    PV.root.matrixWorldNeedsUpdate = true;
     if (!g) return;
     d.root.visible = show.dims;
     d.key.visible = view === '3d' || view === 'side';
@@ -121,15 +125,26 @@
   function framePose(name) {
     const { S, layout } = st, P = PV.P;
     if (name === 'normal') {
-      // 沿组件法向看：屏幕横向 = 东西向，纵向 = 沿坡向上（倾角 > 0 时世界 y 投影到屏幕正好朝上坡）
+      // 展开视图在 root 抵消了东西坡度，按固定组件平面取景。
+      const W = new THREE.Matrix4(); // 展开视图已在 root 抵消东西坡度
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(W);
       const n = new V3(-S.s, S.c, 0), u = new V3(S.c, S.s, 0);
-      const q = S.along((S.modStarts[0] + S.modStarts[S.modStarts.length - 1] + P.modL) / 2);
-      const c = V(q.x, q.y, 0).addScaledVector(n, (S.hModBot + P.modT) * MM).addScaledVector(u, 0.25);
-      // 标注文字是固定像素大小，所以按屏幕像素留边：左右 64px、上下 72px
-      const w = (layout.purlinLen + 700) * MM, h = (P.rows * P.modL + (P.rows - 1) * FIX.modGap + 800) * MM;
+      const dir = n.clone().applyMatrix3(normalMatrix).normalize();
+      const [right, up] = screenAxes(dir);
+      const low = S.modStarts[0] - 500;
+      const high = S.modStarts.at(-1) + P.modL + 950;
+      const halfW = layout.purlinLen / 2 + 350;
+      const points = [];
+      for (const t of [low, high]) for (const z of [-halfW, halfW]) {
+        const q = S.along(t);
+        points.push(V(q.x,q.y,z).addScaledVector(n,(S.hModBot+P.modT)*MM).applyMatrix4(W));
+      }
+      const xs = points.map(p=>p.dot(right)), ys = points.map(p=>p.dot(up));
+      const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+      const c = points[0].clone().addScaledVector(right,(x0+x1)/2-xs[0]).addScaledVector(up,(y0+y1)/2-ys[0]);
       const pw = Math.max(80, canvas.clientWidth - 128), ph = Math.max(80, canvas.clientHeight - 144);
-      const half = (Math.max(w / pw, h / ph) * canvas.clientHeight) / 2;
-      return { target: c, dir: n, zoom: 1 / half };
+      const half = Math.max((x1-x0)/pw,(y1-y0)/ph) * canvas.clientHeight / 2;
+      return { target: c, dir, zoom: 1 / half };
     }
     // 最东一榀的连接节点（檩条-组件在 sp.z 那道组件缝，边压块在阵列东边）。正视：从东往西正对节点（同节点正视图）；轴测：略偏向文字一侧、偏上，看得出螺栓和板厚。
     // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
