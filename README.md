@@ -1,6 +1,6 @@
-# 光伏支架 3D 设计 Demo
+# 光伏固定支架 3D 设计 Demo
 
-把一张固定倾角地面光伏支架的二维侧视图，做成可交互、可改参数的 three.js 3D 模型。
+把一张固定倾角地面光伏固定支架的二维侧视图，做成可交互、可改参数的 three.js 3D 模型。
 
 - 打开方式：直接双击 `index.html`（不需要服务器），或在本目录起任意静态服务器，例如 `python -m http.server 8765`。
 - 不依赖网络：three.js r128 和 OrbitControls 在 `vendor/`（自带一份，不依赖其他项目），原图（去底色）以 data URI 形式放在 `assets/ref-side.js`，供“叠加原图”对照用，第一次勾选时才加载。
