@@ -1,8 +1,37 @@
+# Dependencies and generated output
 node_modules/
-*.log
+/dist/
+/build/
+/coverage/
+/.cache/
+
+# Local environment (keep shareable examples)
 .env
-.DS_Store
-Thumbs.db
+.env.*
+!.env.example
+!.env.*.example
+
+# Local agent configuration, logs and temporary scripts
+/.claude/
+/.workbuddy/
+/.codex/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Project deployment packages and local backups
+/pv-3d-demo*.tar.gz
+/pv-3d-demo*.zip
+/backups/
+
+# Editor and operating system files
 .vscode/
 .idea/
-.claude/settings.local.json
+.DS_Store
+Thumbs.db
+Desktop.ini
