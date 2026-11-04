@@ -127,6 +127,9 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/parts/post.js` | 立柱和埋地段 |
 | `src/parts/beam.js` | 斜梁及柱顶连接螺栓 |
 | `src/parts/brace.js` | 内外斜撑、连接板及螺栓 |
+| `src/parts/brace-connector.js` | 单面 / 双面斜撑连接板、节点孔位及连接板螺栓 |
+| `src/parts/purlin-connector.js` | U 型檩条连接件、规格及接头螺栓 |
+| `src/parts/purlin-clip.js` | L 形檩托及底边、立边螺栓 |
 | `src/parts/purlin.js` | 分段檩条、檩托、U 型连接件、连接螺栓与截面封口 |
 | `src/parts/module.js` / `src/parts/clamp.js` | 组件、安装螺栓、中压块及边压块 |
 | `src/parts/bolts.js` | 螺栓、螺母、垫圈几何及实例收集器 |
