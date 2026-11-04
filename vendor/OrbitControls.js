@@ -1,4 +1,4 @@
-( function () {
+import * as THREE from './three.module.js';
 
 	// Unlike TrackballControls, it maintains the "up" direction object.up (+Y by default).
 	//
@@ -1039,7 +1039,4 @@
 
 	}
 
-	THREE.MapControls = MapControls;
-	THREE.OrbitControls = OrbitControls;
-
-} )();
+export { OrbitControls, MapControls };

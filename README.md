@@ -2,7 +2,7 @@
 
 把一张固定倾角地面光伏固定支架的二维侧视图，做成可交互、可改参数的 three.js 3D 模型。
 
-- 打开方式：直接双击 `index.html`（不需要服务器），或在本目录起任意静态服务器，例如 `python -m http.server 8765`。
+- 打开方式：在本目录运行 `node deploy/serve.js`，通过终端提示的 HTTP 地址访问。ES Modules 需要 HTTP 服务，不支持直接双击 HTML。
 - 不依赖网络：three.js r128 和 OrbitControls 在 `vendor/`（自带一份，不依赖其他项目），原图（去底色）以 data URI 形式放在 `assets/ref-side.js`，供“叠加原图”对照用，第一次勾选时才加载。
 - 图纸尺寸和假设在 `src/config.js`，尺寸推算在 `src/solve.js`；页面右侧“与图纸核对”和“推算 / 假设”两栏列出了每个尺寸的来源。
 
@@ -10,7 +10,7 @@
 
 ## 代码结构
 
-代码在 `src/` 下，都是普通脚本（不用 ES 模块，所以双击打开也能用），每个文件把内容挂到全局 `PV` 上，按 `index.html` 里的顺序加载。
+代码在 `src/` 下，使用浏览器原生 ES Modules。`index.html` 只加载 `src/main.js`，各模块通过 `import` 声明依赖。`core.js` 导出共享上下文 `PV`，不再挂到 `window`；three.js 保持 r128，使用本地模块文件，不需要构建工具。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -32,7 +32,7 @@
 | `edit.js` / `panel.js` | 蓝字点击修改；右侧面板 |
 | `main.js` | 启动和渲染循环（最后加载） |
 
-每个构件文件导出 `build(c)`，`c` 是 `model.js` 里的构建上下文（参数 `P`、求解结果 `S`、东西向布置 `layout`、沿坡/法向单位向量 `u` / `n`、模型分组、螺栓收集器 `bolts`）。加新构件：在 `parts/` 下新建文件、在 `model.js` 里调用、在 `index.html` 里加 `<script>`。
+每个构件文件导出 `build(c)`，`c` 是 `model.js` 里的构建上下文（参数 `P`、求解结果 `S`、东西向布置 `layout`、沿坡/法向单位向量 `u` / `n`、模型分组、螺栓收集器 `bolts`）。加新构件：在 `parts/` 下新建文件、在 `model.js` 里调用、在 `model.js` 中导入该模块。
 
 调试：浏览器控制台里 `pvDemo` 可以读参数、求解结果，切视图、重建。
 

@@ -1,143 +1,142 @@
+import { PV } from './core.js';
+import './config.js';
+
 /* 几何求解：由参数算出框架平面内的关键点和东西向布置，单位 mm。纯计算，不碰 three.js 场景 */
-(function () {
-  'use strict';
-  const PV = window.PV;
-  const { DEG, FIX, JOINT } = PV;
+const { DEG, FIX, JOINT } = PV;
 
-  // 框架平面 (x, y) 内的所有关键点
-  PV.solve = function solve(p) {
-    const th = p.tilt * DEG, c = Math.cos(th), s = Math.sin(th);
-    const L = p.span;
-    // 沿坡 rows 块组件，每块下 2 根檩条（安装孔距 hole）；斜梁伸出首末檩条各 114，长度取整到 10；立柱在斜梁上居中
-    const arrLen = p.rows * p.modL + (p.rows - 1) * FIX.modGap;
-    const purlinSpan = (p.rows - 1) * (p.modL + FIX.modGap) + p.hole;
-    const beamLen = Math.round((purlinSpan + 2 * FIX.beamPastPurlin) / 10) * 10;
-    const ovh = (beamLen - L / c) / 2;                        // 斜梁两端伸出立柱中心（悬挑）
-    const extLow = (arrLen - beamLen) / 2 - FIX.arrayShift;   // 组件下沿伸出斜梁下端
-    const sLow = ovh + extLow;                                // 前柱节点 → 组件下沿（沿坡）
-    const hBeamTop = FIX.beam.d / 2;                          // 斜梁中心线 → 上表面
-    const hModBot = hBeamTop + FIX.purlin.d;                  // 斜梁中心线 → 组件底面
-    const xf = sLow * c + hModBot * s;                        // 前柱中心到原点
-    const xr = xf + L;
-    const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
-    const nodeR = nodeF + L * s / c;
-    const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
-    // 立柱-斜梁螺栓：立柱中心线上、孔心距柱顶 postTopHole（比两条中心线交点略低）
-    const holeF = topF - JOINT.postTopHole, holeR = topR - JOINT.postTopHole;
-    // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
-    // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
-    // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
-    const sp = p.slope / 100;
-    const gy = (x) => sp * (x - xf);
-    const gR = gy(xr);
-    const botF = -p.embed, botR = gR - p.embed;
-    const along = (t) => ({ x: xf + (t - ovh) * c, y: nodeF + (t - ovh) * s }); // t：距斜梁下端
-    const warn = [];
-    if (ovh < 150) warn.push(`立柱间距太大：斜梁两端悬挑只剩 ${Math.round(ovh)}`);
-    if (!p.outer && ovh > 1000) warn.push(`斜梁两端悬挑 ${Math.round(ovh)}，比较长，建议加外斜撑或加大立柱间距`);
+// 框架平面 (x, y) 内的所有关键点
+PV.solve = function solve(p) {
+  const th = p.tilt * DEG, c = Math.cos(th), s = Math.sin(th);
+  const L = p.span;
+  // 沿坡 rows 块组件，每块下 2 根檩条（安装孔距 hole）；斜梁伸出首末檩条各 114，长度取整到 10；立柱在斜梁上居中
+  const arrLen = p.rows * p.modL + (p.rows - 1) * FIX.modGap;
+  const purlinSpan = (p.rows - 1) * (p.modL + FIX.modGap) + p.hole;
+  const beamLen = Math.round((purlinSpan + 2 * FIX.beamPastPurlin) / 10) * 10;
+  const ovh = (beamLen - L / c) / 2;                        // 斜梁两端伸出立柱中心（悬挑）
+  const extLow = (arrLen - beamLen) / 2 - FIX.arrayShift;   // 组件下沿伸出斜梁下端
+  const sLow = ovh + extLow;                                // 前柱节点 → 组件下沿（沿坡）
+  const hBeamTop = FIX.beam.d / 2;                          // 斜梁中心线 → 上表面
+  const hModBot = hBeamTop + FIX.purlin.d;                  // 斜梁中心线 → 组件底面
+  const xf = sLow * c + hModBot * s;                        // 前柱中心到原点
+  const xr = xf + L;
+  const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
+  const nodeR = nodeF + L * s / c;
+  const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
+  // 立柱-斜梁螺栓：立柱中心线上、孔心距柱顶 postTopHole（比两条中心线交点略低）
+  const holeF = topF - JOINT.postTopHole, holeR = topR - JOINT.postTopHole;
+  // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
+  // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
+  // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
+  const sp = p.slope / 100;
+  const gy = (x) => sp * (x - xf);
+  const gR = gy(xr);
+  const botF = -p.embed, botR = gR - p.embed;
+  const along = (t) => ({ x: xf + (t - ovh) * c, y: nodeF + (t - ovh) * s }); // t：距斜梁下端
+  const warn = [];
+  if (ovh < 150) warn.push(`立柱间距太大：斜梁两端悬挑只剩 ${Math.round(ovh)}`);
+  if (!p.outer && ovh > 1000) warn.push(`斜梁两端悬挑 ${Math.round(ovh)}，比较长，建议加外斜撑或加大立柱间距`);
 
-    let tF = p.braceTopF, tR = beamLen - p.braceTopR;
-    if (tR - tF < 150) {
-      tF = beamLen / 2 - 75; tR = beamLen / 2 + 75;
-      warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
-    }
-    // 斜撑下端理论节点：立柱侧面、离 ±0 高 braceH（= 连接板竖向中点）。斜撑长度按理论节点到斜梁节点算，
-    // 与两张图纸的斜撑长度一致；实际斜撑从连接板上的螺栓连到斜梁节点（见 parts/brace.js）
-    const bx = FIX.post.d / 2;
-    const bF = { x: xf + bx, y: p.braceHF };
-    const bR = { x: xr - bx, y: p.braceHR };
-    const tFp = along(tF), tRp = along(tR);
-    const braceF = Math.hypot(tFp.x - bF.x, tFp.y - bF.y);
-    const braceR = Math.hypot(tRp.x - bR.x, tRp.y - bR.y);
+  let tF = p.braceTopF, tR = beamLen - p.braceTopR;
+  if (tR - tF < 150) {
+    tF = beamLen / 2 - 75; tR = beamLen / 2 + 75;
+    warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
+  }
+  // 斜撑下端理论节点：立柱侧面、离 ±0 高 braceH（= 连接板竖向中点）。斜撑长度按理论节点到斜梁节点算，
+  // 与两张图纸的斜撑长度一致；实际斜撑从连接板上的螺栓连到斜梁节点（见 parts/brace.js）
+  const bx = FIX.post.d / 2;
+  const bF = { x: xf + bx, y: p.braceHF };
+  const bR = { x: xr - bx, y: p.braceHR };
+  const tFp = along(tF), tRp = along(tR);
+  const braceF = Math.hypot(tFp.x - bF.x, tFp.y - bF.y);
+  const braceR = Math.hypot(tRp.x - bR.x, tRp.y - bR.y);
 
-    // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
-    let outer = null;
-    if (p.outer) {
-      const oF = { x: xf - bx, y: p.braceHF }, oR = { x: xr + bx, y: p.braceHR };
-      const toF = Math.min(p.braceOutF, ovh - 100), toR = beamLen - Math.min(p.braceOutR, ovh - 100);
-      if (p.braceOutF > ovh - 100 || p.braceOutR > ovh - 100) warn.push('外斜撑上节点要落在立柱外侧的斜梁悬挑段上，已临时压回悬挑段');
-      const toFp = along(toF), toRp = along(toR);
-      outer = {
-        oF, oR, toF, toR, toFp, toRp,
-        braceOF: Math.hypot(toFp.x - oF.x, toFp.y - oF.y), braceOR: Math.hypot(toRp.x - oR.x, toRp.y - oR.y),
-      };
-    }
-
-    const a = (p.modL - p.hole) / 2;
-    const modStarts = [];
-    for (let r = 0; r < p.rows; r++) modStarts.push(-extLow + r * (p.modL + FIX.modGap));
-    const purlins = [];
-    for (const m of modStarts) purlins.push(m + a, m + a + p.hole);
-    const pf = FIX.purlin.f / 2, pLast = purlins[purlins.length - 1];
-    if (purlins[0] - pf < 0 || pLast + pf > beamLen) warn.push(`檩条（按组件安装孔距 ${p.hole} 布置）超出了斜梁端部`);
-
-    const clearEdge = p.h0 - gy(0);
-    const clearBraceR = p.braceHR - gR;
-    if (clearBraceR < 100) warn.push(`后斜撑下端离地只有 ${Math.round(clearBraceR)}`);
-    if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
-
-    return {
-      c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
-      lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
-      modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
+  // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
+  let outer = null;
+  if (p.outer) {
+    const oF = { x: xf - bx, y: p.braceHF }, oR = { x: xr + bx, y: p.braceHR };
+    const toF = Math.min(p.braceOutF, ovh - 100), toR = beamLen - Math.min(p.braceOutR, ovh - 100);
+    if (p.braceOutF > ovh - 100 || p.braceOutR > ovh - 100) warn.push('外斜撑上节点要落在立柱外侧的斜梁悬挑段上，已临时压回悬挑段');
+    const toFp = along(toF), toRp = along(toR);
+    outer = {
+      oF, oR, toF, toR, toFp, toRp,
+      braceOF: Math.hypot(toFp.x - oF.x, toFp.y - oF.y), braceOR: Math.hypot(toRp.x - oR.x, toRp.y - oR.y),
     };
-  };
+  }
 
-  // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
-  // 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
-  // 榀距比阵列还宽时少放一榀
-  PV.layoutEW = function layoutEW(p) {
-    const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
-    const arrW = cols * pitchEW - FIX.modGapEW;
-    const purlinExt = FIX.purlinExt[p.fix], purlinLen = arrW + 2 * purlinExt;
-    const bayAt = (i, n) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
-    const spanOf = (n) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
-    const warn = [];
-    let frames = 1;
-    while ((purlinLen - spanOf(frames)) / 2 > FIX.maxOverhang * p.pitchEnd) frames++;
-    if (frames > 1 && spanOf(frames) > purlinLen - FIX.purlin.f) {
-      frames--;
-      warn.push(`组件列数太少：檩条两端悬挑 ${Math.round((purlinLen - spanOf(frames)) / 2)}，再加一榀又放不下`);
+  const a = (p.modL - p.hole) / 2;
+  const modStarts = [];
+  for (let r = 0; r < p.rows; r++) modStarts.push(-extLow + r * (p.modL + FIX.modGap));
+  const purlins = [];
+  for (const m of modStarts) purlins.push(m + a, m + a + p.hole);
+  const pf = FIX.purlin.f / 2, pLast = purlins[purlins.length - 1];
+  if (purlins[0] - pf < 0 || pLast + pf > beamLen) warn.push(`檩条（按组件安装孔距 ${p.hole} 布置）超出了斜梁端部`);
+
+  const clearEdge = p.h0 - gy(0);
+  const clearBraceR = p.braceHR - gR;
+  if (clearBraceR < 100) warn.push(`后斜撑下端离地只有 ${Math.round(clearBraceR)}`);
+  if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
+
+  return {
+    c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
+    lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
+    modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
+  };
+};
+
+// 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
+// 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
+// 榀距比阵列还宽时少放一榀
+PV.layoutEW = function layoutEW(p) {
+  const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
+  const arrW = cols * pitchEW - FIX.modGapEW;
+  const purlinExt = FIX.purlinExt[p.fix], purlinLen = arrW + 2 * purlinExt;
+  const bayAt = (i, n) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
+  const spanOf = (n) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
+  const warn = [];
+  let frames = 1;
+  while ((purlinLen - spanOf(frames)) / 2 > FIX.maxOverhang * p.pitchEnd) frames++;
+  if (frames > 1 && spanOf(frames) > purlinLen - FIX.purlin.f) {
+    frames--;
+    warn.push(`组件列数太少：檩条两端悬挑 ${Math.round((purlinLen - spanOf(frames)) / 2)}，再加一榀又放不下`);
+  }
+  const bays = [];
+  for (let i = 0; i < frames - 1; i++) bays.push(bayAt(i, frames));
+  const spanEW = spanOf(frames);
+  const zs = [-spanEW / 2];
+  for (const b of bays) zs.push(zs[zs.length - 1] + b);
+  // 檩条-组件节点详图取的组件缝：最东一跨里离两榀最远的一道（离檩托、斜梁远，画面里只有组件和檩条）；只有 1 列组件时取阵列东边
+  const gaps = [];
+  for (let j = 1; j < cols; j++) gaps.push(-arrW / 2 + j * pitchEW - FIX.modGapEW / 2);
+  const zE = zs[zs.length - 1], zW = zs.length > 1 ? zs[zs.length - 2] : -Infinity;
+  const clear = (g) => Math.min(...zs.map((z) => Math.abs(g - z)));
+  const inBay = gaps.filter((g) => g > zW && g < zE), pool = inBay.length ? inBay : gaps;
+  const gapZ = pool.length ? pool.reduce((a, g) => (clear(g) > clear(a) ? g : a)) : arrW / 2 + FIX.modGapEW / 2;
+  // 东西坡度：上面东西向的 z 都是沿檩条（沿坡）量的，榀距 = 两榀之间的檩条长度。
+  // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
+  const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
+  const ew = { i, ca, sa: i * ca };
+  const cuts = PV.cutPurlin(p, purlinLen, zs, gaps, arrW);
+  if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
+  return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
+};
+PV.cutPurlin = function(p,total,posts,gaps,width) {
+  const max=Number(p.maxPurlin), half=total/2;
+  const fallback={valid:false,positions:[],segments:[{start:-half,length:total}]};
+  if(!(max>0)) return fallback;
+  if(total<=max) return {...fallback,valid:true};
+  const fixtures=p.fix==='clamp'?[...gaps,-width/2,width/2]:Array.from({length:p.cols},(_,j)=>-width/2+j*(p.modW+20)).flatMap(z=>[z+18,z+p.modW-18]);
+  const candidates=[];
+  for(let x=50;x<total;x+=50){const z=x-half,d=Math.min(...posts.map(v=>Math.abs(z-v)));if(d>=300&&d<=1000&&fixtures.every(v=>Math.abs(z-v)>=300))candidates.push(x);}
+  for(let count=Math.ceil(total/max);count<=Math.min(candidates.length+1,Math.ceil(total/max)+20);count++){
+    let states=[{x:0,cost:0,path:[]}];
+    for(let k=1;k<count&&states.length;k++){
+      const next=[];
+      for(const x of candidates){let best;for(const prev of states){const len=x-prev.x-(k===1?2:4);if(len<=0||len>max||(k>1&&x-prev.x<400))continue;const cost=prev.cost+(len-total/count)**2;if(!best||cost<best.cost)best={x,cost,path:[...prev.path,x]};}if(best)next.push(best);}states=next;
     }
-    const bays = [];
-    for (let i = 0; i < frames - 1; i++) bays.push(bayAt(i, frames));
-    const spanEW = spanOf(frames);
-    const zs = [-spanEW / 2];
-    for (const b of bays) zs.push(zs[zs.length - 1] + b);
-    // 檩条-组件节点详图取的组件缝：最东一跨里离两榀最远的一道（离檩托、斜梁远，画面里只有组件和檩条）；只有 1 列组件时取阵列东边
-    const gaps = [];
-    for (let j = 1; j < cols; j++) gaps.push(-arrW / 2 + j * pitchEW - FIX.modGapEW / 2);
-    const zE = zs[zs.length - 1], zW = zs.length > 1 ? zs[zs.length - 2] : -Infinity;
-    const clear = (g) => Math.min(...zs.map((z) => Math.abs(g - z)));
-    const inBay = gaps.filter((g) => g > zW && g < zE), pool = inBay.length ? inBay : gaps;
-    const gapZ = pool.length ? pool.reduce((a, g) => (clear(g) > clear(a) ? g : a)) : arrW / 2 + FIX.modGapEW / 2;
-    // 东西坡度：上面东西向的 z 都是沿檩条（沿坡）量的，榀距 = 两榀之间的檩条长度。
-    // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
-    const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
-    const ew = { i, ca, sa: i * ca };
-    const cuts = PV.cutPurlin(p, purlinLen, zs, gaps, arrW);
-    if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
-    return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
-  };
-  PV.cutPurlin = function(p,total,posts,gaps,width) {
-    const max=Number(p.maxPurlin), half=total/2;
-    const fallback={valid:false,positions:[],segments:[{start:-half,length:total}]};
-    if(!(max>0)) return fallback;
-    if(total<=max) return {...fallback,valid:true};
-    const fixtures=p.fix==='clamp'?[...gaps,-width/2,width/2]:Array.from({length:p.cols},(_,j)=>-width/2+j*(p.modW+20)).flatMap(z=>[z+18,z+p.modW-18]);
-    const candidates=[];
-    for(let x=50;x<total;x+=50){const z=x-half,d=Math.min(...posts.map(v=>Math.abs(z-v)));if(d>=300&&d<=1000&&fixtures.every(v=>Math.abs(z-v)>=300))candidates.push(x);}
-    for(let count=Math.ceil(total/max);count<=Math.min(candidates.length+1,Math.ceil(total/max)+20);count++){
-      let states=[{x:0,cost:0,path:[]}];
-      for(let k=1;k<count&&states.length;k++){
-        const next=[];
-        for(const x of candidates){let best;for(const prev of states){const len=x-prev.x-(k===1?2:4);if(len<=0||len>max||(k>1&&x-prev.x<400))continue;const cost=prev.cost+(len-total/count)**2;if(!best||cost<best.cost)best={x,cost,path:[...prev.path,x]};}if(best)next.push(best);}states=next;
-      }
-      const good=states.filter(v=>total-v.x-2>0&&total-v.x-2<=max);
-      if(!good.length)continue;
-      good.sort((a,b)=>(a.cost+(total-a.x-2-total/count)**2)-(b.cost+(total-b.x-2-total/count)**2));
-      const positions=good[0].path.map(x=>x-half),segments=[];let start=-half;
-      for(const z of positions){segments.push({start,length:z-2-start});start=z+2;}segments.push({start,length:half-start});return {valid:true,positions,segments};
-    }return fallback;
-  };
-})();
+    const good=states.filter(v=>total-v.x-2>0&&total-v.x-2<=max);
+    if(!good.length)continue;
+    good.sort((a,b)=>(a.cost+(total-a.x-2-total/count)**2)-(b.cost+(total-b.x-2-total/count)**2));
+    const positions=good[0].path.map(x=>x-half),segments=[];let start=-half;
+    for(const z of positions){segments.push({start,length:z-2-start});start=z+2;}segments.push({start,length:half-start});return {valid:true,positions,segments};
+  }return fallback;
+};
