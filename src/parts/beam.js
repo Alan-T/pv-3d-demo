@@ -13,7 +13,7 @@ function build(c) {
   const b0 = S.along(0);
   for (const z0 of layout.zs) {
     addMember(c.model, geo, M.beam, V(b0.x, b0.y, z0 + zw), n, EZ, u.clone().multiplyScalar(S.beamLen * MM));
-    c.bolts.add('top', V(S.xf, S.holeF, z0 + c.zBeamWeb), EZ, EY);
+    c.bolts.add('top', V(S.xf, S.holeF, z0 + c.zBeamWeb), EZ, EY, FIX.postF.t);
     c.bolts.add('top', V(S.xr, S.holeR, z0 + c.zBeamWeb), EZ, EY);
   }
 }

@@ -10,7 +10,7 @@ import '../config.js';
  * 斜撑-斜梁：斜撑腹板贴斜梁腹板，两条中心线交点 1 颗螺栓；斜撑端头平切。斜撑两端孔心到端头都是 35 */
 const { MM, V3, V, EY, EZ, NZ, FIX, JOINT, DBL, M, addMember } = PV;
 
-const geo = PV.extrudeC(FIX.brace);
+
 
 // 前柱、后柱两处斜撑节点（各榀相同）；标注、节点详图和面板也用
 function joints(S) {
@@ -24,10 +24,12 @@ function build(c) {
   for (const z0 of layout.zs) {
     for (const J of layout.joints) {
       for (const b of J.o ? [J, J.o] : [J]) {
+        const section = PV.section('brace', J.side < 0, b === J.o);
+        const geo = PV.track(PV.extrudeC(section));
         addMember(c.model, geo, M.brace, V(b.E.x, b.E.y, z0 + zw),
           new V3(-b.ay, b.ax, 0), NZ, new V3(b.ax, b.ay, 0).multiplyScalar(b.len * MM));
         // 头在斜梁腹板侧，螺母、平垫和弹垫在斜撑槽内。
-        c.bolts.add('btop', V(b.T.x, b.T.y, z0 + zw - FIX.brace.t), NZ, u);
+        c.bolts.add('btop', V(b.T.x, b.T.y, z0 + zw - section.t), NZ, u, section.t);
       }
       buildConnector(c, J, z0);
     }

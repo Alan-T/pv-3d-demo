@@ -120,7 +120,11 @@ function init() {
       scheduleBuild();
     });
     secBox.appendChild(row);
+    if (key === 'braceOF' || key === 'braceOR') {
+      conditional.push([row, { when: (p) => !!p.outer }]);
+    }
   }
+  refreshRows();
   // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值。原图叠加只有图纸一
   const presetEl = document.getElementById('preset'), overlayCb = document.querySelector('[data-k=overlay]');
   const applyPreset = () => {
@@ -204,6 +208,7 @@ function updateJointChips() {
 }
 
 function update() {
+  refreshRows();
   updateJointChips();
   const P = PV.P, S = st.S;
   const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, L = st.layout, n = L.frames, O = S.outer, np = S.purlins.length;
@@ -212,7 +217,7 @@ function update() {
   document.getElementById('warnings').innerHTML = [...S.warn, ...L.warn].map((w) => `<li>${w}</li>`).join('');
   const braceSum = S.braceF + S.braceR + (O ? O.braceOF + O.braceOR : 0);
   const steelKg =
-    n * ((S.lenF + S.lenR) * kgPerM(FIX.post) + S.beamLen * kgPerM(FIX.beam) + braceSum * kgPerM(FIX.brace)) / 1000 +
+    n * (S.lenF * kgPerM(FIX.postF) + S.lenR * kgPerM(FIX.postR) + S.beamLen * kgPerM(FIX.beam) + S.braceF * kgPerM(FIX.braceF) + S.braceR * kgPerM(FIX.braceR) + (O ? O.braceOF * kgPerM(FIX.braceOF) + O.braceOR * kgPerM(FIX.braceOR) : 0)) / 1000 +
     (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000;
   const rows = [
     ['榀数（按组件列数）', `${n} 榀（檩条两端悬挑 ${r((L.purlinLen - L.spanEW) / 2)}）`],

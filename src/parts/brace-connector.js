@@ -21,7 +21,8 @@ function braceEnds(Q, T) {
 // 孔位两种板相同：立柱中心线上 2 孔（间距 boltPitch），斜撑孔离立柱中心 ±boltU、比两立柱孔中点高 rise
 function braceJoint(S, B, T, Bo, To) {
   const dbl = !!Bo, side = Math.sign(T.x - B.x);            // +1 前柱（内斜撑向北），−1 后柱
-  const xc = B.x - (side * FIX.post.d) / 2, yc = B.y;
+  const postSection = PV.section('post', side < 0);
+  const xc = B.x - (side * postSection.d) / 2, yc = B.y;
   const hh = JOINT.plateH / 2, yTop = yc + hh;
   const U = (u) => xc + side * u;                             // u：离立柱中心线、朝内斜撑一侧的水平距离
   let pts, Qo = null;
@@ -41,7 +42,7 @@ function braceJoint(S, B, T, Bo, To) {
   const bolts = [[xc, yc - JOINT.boltPitch / 2], [xc, yc + JOINT.boltPitch / 2], [Q.x, Q.y]];
   if (o) bolts.push([o.Q.x, o.Q.y]);
   const spec = `${dbl ? DBL.half * 2 : JOINT.singleW}×${JOINT.plateH}×${JOINT.plateT}`;
-  return { ...inner, B, side, xc, yc, hh, yTop, plateGeo, bolts, o, spec };
+  return { ...inner, B, side, postSection, xc, yc, hh, yTop, plateGeo, bolts, o, spec };
 }
 
 function build(c, J, z0) {
@@ -52,8 +53,8 @@ function build(c, J, z0) {
       c.hw.add(plate);
       // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
       J.bolts.forEach(([x, y], i) => {
-        const thickness = i < 2 ? FIX.post.t : FIX.brace.t;
-        c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY);
+        const thickness = i < 2 ? J.postSection.t : (i === 3 ? PV.section('brace', J.side < 0, true).t : PV.section('brace', J.side < 0).t);
+        c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
       });
 }
 

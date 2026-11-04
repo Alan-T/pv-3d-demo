@@ -43,9 +43,9 @@ PV.solve = function solve(p) {
   }
   // 斜撑下端理论节点：立柱侧面、离 ±0 高 braceH（= 连接板竖向中点）。斜撑长度按理论节点到斜梁节点算，
   // 与两张图纸的斜撑长度一致；实际斜撑从连接板上的螺栓连到斜梁节点（见 parts/brace.js）
-  const bx = FIX.post.d / 2;
+  const bx = FIX.postF.d / 2, bxR = FIX.postR.d / 2;
   const bF = { x: xf + bx, y: p.braceHF };
-  const bR = { x: xr - bx, y: p.braceHR };
+  const bR = { x: xr - bxR, y: p.braceHR };
   const tFp = along(tF), tRp = along(tR);
   const braceF = Math.hypot(tFp.x - bF.x, tFp.y - bF.y);
   const braceR = Math.hypot(tRp.x - bR.x, tRp.y - bR.y);
@@ -53,7 +53,7 @@ PV.solve = function solve(p) {
   // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
   let outer = null;
   if (p.outer) {
-    const oF = { x: xf - bx, y: p.braceHF }, oR = { x: xr + bx, y: p.braceHR };
+    const oF = { x: xf - bx, y: p.braceHF }, oR = { x: xr + bxR, y: p.braceHR };
     const toF = Math.min(p.braceOutF, ovh - 100), toR = beamLen - Math.min(p.braceOutR, ovh - 100);
     if (p.braceOutF > ovh - 100 || p.braceOutR > ovh - 100) warn.push('外斜撑上节点要落在立柱外侧的斜梁悬挑段上，已临时压回悬挑段');
     const toFp = along(toF), toRp = along(toR);

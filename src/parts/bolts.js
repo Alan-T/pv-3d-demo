@@ -100,14 +100,25 @@ function collector(modT) {
   for (const k in K) mats[k] = [];
   return {
     // axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）
-    add(kind, p, axis, up) {
+    add(kind, p, axis, up, thickness) {
+      if (thickness !== undefined) {
+        const base = kind, key = base + ':' + thickness;
+        if (!K[key]) {
+          const stack = thickness + (base === 'top' || base === 'btop' ? FIX.beam.t : JOINT.plateT);
+          const slot = base === 'btop' ? null : { at: base === 'top' ? [-FIX.beam.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL };
+          K[key] = boltKind(12, stack, slot, { spring: true });
+          K[key].forEach(([g]) => PV.track(g));
+          mats[key] = [];
+        }
+        kind = key;
+      }
       const z = axis.clone().normalize(), y = up.clone().normalize(), x = new V3().crossVectors(y, z);
       mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
     },
     flush(parent, slopeParent) {
       for (const k in K) for (const [g, mat] of K[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
       return {
-        m12: mats.foot.length + mats.footBrace.length + mats.top.length + mats.btop.length + mats.clip.length + mats.clipWeb.length + mats.splice.length,
+        m12: Object.keys(mats).filter(k => !['module','clampMid','clampSide'].includes(k)).reduce((sum,k) => sum + mats[k].length, 0),
         spliceBolts: mats.splice.length,
         m8: mats.module.length,
         m8c: mats.clampMid.length + mats.clampSide.length,

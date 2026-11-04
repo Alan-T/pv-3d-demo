@@ -50,7 +50,10 @@ const SECTION_LIB = `
   const m = s.match(/^C(\d+)x(\d+)x(\d+)x([\d.]+)$/);
   return { name: `C${m[1]}×${m[2]}×${m[3]}×${m[4]}`, d: +m[1], f: +m[2], l: +m[3], t: +m[4] };
 });
-const SECTION_LABEL = { post: '立柱', beam: '斜梁', brace: '斜撑', purlin: '檩条' };
+for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
+for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
+PV.section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
+const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条' };
 // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
 const PRESETS = {
   A: {
