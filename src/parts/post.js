@@ -1,9 +1,8 @@
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
+import { addMember, NZ, EY, EX, V, MM, track } from '../core.js';
+import { M, extrudeC } from '../materials.js';
+import { FIX } from '../config.js';
 
 /* 立柱：每榀前、后各一根 C 型钢，柱顶平切、与斜梁上表面齐平；地面以下单独一段（埋地部分，可隐藏） */
-const { MM, V, EX, EY, NZ, FIX, M, addMember } = PV;
 
 
 
@@ -11,7 +10,7 @@ const { MM, V, EX, EY, NZ, FIX, M, addMember } = PV;
 function build(c) {
   const { S, layout, zw } = c;
   const post = (x, yBot, yTop, yG, z0, section) => {
-    const geo = PV.track(PV.extrudeC(section));
+    const geo = track(extrudeC(section));
     const cut = Math.min(Math.max(yG, yBot), yTop);
     if (yTop - cut > 1) addMember(c.model, geo, M.post, V(x, cut, z0 + zw), EX, NZ, EY.clone().multiplyScalar((yTop - cut) * MM));
     if (cut - yBot > 1) addMember(c.buried, geo, M.buried, V(x, yBot, z0 + zw), EX, NZ, EY.clone().multiplyScalar((cut - yBot) * MM));
@@ -22,6 +21,5 @@ function build(c) {
   }
 }
 
-PV.parts.post = { build };
 
 export { build };

@@ -1,10 +1,9 @@
+import { renderer } from './scene.js';
+import { MM } from './core.js';
+import { show } from './config.js';
 import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
-import './scene.js';
-import './config.js';
 
 /* 材质、贴图、配色，以及各构件共用的卷边槽钢截面 */
-const { MM, renderer } = PV;
 
 function cellTexture() {
   const cv = document.createElement('canvas');
@@ -62,7 +61,7 @@ const PALETTE = {
 // 剖切面封口（轴测节点图里被切开的檩条、组件补画的截面）：双面，转到背面看也在
 M.purlinCap = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.18, side: THREE.DoubleSide });
 function applyPalette() {
-  const pal = PV.show.drawingColors ? PALETTE.drawing : PALETTE.steel;
+  const pal = show.drawingColors ? PALETTE.drawing : PALETTE.steel;
   for (const k in pal) M[k].color.setHex(pal[k]);
   M.purlinCap.color.copy(M.purlin.color);
 }
@@ -102,4 +101,4 @@ function extrudeC(sec) {
   return new THREE.ExtrudeGeometry(cShape(sec), { depth: 1, bevelEnabled: false });
 }
 
-Object.assign(PV, { M, modMats, applyPalette, ghostMat, ghostModules, cShape, extrudeC });
+export {  M, modMats, applyPalette, ghostMat, ghostModules, cShape, extrudeC  };

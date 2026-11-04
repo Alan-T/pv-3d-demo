@@ -1,10 +1,9 @@
+import { addMember, EZ, MM } from '../core.js';
+import { M } from '../materials.js';
+import { FIX } from '../config.js';
 import * as THREE from '../../vendor/three.module.js';
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
 
 // U 型檩条连接件及每个接头的六套螺栓。
-const { MM, EZ, FIX, M, addMember } = PV;
 // 无卷边 U108×55×3.0，长240；纵向孔位暂按每侧30/60/90，待孔距详图确认。
 const splice = { depth: 108, length: 240, thickness: 3, flange: 55, webBolt: 60, flangeBolts: [30, 90] };
 const connectorGeo = (() => {

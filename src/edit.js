@@ -1,10 +1,15 @@
+import { canvas } from './scene.js';
+import { V3, shared } from './core.js';
+import { build } from './model.js';
+import { show, P, limits } from './config.js';
+import { showValue as panelShowValue } from './panel.js';
+import { getCamera } from './view.js';
 import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
-import './scene.js';
+
+const params = P;
 
 /* 蓝字（输入参数）点击修改：点击蓝字 → 原位出现红字输入框（带光标）；回车或点别处完成，Esc 取消。
  * 数值超范围自动夹到范围内 */
-const { V3, canvas } = PV;
 
 const editEl = document.getElementById('dimEdit');
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -12,17 +17,17 @@ let editing = null;   // { sprite, key }
 const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
 
 function pickLabel(ev) {
-  if (!PV.show.dims) return null;
+  if (!show.dims) return null;
   const r = canvas.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-  raycaster.setFromCamera(ndc, PV.view.camera);
-  const hit = raycaster.intersectObjects(PV.labels.filter((l) => l.userData.edit && shown(l)), false)[0];
+  raycaster.setFromCamera(ndc, getCamera());
+  const hit = raycaster.intersectObjects(shared.labels.filter((l) => l.userData.edit && shown(l)), false)[0];
   return hit ? hit.object : null;
 }
 
 function placeEdit() {
-  const sp = editing.sprite, h = Math.round(sp.userData.px * PV.state.labelK) + 6;
-  const v = sp.getWorldPosition(new V3()).project(PV.view.camera);
+  const sp = editing.sprite, h = Math.round(sp.userData.px * shared.state.labelK) + 6;
+  const v = sp.getWorldPosition(new V3()).project(getCamera());
   const w = Math.max(Math.round((h - 6) * sp.userData.aspect) + 12, 60);
   editEl.style.height = `${h}px`;
   editEl.style.width = `${w}px`;
@@ -33,7 +38,7 @@ function placeEdit() {
 
 function openEdit(sp) {
   editing = { sprite: sp, key: sp.userData.edit };
-  editEl.value = String(PV.P[editing.key]);
+  editEl.value = String(P[editing.key]);
   editEl.hidden = false;
   placeEdit();
   editEl.focus();
@@ -52,15 +57,15 @@ function closeEdit(commit) {
 }
 
 function setParam(key, v) {
-  const P = PV.P;
-  const [lo, hi, step] = PV.limits(key);
+  const P = params;
+  const [lo, hi, step] = limits(key);
   v = Math.min(hi, Math.max(lo, Math.round(v / step) * step));
   v = Math.round(v * 10) / 10;
   if (P[key] === v) return;
   P[key] = v;
   if (key === 'modL') P.hole = Math.min(P.hole, P.modL - 200);
-  PV.panel.showValue(key, v);
-  PV.build();
+  panelShowValue(key, v);
+  build();
 }
 
 // 每帧在标注文字更新之后调用：正在修改的那个文字由输入框代替
@@ -92,4 +97,4 @@ editEl.addEventListener('keydown', (e) => {
 });
 editEl.addEventListener('blur', () => closeEdit(true));
 
-PV.edit = { pickLabel, setParam, update };
+export { pickLabel, setParam, update };

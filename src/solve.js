@@ -1,11 +1,10 @@
-import { PV } from './core.js';
-import './config.js';
+import { JOINT, FIX } from './config.js';
+import { DEG, ewMatrix } from './core.js';
 
 /* 几何求解：由参数算出框架平面内的关键点和东西向布置，单位 mm。纯计算，不碰 three.js 场景 */
-const { DEG, FIX, JOINT } = PV;
 
 // 框架平面 (x, y) 内的所有关键点
-PV.solve = function solve(p) {
+export function solve(p) {
   const th = p.tilt * DEG, c = Math.cos(th), s = Math.sin(th);
   const L = p.span;
   // 沿坡 rows 块组件，每块下 2 根檩条（安装孔距 hole）；斜梁伸出首末檩条各 114，长度取整到 10；立柱在斜梁上居中
@@ -81,12 +80,12 @@ PV.solve = function solve(p) {
     lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
     modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
   };
-};
+}
 
 // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
 // 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
 // 榀距比阵列还宽时少放一榀
-PV.layoutEW = function layoutEW(p) {
+export function layoutEW(p) {
   const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
   const arrW = cols * pitchEW - FIX.modGapEW;
   const purlinExt = FIX.purlinExt[p.fix], purlinLen = arrW + 2 * purlinExt;
@@ -112,14 +111,14 @@ PV.layoutEW = function layoutEW(p) {
   const inBay = gaps.filter((g) => g > zW && g < zE), pool = inBay.length ? inBay : gaps;
   const gapZ = pool.length ? pool.reduce((a, g) => (clear(g) > clear(a) ? g : a)) : arrW / 2 + FIX.modGapEW / 2;
   // 东西坡度：上面东西向的 z 都是沿檩条（沿坡）量的，榀距 = 两榀之间的檩条长度。
-  // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 PV.ewMatrix
+  // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 ewMatrix
   const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
   const ew = { i, ca, sa: i * ca };
-  const cuts = PV.cutPurlin(p, purlinLen, zs, gaps, arrW);
+  const cuts = cutPurlin(p, purlinLen, zs, gaps, arrW);
   if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
   return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
-};
-PV.cutPurlin = function(p,total,posts,gaps,width) {
+}
+export function cutPurlin(p,total,posts,gaps,width) {
   const max=Number(p.maxPurlin), half=total/2;
   const fallback={valid:false,positions:[],segments:[{start:-half,length:total}]};
   if(!(max>0)) return fallback;
@@ -139,4 +138,4 @@ PV.cutPurlin = function(p,total,posts,gaps,width) {
     const positions=good[0].path.map(x=>x-half),segments=[];let start=-half;
     for(const z of positions){segments.push({start,length:z-2-start});start=z+2;}segments.push({start,length:half-start});return {valid:true,positions,segments};
   }return fallback;
-};
+}

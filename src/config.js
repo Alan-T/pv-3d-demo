@@ -1,4 +1,4 @@
-import { PV } from './core.js';
+
 
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
@@ -52,7 +52,7 @@ const SECTION_LIB = `
 });
 for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
 for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
-PV.section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
+const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条' };
 // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
 const PRESETS = {
@@ -153,11 +153,9 @@ function limits(key) {
   const d = PARAMS.find((q) => q.key === key);
   if (d) return [d.min, d.max, key === 'tilt' || d.unit === '%' ? 0.1 : 1];
   const [lo, hi] = EXTRA_LIMITS[key];
-  return [lo, key === 'hole' ? Math.min(hi, PV.P.modL - 200) : hi, 1];
+  return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
 }
 
-Object.assign(PV, {
-  FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL,
-  P: Object.assign({}, DEFAULTS),   // 当前参数
-  show: { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, overlay: false },
-});
+const P = Object.assign({}, DEFAULTS);
+const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, overlay: false };
+export { FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

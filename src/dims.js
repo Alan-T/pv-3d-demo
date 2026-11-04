@@ -1,10 +1,12 @@
+import { root, canvas } from './scene.js';
+import { FONT, V, V3, MM, DEG, track, ewPlace, shared } from './core.js';
+import { FIX, P } from './config.js';
+import { build as jointDetailBuild } from './joint-detail.js';
 import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
-import './scene.js';
-import './config.js';
+
+const params = P;
 
 /* 尺寸标注：侧视、东西向、垂直组件视图的标注；文字精灵保持固定屏幕像素大小。连接节点详图见 joint-detail.js */
-const { DEG, MM, V3, V, FIX, FONT, canvas, root } = PV;
 
 const dimLineMat = new THREE.LineBasicMaterial({ color: 0x2f9e44, depthTest: false, transparent: true });
 const refLineMat = new THREE.LineBasicMaterial({ color: 0x7d8790, depthTest: false, transparent: true });
@@ -35,11 +37,11 @@ function makeLabel(text, kind, px) {
   tex.minFilter = THREE.LinearFilter;
   tex.generateMipmaps = false;
   const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
-  PV.track(tex, mat);
+  track(tex, mat);
   const sp = new THREE.Sprite(mat);
   sp.renderOrder = 1001;
   sp.userData = { aspect: w / h, px: px || 15 };
-  PV.labels.push(sp);
+  shared.labels.push(sp);
   return sp;
 }
 
@@ -63,7 +65,7 @@ class DimSet {
   finish(lineMat, dashLineMat) {
     for (const [arr, mat] of [[this.pos, lineMat], [this.dash, dashLineMat || dashMat]]) {
       if (!arr.length) continue;
-      const g = PV.track(new THREE.BufferGeometry());
+      const g = track(new THREE.BufferGeometry());
       g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
       const ls = new THREE.LineSegments(g, mat);
       if (mat.isLineDashedMaterial) ls.computeLineDistances();
@@ -75,7 +77,7 @@ class DimSet {
 }
 
 function build() {
-  const { S, layout } = PV.state, P = PV.P;
+  const { S, layout } = shared.state, P = params;
   const r = Math.round;
   const zd = layout.zs[layout.zs.length - 1] + 450;    // 标注放在最东一榀前面（侧视图朝向相机）
   const v = (x, y) => V(x, y, zd);
@@ -205,7 +207,7 @@ function build() {
   for (const t of S.purlins) purlinLines.seg(pS(t, -halfL), pS(t, halfL));
   for (const z of layout.zs) beamLines.seg(pS(0, z), pS(S.beamLen, z));
 
-  const jointG = PV.jointDetail.build(S, layout);
+  const jointG = jointDetailBuild(S, layout);
   const deepG = deep.finish(dimLineMat);
   const sideG = new THREE.Group();
   sideG.add(side.finish(dimLineMat), ref.finish(refLineMat), deepG);
@@ -217,22 +219,22 @@ function build() {
   normalG.add(purlinLines.finish(purlinLineMat), beamLines.finish(beamLineMat));
   // 东西坡度：侧视标注跟着最东一榀平移，东西向、垂直组件视图的标注顺坡
   const zLast = layout.zs[layout.zs.length - 1];
-  for (const gr of [keyG, sideG]) PV.ewPlace(gr, layout.ew, zLast);
-  for (const gr of [ewG, normalG, topCutsG]) PV.ewPlace(gr, layout.ew);
+  for (const gr of [keyG, sideG]) ewPlace(gr, layout.ew, zLast);
+  for (const gr of [ewG, normalG, topCutsG]) ewPlace(gr, layout.ew);
   const rootG = new THREE.Group();
   rootG.add(keyG, sideG, ewG, normalG, jointG, topCutsG);
   root.add(rootG);
-  PV.state.dims = { root: rootG, key: keyG, side: sideG, deep: deepG, ew: ewG, normal: normalG, joint: jointG, topCuts: topCutsG };
+  shared.state.dims = { root: rootG, key: keyG, side: sideG, deep: deepG, ew: ewG, normal: normalG, joint: jointG, topCuts: topCutsG };
 }
 
 // 标注文字保持固定的屏幕像素高度（每帧调用）
 const tmpV = new V3(), camDir = new V3();
 function updateLabels(cam) {
   const hpx = canvas.clientHeight || 1;
-  const k = (PV.state.labelK = canvas.clientWidth < 520 ? 1.0 : 1.25);
+  const k = (shared.state.labelK = canvas.clientWidth < 520 ? 1.0 : 1.25);
   const collapsed = {};
   cam.getWorldDirection(camDir);
-  for (const sp of PV.labels) {
+  for (const sp of shared.labels) {
     sp.getWorldPosition(tmpV);
     let wpp;
     if (cam.isPerspectiveCamera) {
@@ -253,4 +255,5 @@ function updateLabels(cam) {
   }
 }
 
-PV.dims = { build, updateLabels, DimSet, mats: { line: dimLineMat, center: centerLineMat } };
+const mats = { line: dimLineMat, center: centerLineMat };
+export { build, updateLabels, DimSet, mats };

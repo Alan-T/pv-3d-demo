@@ -1,10 +1,9 @@
+import { M } from '../materials.js';
+import { DBL, JOINT, FIX, section } from '../config.js';
+import { NZ, EY, V, MM, track } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
 
 // 斜撑连接板：节点几何、孔位及连接螺栓。
-const { MM, V, EY, NZ, FIX, JOINT, DBL, M } = PV;
 
 // 实际斜撑：从连接板上的螺栓 Q 连到斜梁节点 T，两端端头（垂直切口）都在孔心外 braceEdge：下端 E 在 Q 下方，上端过 T
 function braceEnds(Q, T) {
@@ -21,7 +20,7 @@ function braceEnds(Q, T) {
 // 孔位两种板相同：立柱中心线上 2 孔（间距 boltPitch），斜撑孔离立柱中心 ±boltU、比两立柱孔中点高 rise
 function braceJoint(S, B, T, Bo, To) {
   const dbl = !!Bo, side = Math.sign(T.x - B.x);            // +1 前柱（内斜撑向北），−1 后柱
-  const postSection = PV.section('post', side < 0);
+  const postSection = section('post', side < 0);
   const xc = B.x - (side * postSection.d) / 2, yc = B.y;
   const hh = JOINT.plateH / 2, yTop = yc + hh;
   const U = (u) => xc + side * u;                             // u：离立柱中心线、朝内斜撑一侧的水平距离
@@ -37,7 +36,7 @@ function braceJoint(S, B, T, Bo, To) {
   }
   const Q = { x: U(JOINT.boltU), y: yc + JOINT.rise };
   const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q[0] * MM, q[1] * MM)));
-  const plateGeo = PV.track(new THREE.ExtrudeGeometry(shape, { depth: JOINT.plateT * MM, bevelEnabled: false }));
+  const plateGeo = track(new THREE.ExtrudeGeometry(shape, { depth: JOINT.plateT * MM, bevelEnabled: false }));
   const inner = braceEnds(Q, T), o = dbl ? braceEnds(Qo, To) : null;
   const bolts = [[xc, yc - JOINT.boltPitch / 2], [xc, yc + JOINT.boltPitch / 2], [Q.x, Q.y]];
   if (o) bolts.push([o.Q.x, o.Q.y]);
@@ -53,7 +52,7 @@ function build(c, J, z0) {
       c.hw.add(plate);
       // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
       J.bolts.forEach(([x, y], i) => {
-        const thickness = i < 2 ? J.postSection.t : (i === 3 ? PV.section('brace', J.side < 0, true).t : PV.section('brace', J.side < 0).t);
+        const thickness = i < 2 ? J.postSection.t : (i === 3 ? section('brace', J.side < 0, true).t : section('brace', J.side < 0).t);
         c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
       });
 }

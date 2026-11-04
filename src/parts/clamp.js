@@ -1,11 +1,10 @@
+import { M } from '../materials.js';
+import { CLAMP, FIX } from '../config.js';
+import { EZ, V, MM, instanced } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
 
 /* 压块固定（固定方式选“压块”时）：组件东西向每道缝上一个中压块，阵列东西两端各一个边压块，沿坡对齐每根檩条。
  * 每个压块 1 颗 M8×35 内六角螺栓，螺栓头坐在压块槽底，穿过檩条上翼缘，螺母在翼缘下面。截面尺寸见 config.js 的 CLAMP */
-const { MM, V, EZ, FIX, CLAMP, M } = PV;
 const T = CLAMP.teeth, V2 = THREE.Vector2;
 
 // 一排锯齿：从 x0 到 x1，齿根在 yb、齿尖在 yt
@@ -74,11 +73,10 @@ function build(c) {
     for (const z of gaps) { put(mid, z, 1); bolt('clampMid', z); }
     for (const sx of [-1, 1]) { put(side, sx * e, sx); bolt('clampSide', sx * (e + sideBoltX)); }
   }
-  PV.instanced(c.hwSlope, midGeo, M.clamp, mid);
-  PV.instanced(c.hwSlope, sideGeo(H), M.clamp, side);
+  instanced(c.hwSlope, midGeo, M.clamp, mid);
+  instanced(c.hwSlope, sideGeo(H), M.clamp, side);
   return { mid: mid.length, side: side.length };
 }
 
-PV.parts.clamp = { build, sideBoltX };
 
 export { build, sideBoltX };

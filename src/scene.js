@@ -1,6 +1,5 @@
-import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
+import * as THREE from '../vendor/three.module.js';
 
 /* 渲染器、相机、控制器、灯光；root 下放每次重建的模型、标注和原图叠加 */
 
@@ -53,4 +52,4 @@ function resize() {
   return true;
 }
 
-Object.assign(PV, { canvas, stage, renderer, scene, persp, ortho, controls, sun, root, resize });
+export {  canvas, stage, renderer, scene, persp, ortho, controls, sun, root, resize  };

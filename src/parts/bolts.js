@@ -1,10 +1,9 @@
+import { M } from '../materials.js';
+import { CLAMP, CLIP, JOINT, FIX } from '../config.js';
+import { V3, MM, track, instanced } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
 
 /* 螺栓：M12 / M8 两种规格，按连接位置分几种叠层厚度；每次重建由各构件登记位置，最后统一画成实例化网格 */
-const { MM, V3, FIX, JOINT, CLIP, CLAMP, M } = PV;
 
 // 螺栓组：局部 z 为螺栓轴线、指向螺母一侧，z=0 在螺母一侧被连接件的外表面。
 // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，画在开孔那块板的表面上，at 为这些表面的局部 z）。
@@ -107,7 +106,7 @@ function collector(modT) {
           const stack = thickness + (base === 'top' || base === 'btop' ? FIX.beam.t : JOINT.plateT);
           const slot = base === 'btop' ? null : { at: base === 'top' ? [-FIX.beam.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL };
           K[key] = boltKind(12, stack, slot, { spring: true });
-          K[key].forEach(([g]) => PV.track(g));
+          K[key].forEach(([g]) => track(g));
           mats[key] = [];
         }
         kind = key;
@@ -116,7 +115,7 @@ function collector(modT) {
       mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
     },
     flush(parent, slopeParent) {
-      for (const k in K) for (const [g, mat] of K[k]) PV.instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
+      for (const k in K) for (const [g, mat] of K[k]) instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
       return {
         m12: Object.keys(mats).filter(k => !['module','clampMid','clampSide'].includes(k)).reduce((sum,k) => sum + mats[k].length, 0),
         spliceBolts: mats.splice.length,
@@ -127,6 +126,5 @@ function collector(modT) {
   };
 }
 
-PV.parts.bolts = { collector };
 
 export { collector };

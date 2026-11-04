@@ -1,10 +1,9 @@
+import { M } from '../materials.js';
+import { CLIP, FIX } from '../config.js';
+import { EZ, V, MM, instanced } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
-import { PV } from '../core.js';
-import '../materials.js';
-import '../config.js';
 
 // L 形檩托及其底边、立边螺栓。
-const { MM, V, EZ, FIX, CLIP, M } = PV;
 // 檩托截面：局部 x 从檩条腹板外表面往下坡，局部 y 从斜梁上表面往上；沿局部 z 拉伸单位长度
 const clipGeo = (() => {
   const t = CLIP.t * MM, a = CLIP.base * MM, h = CLIP.height * MM;
@@ -33,7 +32,7 @@ export function build(c) {
       c.bolts.add('clipWeb', at(FIX.purlin.t, CLIP.webBolt, zClip), u, n);
     }
   }
-  PV.instanced(c.hw, clipGeo, M.clip, clipMats);
+  instanced(c.hw, clipGeo, M.clip, clipMats);
 
   return clipMats.length;
 }

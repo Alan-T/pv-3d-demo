@@ -88,7 +88,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ### 檩条切割与连接件
 
-最大长度可选 `5700 / 7200 / 9000`，与表面处理无关联。算法位于 `src/solve.js` 的 `PV.cutPurlin()`：
+最大长度可选 `5700 / 7200 / 9000`，与表面处理无关联。算法位于 `src/solve.js` 的 `cutPurlin()`：
 
 1. 总长不超过上限时保留一段。
 2. 从檩条起点按 50 步长生成候选接头；距最近一榀为 300～1000，且避开固定点至少 300。
@@ -114,7 +114,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ## 代码结构
 
-`index.html` 仅加载 `src/main.js`。模块通过 `import` 声明依赖；`src/core.js` 导出共享上下文 `PV`，不再使用全局 `window.PV`。各功能模块仍通过该上下文注册能力、共享状态。无打包流程，`deploy/serve.js` 保持 Node.js CommonJS 脚本。
+`index.html` 仅加载 `src/main.js`。模块通过具名 `import/export` 声明依赖并显式调用函数，不再通过 `PV.parts` 或 `PV` 功能注册表间接调用。`src/core.js` 导出工具与共享运行状态 `shared`，参数由 `src/config.js` 导出。无打包流程，`deploy/serve.js` 保持 Node.js CommonJS 脚本。
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
@@ -142,7 +142,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `vendor/three.module.js` / `vendor/OrbitControls.js` | 本地 three.js r128 模块和相机控制器 |
 | `deploy/` | 静态服务及 systemd 配置 |
 
-构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并注册模块，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
+构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
 
 修改后刷新浏览器即可。建议核对两套方案、非零坡度、两种固定方式及受影响节点。
 

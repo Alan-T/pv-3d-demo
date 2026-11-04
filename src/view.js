@@ -1,11 +1,13 @@
+import { sun, controls, ortho, persp, renderer, canvas, root } from './scene.js';
+import { M, ghostModules, ghostMat, applyPalette } from './materials.js';
+import { FIX, show, P } from './config.js';
+import { EY, V, V3, MM, DEG, ewMatrix, shared } from './core.js';
 import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
-import './materials.js';
-import './config.js';
+
+const params = P;
 
 /* 视角与显示：各视图下显示哪些部分、相机取景和切换动画 */
-const { DEG, MM, V3, V, EY, FIX, M, canvas, renderer, persp, ortho, controls, sun } = PV;
-const st = PV.state;
+const st = shared.state;
 
 let cam = persp;
 let tween = null;
@@ -26,11 +28,11 @@ function sectionRange(layout, key) {
 }
 const clipLo = new THREE.Plane(new V3(0, 0, 1), 0), clipHi = new THREE.Plane(new V3(0, 0, -1), 0);
 function applyVisibility() {
-  const g = st.groups, d = st.dims, view = st.view, show = PV.show;
+  const g = st.groups, d = st.dims, view = st.view;
   // 垂直组件为展开对照视图：抵消东西顺坡变换，组件及尺寸保持固定。
-  PV.root.matrixAutoUpdate = false;
-  PV.root.matrix.copy(view === 'normal' ? PV.ewMatrix(st.layout.ew).invert() : new THREE.Matrix4());
-  PV.root.matrixWorldNeedsUpdate = true;
+  root.matrixAutoUpdate = false;
+  root.matrix.copy(view === 'normal' ? ewMatrix(st.layout.ew).invert() : new THREE.Matrix4());
+  root.matrixWorldNeedsUpdate = true;
   if (!g) return;
   d.root.visible = show.dims;
   d.key.visible = view === '3d' || view === 'side';
@@ -52,7 +54,7 @@ function applyVisibility() {
   // 侧视对照按最东一榀作截面展示：通长构件不再投影成高低叠加的带状区域。
   // 只改变展示矩阵，各榀位置、实际顺坡模型和计算结果保持原值。
   for (const k of ['modules', 'slope', 'hwSlope']) {
-    g[k].matrix.copy(PV.ewMatrix(ew, sideSlope ? st.layout.zs.at(-1) : undefined));
+    g[k].matrix.copy(ewMatrix(ew, sideSlope ? st.layout.zs.at(-1) : undefined));
     g[k].matrixWorldNeedsUpdate = true;
   }
   const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
@@ -73,8 +75,8 @@ function applyVisibility() {
   for (const cg of g.caps) cg.visible = sectioned && cg.userData.section === key;
   // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
   const moduleOpacity = sectioned && !mod ? 0.2 : 0.32;
-  PV.ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
-  PV.ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
+  ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
+  ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
   g.hw.visible = show.bolts;
   st.overlay.visible = show.overlay && st.preset === 'A';   // 原图只有图纸一（2 排）的侧视图
   const gm = M.ground;
@@ -85,7 +87,7 @@ function applyVisibility() {
     gm.depthWrite = !wantTransparent;
     gm.needsUpdate = true;
   }
-  PV.applyPalette();
+  applyPalette();
 }
 
 // pre：先把世界坐标再变换一次（侧视在东西坡度下按最东一榀取景用）
@@ -133,7 +135,7 @@ function lockView(locked) {
 // 返回正交相机的目标点、视线方向（目标点 → 相机）和缩放
 const FOLLOW_VIEWS = new Set(['normal', 'joint-elev', 'joint-iso']);
 function framePose(name) {
-  const { S, layout } = st, P = PV.P;
+  const { S, layout } = st, P = params;
   if (name === 'normal') {
     // 展开视图在 root 抵消了东西坡度，按固定组件平面取景。
     const W = new THREE.Matrix4(); // 展开视图已在 root 抵消东西坡度
@@ -162,7 +164,7 @@ function framePose(name) {
   const sp = layout.jointSpecs[st.jointType][st.jointSel];
   const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
   const z = sp.z === undefined ? zLast + FIX.post.f / 2 : sp.z;
-  const W = PV.ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
+  const W = ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
   const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
   const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
   if (st.jointType === 'splice') {
@@ -230,10 +232,10 @@ function setView(name, instant) {
   lockView(LOCKED_VIEWS.has(name));
   applyVisibility();
   const { model } = st.groups, d = st.dims;
-  const objs = name === 'side' && PV.show.dims ? [model, d.key, d.side] : [model];
+  const objs = name === 'side' && show.dims ? [model, d.key, d.side] : [model];
   // 侧视在东西坡度下：各榀高低错开，按最东一榀取景——先剪切回沿坡坐标（各榀叠在一起），再抬到最东一榀
   const { ew, zs } = st.layout;
-  const pre = name === 'side' && ew.i ? PV.ewMatrix(ew, zs[zs.length - 1]).multiply(PV.ewMatrix(ew).invert()) : null;
+  const pre = name === 'side' && ew.i ? ewMatrix(ew, zs[zs.length - 1]).multiply(ewMatrix(ew).invert()) : null;
   const box = visibleBox(objs, pre);
   const ctr = box.getCenter(new V3()), size = box.getSize(new V3());
   const aspect = persp.aspect;
@@ -249,7 +251,7 @@ function setView(name, instant) {
     goTo(persp, ctr.clone().addScaledVector(dir, dist), ctr, null, instant);
   } else {
     let dir, w, h;
-    if (name === 'side') { dir = new V3(0, 0, 1); w = size.x + (PV.show.dims ? 1.6 : 0); h = size.y; }  // 两端文字留边
+    if (name === 'side') { dir = new V3(0, 0, 1); w = size.x + (show.dims ? 1.6 : 0); h = size.y; }  // 两端文字留边
     else if (name === 'front') { dir = new V3(-1, 0, 0); w = size.z; h = size.y; }
     else { dir = new V3(-0.002, 1, 0).normalize(); w = size.z; h = size.x; }
     const half = Math.max(h / 2, w / 2 / aspect) * 1.1;
@@ -309,7 +311,11 @@ function tick(now) {
   if (tween) stepTween(now); else controls.update();
 }
 
-PV.view = {
+export const view = {
   set: setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange, buttons: viewButtons,
   get camera() { return cam; },
 };
+
+export { setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange };
+export function getCamera() { return cam; }
+export { viewButtons as buttons };

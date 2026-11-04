@@ -1,3 +1,4 @@
+
 import * as THREE from '../vendor/three.module.js';
 
 /* 光伏固定支架 3D 设计 Demo —— three.js r128（ES Modules）
@@ -11,7 +12,7 @@ import * as THREE from '../vendor/three.module.js';
 const MM = 0.001;
 const V3 = THREE.Vector3;
 
-export const PV = {
+const PV = {
   DEG: Math.PI / 180,
   MM,
   V3,
@@ -74,3 +75,8 @@ PV.instanced = function instanced(parent, geo, mat, mats) {
   parent.add(im);
   PV.track(im);
 };
+
+export const { DEG, FONT, V, EX, EY, EZ, NZ, track, addMember, ewMatrix, ewPlace, instanced } = PV;
+export const shared = PV;
+
+export { MM, V3 };

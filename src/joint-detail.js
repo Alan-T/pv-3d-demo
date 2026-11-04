@@ -1,17 +1,18 @@
+import { mats, DimSet } from './dims.js';
+import { CLAMP, CLIP, DBL, JOINT, FIX, P, section } from './config.js';
+import { V, V3, MM, DEG, ewPlace } from './core.js';
+import { sideBoltX as clampSideBoltX } from './parts/clamp.js';
 import * as THREE from '../vendor/three.module.js';
-import { PV } from './core.js';
-import './dims.js';
-import './parts/purlin.js';
-import './parts/clamp.js';
+
+const params = P;
 
 /* 连接节点详图（最东一榀的 4 种节点 + 最东一跨里一道组件缝处的檩条-组件 + 阵列东边的边压块，各前/后一组）：引线标注 + 红色点划中心线。
  * 每组的 box（框架平面 mm）、labelSide（文字在节点哪一侧）和 z（节点东西向位置，不给就是最东一榀）也给 view.js 取景用 */
-const { DEG, MM, V3, V, FIX, JOINT, DBL, CLIP, CLAMP } = PV;
-const { DimSet, mats } = PV.dims;
+
 
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
 function build(S, layout) {
-  const P = PV.P, clamp = P.fix === 'clamp';
+  const P = params, clamp = P.fix === 'clamp';
   const zLast = layout.zs[layout.zs.length - 1];
   const zj = zLast + FIX.post.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
   const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
@@ -28,9 +29,9 @@ function build(S, layout) {
       specs.foot.push({
         labelSide: -J.side, anchorX: ax,
         leaders: [
-          [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(PV.section('brace', !!fr, true))}`],
-          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(PV.section('brace', !!fr))}`],
-          [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(PV.section('post', !!fr))}`],
+          [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(section('brace', !!fr, true))}`],
+          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(section('brace', !!fr))}`],
+          [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
           [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×4（平垫 + 弹垫），长圆孔'],
           [J.xc - J.side * 30, J.yc - 25, ly(4), `双面斜撑连接板 ${J.spec}`],
           [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
@@ -42,35 +43,35 @@ function build(S, layout) {
       });
     } else { // 斜撑-立柱：文字放在立柱另一侧
       specs.foot.push({
-        labelSide: -J.side, anchorX: J.xc - J.side * (PV.section('post', !!fr).d / 2 + 50),
+        labelSide: -J.side, anchorX: J.xc - J.side * (section('post', !!fr).d / 2 + 50),
         leaders: [
-          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 70, `立柱 ${sec(PV.section('post', !!fr))}`],
-          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 15, `斜撑 ${sec(PV.section('brace', !!fr))}`],
+          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 70, `立柱 ${sec(section('post', !!fr))}`],
+          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 15, `斜撑 ${sec(section('brace', !!fr))}`],
           [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12 螺栓 ×3（平垫 + 弹垫），长圆孔'],
           [J.B.x - J.side * 25, J.yc - J.hh + 22, J.yc - 20, `斜撑连接板 ${J.spec}`],
           [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
         ],
         lines: [[J.xc, J.yc - J.hh - 70, J.xc, J.yc + J.hh + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260]],
-        box: [J.xc - J.side * (PV.section('post', !!fr).d / 2 + 110), J.xc + J.side * (JOINT.singleW - JOINT.singleBack + 170),
+        box: [J.xc - J.side * (section('post', !!fr).d / 2 + 110), J.xc + J.side * (JOINT.singleW - JOINT.singleBack + 170),
           J.yc - J.hh - 70, J.yc + J.hh + 150],
       });
     }
     { // 立柱-斜梁：文字放在框架外侧、斜梁下面；螺栓在立柱中心线上、孔心距柱顶 50（尺寸标在框架内侧）
       const node = { x: fr ? S.xr : S.xf, y: fr ? S.nodeR : S.nodeF }, ty = fr ? S.topR : S.topF, ls = fr ? 1 : -1;
       const hole = { x: node.x, y: fr ? S.holeR : S.holeF };
-      const ax = node.x + ls * (PV.section('post', !!fr).d / 2 + 140), y0 = beamY(node, ax, -S.hBeamTop) - 45, bp = mv(node, ls * 130, 0);
+      const ax = node.x + ls * (section('post', !!fr).d / 2 + 140), y0 = beamY(node, ax, -S.hBeamTop) - 45, bp = mv(node, ls * 130, 0);
       specs.top.push({
         labelSide: ls, anchorX: ax,
         leaders: [
           [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
-          [node.x - PV.section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, '柱顶平切，与斜梁上表面齐平'],   // 下坡一侧的柱顶角露在斜梁上方
+          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, '柱顶平切，与斜梁上表面齐平'],   // 下坡一侧的柱顶角露在斜梁上方
           [hole.x, hole.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫）'],
           [hole.x, hole.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
-          [node.x, node.y - 190, y0 - 260, `立柱 ${sec(PV.section('post', !!fr))}`],
+          [node.x, node.y - 190, y0 - 260, `立柱 ${sec(section('post', !!fr))}`],
         ],
         lines: [[node.x, node.y - 280, node.x, ty + 70], seg2(mv(node, -320, 0), mv(node, 320, 0))],
-        dims: [[node.x, ty, hole.x, hole.y, -ls * (PV.section('post', !!fr).d / 2 + 60), 0, `${JOINT.postTopHole}`]],
+        dims: [[node.x, ty, hole.x, hole.y, -ls * (section('post', !!fr).d / 2 + 60), 0, `${JOINT.postTopHole}`]],
         box: [node.x - ls * 260, ax, y0 - 290, ty + 90],
       });
     }
@@ -83,7 +84,7 @@ function build(S, layout) {
           [end.x, end.y, y0, `斜撑端头平切，孔心到端头 ${JOINT.braceEdge}`],
           [bp.x, bp.y, y0 - 65, `斜梁 ${sec(FIX.beam)}`],
           [T.x, T.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫），中心线交点'],
-          [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(PV.section('brace', !!fr))}`],
+          [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(section('brace', !!fr))}`],
         ],
         lines: [seg2(mv(T, -340, 0), mv(T, 340, 0)),
           [T.x + J.ax * 80, T.y + J.ay * 80, T.x - J.ax * 380, T.y - J.ay * 380]],
@@ -135,7 +136,7 @@ function build(S, layout) {
       // 引线画在螺栓所在平面里；组件、压块那两根指到组件边里面一点和压块上沿
       const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
       const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 3;
-      const e = layout.arrW / 2, zb = e + PV.parts.clamp.sideBoltX, top = S.hModBot + P.modT, Sd = CLAMP.side;
+      const e = layout.arrW / 2, zb = e + clampSideBoltX, top = S.hModBot + P.modT, Sd = CLAMP.side;
       const parts = [
         [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
         [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
@@ -186,11 +187,11 @@ function build(S, layout) {
       g.add(cl.finish(mats.line, mats.center));
       g.userData.joint = type + fr;
       // 东西坡度：支架节点跟着最东一榀平移，檩条-组件、边压块顺坡
-      PV.ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
+      ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
       group.add(g);
     });
   }
   return group;
 }
 
-PV.jointDetail = { build };
+export { build };

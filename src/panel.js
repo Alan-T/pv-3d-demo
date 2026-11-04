@@ -1,24 +1,28 @@
-import { PV } from './core.js';
-import './config.js';
+import { CLIP, FIX, P, PARAMS, limits, SECTION_LIB, SECTION_LABEL, PRESETS, show } from './config.js';
+import { shared } from './core.js';
+import { build } from './model.js';
+import { ensure as overlayEnsure } from './overlay.js';
+import { setView as viewSetView, applyVisibility as viewApplyVisibility, buttons as viewButtons } from './view.js';
+
+const params = P;
 
 /* 右侧面板：参数输入、显示开关、视角和节点按钮，以及计算结果、与图纸核对两张表 */
-const { FIX, CLIP } = PV;
-const st = PV.state;
+const st = shared.state;
 
 const inputs = {};
 const conditional = [];   // 带 when 的参数行：只在条件成立时显示（比如压块长度只在“压块”时）
-const refreshRows = () => { for (const [row, d] of conditional) row.style.display = d.when(PV.P) ? '' : 'none'; };
+const refreshRows = () => { for (const [row, d] of conditional) row.style.display = d.when(P) ? '' : 'none'; };
 let pending = false;
 function scheduleBuild() {
   if (pending) return;
   pending = true;
-  requestAnimationFrame(() => { pending = false; PV.build(); });
+  requestAnimationFrame(() => { pending = false; build(); });
 }
 
 function init() {
-  const P = PV.P;
+  const P = params;
   const box = document.getElementById('params');
-  for (const d of PV.PARAMS) {
+  for (const d of PARAMS) {
     const row = document.createElement('div');
     row.className = 'prow';
     if (d.when) conditional.push([row, d]);
@@ -36,12 +40,12 @@ function init() {
     if (d.type === 'size') {   // 一行几个数（组件 长 × 宽 × 厚），范围见 EXTRA_LIMITS
       row.classList.add('psize');
       row.innerHTML = `<span class="pl">${d.label}</span><span class="pv">` +
-        d.keys.map((k) => { const [lo, hi] = PV.limits(k); return `<input type="number" min="${lo}" max="${hi}" step="1" value="${P[k]}" data-k="${k}">`; }).join('<b>×</b>') +
+        d.keys.map((k) => { const [lo, hi] = limits(k); return `<input type="number" min="${lo}" max="${hi}" step="1" value="${P[k]}" data-k="${k}">`; }).join('<b>×</b>') +
         `<i>${d.unit}</i></span>` + (d.hint ? `<small>${d.hint}</small>` : '');
       row.querySelectorAll('input').forEach((num) => {
         const k = num.dataset.k;
         num.addEventListener('change', () => {
-          const [lo, hi] = PV.limits(k);
+          const [lo, hi] = limits(k);
           if (!isFinite(+num.value) || num.value === '') { num.value = P[k]; return; }
           P[k] = num.value = Math.min(hi, Math.max(lo, Math.round(+num.value)));
           if (k === 'modL') P.hole = Math.min(P.hole, P.modL - 200);
@@ -87,28 +91,28 @@ function init() {
   const secBox = document.getElementById('sections');
   const dl = document.createElement('datalist');
   dl.id = 'sectionLib';
-  dl.innerHTML = PV.SECTION_LIB.map((s) => `<option value="${s.name}">`).join('');
+  dl.innerHTML = SECTION_LIB.map((s) => `<option value="${s.name}">`).join('');
   secBox.appendChild(dl);
   const normSec = (s) => String(s).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
-  const LIB_NORM = PV.SECTION_LIB.map((s) => normSec(s.name));
+  const LIB_NORM = SECTION_LIB.map((s) => normSec(s.name));
   const findSection = (txt) => {
     const q = normSec(txt);
     if (!q) return null;
     let i = LIB_NORM.indexOf(q);
     if (i < 0) i = LIB_NORM.findIndex((n) => n.includes(q));
-    return i < 0 ? null : PV.SECTION_LIB[i];
+    return i < 0 ? null : SECTION_LIB[i];
   };
   const curSecName = (key) => {
     const c = FIX[key];
-    const hit = PV.SECTION_LIB.find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
+    const hit = SECTION_LIB.find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
     return hit ? hit.name : `C${c.d}×${c.f}×${c.l}×${c.t}`;
   };
-  for (const key of Object.keys(PV.SECTION_LABEL)) {
+  for (const key of Object.keys(SECTION_LABEL)) {
     const row = document.createElement('div');
     row.className = 'prow';
-    row.innerHTML = `<span class="pl">${PV.SECTION_LABEL[key]}</span>` +
+    row.innerHTML = `<span class="pl">${SECTION_LABEL[key]}</span>` +
       `<input class="psec" type="text" list="sectionLib" placeholder="如 C80×40" autocomplete="off" spellcheck="false"` +
-      ` aria-label="${PV.SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
+      ` aria-label="${SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
     const inp = row.querySelector('input');
     inp.value = curSecName(key);
     inp.addEventListener('focus', () => inp.select());
@@ -128,31 +132,31 @@ function init() {
   // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值。原图叠加只有图纸一
   const presetEl = document.getElementById('preset'), overlayCb = document.querySelector('[data-k=overlay]');
   const applyPreset = () => {
-    Object.assign(P, PV.PRESETS[st.preset]);
+    Object.assign(P, PRESETS[st.preset]);
     for (const k in inputs) inputs[k].show(P[k]);
     refreshRows();
     overlayCb.disabled = st.preset !== 'A';
     overlayCb.closest('label').classList.toggle('off', st.preset !== 'A');
-    PV.build();
-    PV.view.set(st.view);
+    build();
+    viewSetView(st.view);
   };
   presetEl.addEventListener('change', () => { st.preset = presetEl.value; applyPreset(); });
   document.getElementById('reset').addEventListener('click', applyPreset);
   document.querySelectorAll('.toggles input').forEach((cb) => {
     cb.addEventListener('change', () => {
-      PV.show[cb.dataset.k] = cb.checked;
-      PV.view.applyVisibility();
+      show[cb.dataset.k] = cb.checked;
+      viewApplyVisibility();
       if (cb.dataset.k === 'overlay' && cb.checked) {
-        PV.overlay.ensure();
-        if (st.view !== 'side') PV.view.set('side');
+        overlayEnsure();
+        if (st.view !== 'side') viewSetView('side');
       }
     });
   });
-  PV.view.buttons.forEach((b) => b.addEventListener('click', () => PV.view.set(b.dataset.view)));
+  viewButtons.forEach((b) => b.addEventListener('click', () => viewSetView(b.dataset.view)));
   // 节点详图：先选节点种类、前/后侧，再选正视/轴测；不在节点视图时点种类直接进正视。
   // 檩条-组件、边压块直接进轴测：正视沿檩条看，组件缝、压块看不出来
   const isoFirst = new Set(['mod', 'side', 'splice']);
-  const openJoint = () => PV.view.set(st.view.startsWith('joint') ? st.view : isoFirst.has(st.jointType) ? 'joint-iso' : 'joint-elev');
+  const openJoint = () => viewSetView(st.view.startsWith('joint') ? st.view : isoFirst.has(st.jointType) ? 'joint-iso' : 'joint-elev');
   const chipGroup = (sel, apply) => {
     const chips = document.querySelectorAll(sel);
     chips.forEach((b) => b.addEventListener('click', () => {
@@ -184,7 +188,7 @@ function init() {
   });
   document.getElementById('sheetHandle').addEventListener('click', () => {
     panel.classList.toggle('open');
-    setTimeout(() => { PV.fitCanvas(); PV.view.set(st.view); }, 30);   // 画布变矮了，重新取景
+    setTimeout(() => { shared.fitCanvas(); viewSetView(st.view); }, 30);   // 画布变矮了，重新取景
   });
 }
 
@@ -203,14 +207,14 @@ function updateJointChips() {
   spliceButton.title = spliceButton.disabled ? '当前檩条没有切割接头' : '预览实际檩条切割接头';
   const jt = st.jointType, modLike = jt === 'mod' || jt === 'side';
   document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === (jt === 'side' ? 'mod' : jt)));
-  document.querySelectorAll('[data-clampopt]').forEach((el) => { el.style.display = PV.P.fix === 'clamp' && modLike ? '' : 'none'; });
+  document.querySelectorAll('[data-clampopt]').forEach((el) => { el.style.display = P.fix === 'clamp' && modLike ? '' : 'none'; });
   document.querySelectorAll('[data-clamp]').forEach((b) => b.classList.toggle('on', b.dataset.clamp === jt));
 }
 
 function update() {
   refreshRows();
   updateJointChips();
-  const P = PV.P, S = st.S;
+  const P = params, S = st.S;
   const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, L = st.layout, n = L.frames, O = S.outer, np = S.purlins.length;
   document.querySelector('.title small').textContent =
     `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
@@ -283,4 +287,4 @@ function update() {
   }).join('');
 }
 
-PV.panel = { init, update, showValue };
+export { init, update, showValue };
