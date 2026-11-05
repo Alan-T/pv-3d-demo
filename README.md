@@ -88,7 +88,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ### 檩条切割与连接件
 
-最大长度可选 `5700 / 7200 / 9000`，与表面处理无关联。算法位于 `src/solve.js` 的 `cutPurlin()`：
+最大长度可选 `5700 / 7200 / 9000`，与表面处理无关联。算法位于 `src/purlin-cut.js` 的 `cutPurlin()`：
 
 1. 总长不超过上限时保留一段。
 2. 从檩条起点按 50 步长生成候选接头；距最近一榀为 300～1000，且避开固定点至少 300。
@@ -122,7 +122,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `启动预览.bat` | Windows 本地预览入口 |
 | `src/core.js` | 单位、向量、矩阵工具、实例化及共享状态 |
 | `src/config.js` | 图纸方案、默认截面、截面库、连接尺寸与参数范围 |
-| `src/solve.js` | 框架几何、东西布置、榀数及檩条切割 |
+| `src/solve.js` | 框架几何、东西布置与榀数 |
+| `src/purlin-cut.js` | 接头避让、切割方案搜索及分段长度 |
 | `src/scene.js` / `src/materials.js` | 场景、相机、渲染器、材质、配色及透明显示 |
 | `src/parts/post.js` | 立柱和埋地段 |
 | `src/parts/beam.js` | 斜梁及柱顶连接螺栓 |

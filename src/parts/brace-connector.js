@@ -46,15 +46,15 @@ function braceJoint(S, B, T, Bo, To) {
 
 function build(c, J, z0) {
   const { zw } = c;
-      const plate = new THREE.Mesh(J.plateGeo, M.bracket);
-      plate.position.z = (z0 + zw) * MM;
-      plate.castShadow = plate.receiveShadow = true;
-      c.hw.add(plate);
-      // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
-      J.bolts.forEach(([x, y], i) => {
-        const thickness = i < 2 ? J.postSection.t : (i === 3 ? section('brace', J.side < 0, true).t : section('brace', J.side < 0).t);
-        c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
-      });
+  const plate = new THREE.Mesh(J.plateGeo, M.bracket);
+  plate.position.z = (z0 + zw) * MM;
+  plate.castShadow = plate.receiveShadow = true;
+  c.hw.add(plate);
+  // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
+  J.bolts.forEach(([x, y], i) => {
+    const thickness = i < 2 ? J.postSection.t : (i === 3 ? section('brace', J.side < 0, true).t : section('brace', J.side < 0).t);
+    c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
+  });
 }
 
 export { braceJoint, build };

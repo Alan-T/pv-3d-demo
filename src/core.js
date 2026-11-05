@@ -12,14 +12,13 @@ import * as THREE from '../vendor/three.module.js';
 const MM = 0.001;
 const V3 = THREE.Vector3;
 
-const PV = {
+const constants = {
   DEG: Math.PI / 180,
   MM,
   V3,
   FONT: '"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif',
   V: (x, y, z) => new V3(x * MM, y * MM, z * MM),   // mm 坐标 → 米
   EX: new V3(1, 0, 0), EY: new V3(0, 1, 0), EZ: new V3(0, 0, 1), NZ: new V3(0, 0, -1),
-  parts: {},           // 支架各构件，见 src/parts/
   disposables: [],     // 每次重建前要释放的几何体、材质、贴图
   labels: [],          // 标注文字精灵（每帧按屏幕像素调大小）
   state: {
@@ -34,37 +33,41 @@ const PV = {
     dims: null,          // 标注分组
     overlay: null,
   },
-};
+}
 
-PV.track = (...objs) => { PV.disposables.push(...objs); return objs[0]; };
+export const { DEG, FONT, V, EX, EY, EZ, NZ } = constants;
+export const shared = { disposables: constants.disposables, labels: constants.labels, state: constants.state };
+export { MM, V3 };
+
+export const track = (...objs) => { shared.disposables.push(...objs); return objs[0]; };
 
 // 杆件：单位长度的截面几何体，靠矩阵基向量定方向、拉伸长度
-PV.addMember = function addMember(parent, geo, mat, origin, X, Y, Z) {
+export function addMember(parent, geo, mat, origin, X, Y, Z) {
   const m = new THREE.Mesh(geo, mat);
   m.matrixAutoUpdate = false;
   m.matrix.makeBasis(X, Y, Z).setPosition(origin);
   m.castShadow = m.receiveShadow = true;
   parent.add(m);
   return m;
-};
+}
 
 // 东西坡度的世界变换（ew 见 layoutEW）。不给 zRef：沿檩条方向剪切 (x, y, z) → (x, y + z·sin, z·cos)，
 // 檩条、组件、压块跟着地面顺坡；给 zRef：榀位 zRef 那一榀整体平移到坡上，立柱仍竖直、构件不变形
-PV.ewMatrix = function ewMatrix(ew, zRef) {
+export function ewMatrix(ew, zRef) {
   const m = new THREE.Matrix4();
   if (zRef === undefined) m.set(1, 0, 0, 0, 0, 1, ew.sa, 0, 0, 0, ew.ca, 0, 0, 0, 0, 1);
   else m.makeTranslation(0, zRef * ew.sa * MM, zRef * (ew.ca - 1) * MM);
   return m;
-};
-PV.ewPlace = function ewPlace(obj, ew, zRef) {
+}
+export function ewPlace(obj, ew, zRef) {
   obj.matrixAutoUpdate = false;
   obj.updateMatrix();
-  obj.matrix.premultiply(PV.ewMatrix(ew, zRef));
+  obj.matrix.premultiply(ewMatrix(ew, zRef));
   return obj;
-};
+}
 
 // 连接件数量多（每榀几十个零件），全部用实例化网格
-PV.instanced = function instanced(parent, geo, mat, mats) {
+export function instanced(parent, geo, mat, mats) {
   if (!mats.length) return;
   const im = new THREE.InstancedMesh(geo, mat, mats.length);
   mats.forEach((m, i) => im.setMatrixAt(i, m));
@@ -73,10 +76,5 @@ PV.instanced = function instanced(parent, geo, mat, mats) {
   im.castShadow = true;
   im.userData.noBox = true;
   parent.add(im);
-  PV.track(im);
-};
-
-export const { DEG, FONT, V, EX, EY, EZ, NZ, track, addMember, ewMatrix, ewPlace, instanced } = PV;
-export const shared = PV;
-
-export { MM, V3 };
+  track(im);
+}
