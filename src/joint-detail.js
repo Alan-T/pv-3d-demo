@@ -1,7 +1,7 @@
 import { mats, DimSet } from './dims.js';
 import { CLAMP, CLIP, DBL, JOINT, FIX, P, section } from './config.js';
 import { V, V3, MM, DEG, ewPlace } from './core.js';
-import { sideBoltX as clampSideBoltX } from './parts/clamp.js';
+
 import * as THREE from '../vendor/three.module.js';
 
 const params = P;
@@ -136,7 +136,7 @@ function build(S, layout) {
       // 引线画在螺栓所在平面里；组件、压块那两根指到组件边里面一点和压块上沿
       const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
       const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 3;
-      const e = layout.arrW / 2, zb = e + clampSideBoltX, top = S.hModBot + P.modT, Sd = CLAMP.side;
+      const e = layout.arrW / 2, zb = e + (CLAMP.side.wall + CLAMP.side.w - (CLAMP.side.foot + CLAMP.side.stem) / 2 + CLAMP.side.stem) / 2, top = S.hModBot + P.modT, Sd = CLAMP.side;
       const parts = [
         [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
         [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],

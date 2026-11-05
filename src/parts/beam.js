@@ -1,21 +1,28 @@
 import { addMember, EZ, EY, V, MM } from '../core.js';
-import { M, extrudeC } from '../materials.js';
-import { FIX } from '../config.js';
 
-/* 斜梁：每榀一根，搭在前后立柱上；立柱在斜梁上居中。
- * 立柱-斜梁节点：斜梁腹板贴立柱腹板，1 颗 M12 在立柱中心线上、孔心距柱顶 50，立柱腹板上开竖向长圆孔；柱顶平切 */
+/** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
+export class BeamPart {
+  constructor({
+    beamSection,
+    postFSection,
+    beamMaterial,
+    extrudeC,
+    track,
+  }) {
+  /* 斜梁：每榀一根，搭在前后立柱上；立柱在斜梁上居中。
+   * 立柱-斜梁节点：斜梁腹板贴立柱腹板，1 颗 M12 在立柱中心线上、孔心距柱顶 50，立柱腹板上开竖向长圆孔；柱顶平切 */
 
-const geo = extrudeC(FIX.beam);
+  const geo = track(extrudeC(beamSection));
 
-function build(c) {
-  const { S, layout, zw, u, n } = c;
-  const b0 = S.along(0);
-  for (const z0 of layout.zs) {
-    addMember(c.model, geo, M.beam, V(b0.x, b0.y, z0 + zw), n, EZ, u.clone().multiplyScalar(S.beamLen * MM));
-    c.bolts.add('top', V(S.xf, S.holeF, z0 + c.zBeamWeb), EZ, EY, FIX.postF.t);
-    c.bolts.add('top', V(S.xr, S.holeR, z0 + c.zBeamWeb), EZ, EY);
+  function build(c) {
+    const { S, layout, zw, u, n } = c;
+    const b0 = S.along(0);
+    for (const z0 of layout.zs) {
+      addMember(c.model, geo, beamMaterial, V(b0.x, b0.y, z0 + zw), n, EZ, u.clone().multiplyScalar(S.beamLen * MM));
+      c.bolts.add('top', V(S.xf, S.holeF, z0 + c.zBeamWeb), EZ, EY, postFSection.t);
+      c.bolts.add('top', V(S.xr, S.holeR, z0 + c.zBeamWeb), EZ, EY);
+    }
+  }
+    Object.assign(this, { build });
   }
 }
-
-
-export { build };

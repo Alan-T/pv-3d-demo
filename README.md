@@ -135,6 +135,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/parts/module.js` / `src/parts/clamp.js` | 组件、安装螺栓、中压块及边压块 |
 | `src/parts/bolts.js` | 螺栓、螺母、垫圈几何及实例收集器 |
 | `src/model.js` | 求解后组装构件、地面、封口、标注并刷新界面 |
+| `src/part-options.js` | 将截面、材质、连接规格转换为各构件的构造参数，不读取页面状态 |
+| `src/bracket.js` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
 | `src/dims.js` / `src/joint-detail.js` | 尺寸标注及节点引线 |
 | `src/view.js` | 视图显隐、剖切、相机取景及动画 |
 | `src/edit.js` / `src/panel.js` | 尺寸编辑、参数交互及计算结果 |
@@ -144,6 +146,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `deploy/` | 静态服务及 systemd 配置 |
 
 构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
+
+构件现由 `createBracket(parameters, dependencies)` 统一创建，各文件导出 `PostPart`、`BeamPart` 等类，通过 `new` 创建实例。构造函数直接解构 options，显式接收截面与连接规格、材质、截面几何工具和资源跟踪器；构建函数接收本次支架的上下文。`parts` 不直接导入页面配置和材质模块，几何缓存属于当前构件实例。`model.js` 是页面默认配置的组装入口。
 
 修改后刷新浏览器即可。建议核对两套方案、非零坡度、两种固定方式及受影响节点。
 
@@ -194,3 +198,18 @@ sudo journalctl -u pv-3d-demo -n 50 --no-pager
 - **更新后仍显示旧内容**：强制刷新，并确认服务器文件已更新。
 - **图纸二没有原图对照**：当前原图资源仅对应图纸一；图纸二可通过页面尺寸核对表查看差异。
 - **檩条没有分段**：总长可能未超过上限；若提示切割无可行解，调整榀距或最大长度。
+
+### 构件实例
+
+立柱和斜撑按位置分别实例化：`frontPost`、`rearPost`、`frontBrace`、`rearBrace`，启用外斜撑后再创建 `frontOuterBrace`、`rearOuterBrace`。它们接收单独的 `section`、`material` 和位置 / 节点参数；连接板由组装层单独构建，避免内外斜撑重复生成连接板。实例可从 `createBracket()` 返回值的 `instances` 读取。
+
+```js
+const post = new PostPart({
+  postFSection: frontSection,
+  postRSection: rearSection,
+  postMaterial, buriedMaterial, extrudeC, track,
+});
+post.build(context);
+```
+
+`bracket.js` 根据 `partOptions` 创建完整支架的构件实例；组装器显式调用 `parts.post.build(context)` 等方法，连接件在所属构件内单独实例化。

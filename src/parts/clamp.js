@@ -1,82 +1,89 @@
-import { M } from '../materials.js';
-import { CLAMP, FIX } from '../config.js';
 import { EZ, V, MM, instanced } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
 
-/* 压块固定（固定方式选“压块”时）：组件东西向每道缝上一个中压块，阵列东西两端各一个边压块，沿坡对齐每根檩条。
- * 每个压块 1 颗 M8×35 内六角螺栓，螺栓头坐在压块槽底，穿过檩条上翼缘，螺母在翼缘下面。截面尺寸见 config.js 的 CLAMP */
-const T = CLAMP.teeth, V2 = THREE.Vector2;
+/** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
+export class ClampPart {
+  constructor({
+    modGapEWSection,
+    purlinSection,
+    clampMaterial,
+    CLAMP,
+    track,
+  }) {
+  /* 压块固定（固定方式选“压块”时）：组件东西向每道缝上一个中压块，阵列东西两端各一个边压块，沿坡对齐每根檩条。
+   * 每个压块 1 颗 M8×35 内六角螺栓，螺栓头坐在压块槽底，穿过檩条上翼缘，螺母在翼缘下面。截面尺寸见 config.js 的 CLAMP */
+  const T = CLAMP.teeth, V2 = THREE.Vector2;
 
-// 一排锯齿：从 x0 到 x1，齿根在 yb、齿尖在 yt
-function teeth(x0, x1, yb, yt) {
-  const n = Math.max(1, Math.round(Math.abs(x1 - x0) / T.pitch)), d = (x1 - x0) / n, pts = [];
-  for (let i = 0; i < n; i++) pts.push([x0 + d * i, yb], [x0 + d * (i + 0.5), yt]);
-  pts.push([x1, yb]);
-  return pts;
-}
-// 倒圆角：点带第三个数 r 的，按半径 r 倒圆（每个角 4 段）
-function fillet(pts) {
-  const out = [], n = pts.length;
-  pts.forEach(([x, y, r], i) => {
-    if (!r) return out.push([x, y]);
-    const p = new V2(x, y), a = new V2(...pts[(i + n - 1) % n]).sub(p).normalize(), b = new V2(...pts[(i + 1) % n]).sub(p).normalize();
-    const half = Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1)) / 2, d = r / Math.tan(half);
-    const c = a.clone().add(b).normalize().multiplyScalar(r / Math.sin(half)).add(p);
-    const s = Math.atan2(p.y + a.y * d - c.y, p.x + a.x * d - c.x), e = Math.atan2(p.y + b.y * d - c.y, p.x + b.x * d - c.x);
-    const da = Math.atan2(Math.sin(e - s), Math.cos(e - s));
-    for (let k = 0; k <= 4; k++) out.push([c.x + r * Math.cos(s + (da * k) / 4), c.y + r * Math.sin(s + (da * k) / 4)]);
-  });
-  return out;
-}
-// 截面（mm）：局部 x 东西向，y 沿组件法向、0 在组件上表面；沿局部 z 拉伸单位长度
-const extrude = (pts) => new THREE.ExtrudeGeometry(
-  new THREE.Shape(fillet(pts).map(([x, y]) => new V2(x * MM, y * MM))), { depth: 1, bevelEnabled: false });
-
-// 中压块：局部 x 从缝中线算。U 形槽贴着两侧组件边框伸进缝里，两翼压住边框（翼板根部厚、翼尖薄，底面带齿），
-// 螺栓头坐在槽底。先画右半边（槽口右上角 → 翼尖 → 翼底齿 → 槽壁外侧 → 右下角），左半边镜像
-const Mi = CLAMP.mid, g = FIX.modGapEW / 2, gi = g - Mi.wall, tipM = g + Mi.press, botM = -(Mi.floor + Mi.plate);
-const halfM = [[gi, Mi.top, 0.6], [g + 3, Mi.top], [tipM, Mi.tip, 0.6], [tipM, T.h], ...teeth(tipM - 0.5, g + 1, T.h, 0),
-  [g, T.h, 0.4], [g, botM, 1.5]];
-const midGeo = extrude([...halfM, ...halfM.map(([x, y, r]) => [-x, y, r]).reverse(),
-  [-gi, -Mi.floor, 0.8], [gi, -Mi.floor, 0.8]]);
-
-// 边压块：局部 x 从组件边往外。上沿勾住边框（底面带齿），内立板贴着边框外侧下到底板，底板上放螺栓头。
-// 外端是倒 T 形的脚：底板上表面在外端大圆角转下来成短立柱（x 从 s0 到 s1），立柱下面是更宽的脚垫（x 从 p0 到 w），
-// 脚垫底面带齿落在檩条上。脚落在檩条上，高度跟组件厚度 H 走，按厚度缓存
-const Sd = CLAMP.side, p0 = Sd.w - Sd.foot, s0 = Sd.w - (Sd.foot + Sd.stem) / 2, s1 = s0 + Sd.stem;
-const floorBot = -Sd.floor - Sd.plate, sideBoltX = (Sd.wall + s1) / 2;
-const sideGeos = {};
-function sideGeo(H) {
-  if (sideGeos[H]) return sideGeos[H];
-  const padTop = -H + T.h + Sd.pad;
-  return (sideGeos[H] = extrude([[-Sd.press, Sd.tip, 0.6], [-1, Sd.top], [Sd.wall, Sd.top, 1.2], [Sd.wall, -Sd.floor, 0.8],
-    [s1, -Sd.floor, 2], [s1, padTop, 0.8], [Sd.w, padTop, 0.8], [Sd.w, -H + T.h],
-    ...teeth(Sd.w - 0.4, p0 + 0.4, -H + T.h, -H), [p0, -H + T.h], [p0, padTop, 0.8], [s0, padTop, 0.6], [s0, floorBot, 0.8],
-    [0, floorBot, 1.5], [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]));
-}
-
-// 返回中压块、边压块个数
-function build(c) {
-  const { P, S, layout, u, n } = c;
-  const L = P.clampL, e = layout.arrW / 2, H = P.modT;
-  const gaps = [];
-  for (let j = 1; j < layout.cols; j++) gaps.push(-e + j * layout.pitchEW - FIX.modGapEW / 2);
-  const mid = [], side = [];
-  for (const tp of S.purlins) {
-    const q = S.along(tp);
-    const at = (z, du, dn) => V(q.x, q.y, z).addScaledVector(u, du * MM).addScaledVector(n, dn * MM);
-    // sx：局部 x 朝 +z 还是 −z。实例矩阵不能带镜像，局部 x 朝 +z 时只能沿 −u 拉伸，所以从上坡一端起
-    const put = (list, z, sx) => list.push(new THREE.Matrix4()
-      .makeBasis(EZ.clone().multiplyScalar(sx), n, u.clone().multiplyScalar(-sx * L * MM))
-      .setPosition(at(z, (sx * L) / 2, S.hModBot + H)));
-    const bolt = (kind, z) => c.bolts.add(kind, at(z, 0, S.hModBot - FIX.purlin.t), n.clone().negate(), u);
-    for (const z of gaps) { put(mid, z, 1); bolt('clampMid', z); }
-    for (const sx of [-1, 1]) { put(side, sx * e, sx); bolt('clampSide', sx * (e + sideBoltX)); }
+  // 一排锯齿：从 x0 到 x1，齿根在 yb、齿尖在 yt
+  function teeth(x0, x1, yb, yt) {
+    const n = Math.max(1, Math.round(Math.abs(x1 - x0) / T.pitch)), d = (x1 - x0) / n, pts = [];
+    for (let i = 0; i < n; i++) pts.push([x0 + d * i, yb], [x0 + d * (i + 0.5), yt]);
+    pts.push([x1, yb]);
+    return pts;
   }
-  instanced(c.hwSlope, midGeo, M.clamp, mid);
-  instanced(c.hwSlope, sideGeo(H), M.clamp, side);
-  return { mid: mid.length, side: side.length };
+  // 倒圆角：点带第三个数 r 的，按半径 r 倒圆（每个角 4 段）
+  function fillet(pts) {
+    const out = [], n = pts.length;
+    pts.forEach(([x, y, r], i) => {
+      if (!r) return out.push([x, y]);
+      const p = new V2(x, y), a = new V2(...pts[(i + n - 1) % n]).sub(p).normalize(), b = new V2(...pts[(i + 1) % n]).sub(p).normalize();
+      const half = Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1)) / 2, d = r / Math.tan(half);
+      const c = a.clone().add(b).normalize().multiplyScalar(r / Math.sin(half)).add(p);
+      const s = Math.atan2(p.y + a.y * d - c.y, p.x + a.x * d - c.x), e = Math.atan2(p.y + b.y * d - c.y, p.x + b.x * d - c.x);
+      const da = Math.atan2(Math.sin(e - s), Math.cos(e - s));
+      for (let k = 0; k <= 4; k++) out.push([c.x + r * Math.cos(s + (da * k) / 4), c.y + r * Math.sin(s + (da * k) / 4)]);
+    });
+    return out;
+  }
+  // 截面（mm）：局部 x 东西向，y 沿组件法向、0 在组件上表面；沿局部 z 拉伸单位长度
+  const extrude = (pts) => track(new THREE.ExtrudeGeometry(
+    new THREE.Shape(fillet(pts).map(([x, y]) => new V2(x * MM, y * MM))), { depth: 1, bevelEnabled: false }));
+
+  // 中压块：局部 x 从缝中线算。U 形槽贴着两侧组件边框伸进缝里，两翼压住边框（翼板根部厚、翼尖薄，底面带齿），
+  // 螺栓头坐在槽底。先画右半边（槽口右上角 → 翼尖 → 翼底齿 → 槽壁外侧 → 右下角），左半边镜像
+  const Mi = CLAMP.mid, g = modGapEWSection / 2, gi = g - Mi.wall, tipM = g + Mi.press, botM = -(Mi.floor + Mi.plate);
+  const halfM = [[gi, Mi.top, 0.6], [g + 3, Mi.top], [tipM, Mi.tip, 0.6], [tipM, T.h], ...teeth(tipM - 0.5, g + 1, T.h, 0),
+    [g, T.h, 0.4], [g, botM, 1.5]];
+  const midGeo = extrude([...halfM, ...halfM.map(([x, y, r]) => [-x, y, r]).reverse(),
+    [-gi, -Mi.floor, 0.8], [gi, -Mi.floor, 0.8]]);
+
+  // 边压块：局部 x 从组件边往外。上沿勾住边框（底面带齿），内立板贴着边框外侧下到底板，底板上放螺栓头。
+  // 外端是倒 T 形的脚：底板上表面在外端大圆角转下来成短立柱（x 从 s0 到 s1），立柱下面是更宽的脚垫（x 从 p0 到 w），
+  // 脚垫底面带齿落在檩条上。脚落在檩条上，高度跟组件厚度 H 走，按厚度缓存
+  const Sd = CLAMP.side, p0 = Sd.w - Sd.foot, s0 = Sd.w - (Sd.foot + Sd.stem) / 2, s1 = s0 + Sd.stem;
+  const floorBot = -Sd.floor - Sd.plate, sideBoltX = (Sd.wall + s1) / 2;
+  const sideGeos = {};
+  function sideGeo(H) {
+    if (sideGeos[H]) return sideGeos[H];
+    const padTop = -H + T.h + Sd.pad;
+    return (sideGeos[H] = extrude([[-Sd.press, Sd.tip, 0.6], [-1, Sd.top], [Sd.wall, Sd.top, 1.2], [Sd.wall, -Sd.floor, 0.8],
+      [s1, -Sd.floor, 2], [s1, padTop, 0.8], [Sd.w, padTop, 0.8], [Sd.w, -H + T.h],
+      ...teeth(Sd.w - 0.4, p0 + 0.4, -H + T.h, -H), [p0, -H + T.h], [p0, padTop, 0.8], [s0, padTop, 0.6], [s0, floorBot, 0.8],
+      [0, floorBot, 1.5], [0, T.h, 0.4], ...teeth(-1, -Sd.press + 0.5, T.h, 0), [-Sd.press, T.h]]));
+  }
+
+  // 返回中压块、边压块个数
+  function build(c) {
+    const { P, S, layout, u, n } = c;
+    const L = P.clampL, e = layout.arrW / 2, H = P.modT;
+    const gaps = [];
+    for (let j = 1; j < layout.cols; j++) gaps.push(-e + j * layout.pitchEW - modGapEWSection / 2);
+    const mid = [], side = [];
+    for (const tp of S.purlins) {
+      const q = S.along(tp);
+      const at = (z, du, dn) => V(q.x, q.y, z).addScaledVector(u, du * MM).addScaledVector(n, dn * MM);
+      // sx：局部 x 朝 +z 还是 −z。实例矩阵不能带镜像，局部 x 朝 +z 时只能沿 −u 拉伸，所以从上坡一端起
+      const put = (list, z, sx) => list.push(new THREE.Matrix4()
+        .makeBasis(EZ.clone().multiplyScalar(sx), n, u.clone().multiplyScalar(-sx * L * MM))
+        .setPosition(at(z, (sx * L) / 2, S.hModBot + H)));
+      const bolt = (kind, z) => c.bolts.add(kind, at(z, 0, S.hModBot - purlinSection.t), n.clone().negate(), u);
+      for (const z of gaps) { put(mid, z, 1); bolt('clampMid', z); }
+      for (const sx of [-1, 1]) { put(side, sx * e, sx); bolt('clampSide', sx * (e + sideBoltX)); }
+    }
+    instanced(c.hwSlope, midGeo, clampMaterial, mid);
+    instanced(c.hwSlope, sideGeo(H), clampMaterial, side);
+    return { mid: mid.length, side: side.length };
+  }
+    Object.assign(this, { build, sideBoltX });
+  }
 }
-
-
-export { build, sideBoltX };

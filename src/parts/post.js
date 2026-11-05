@@ -1,25 +1,20 @@
-import { addMember, NZ, EY, EX, V, MM, track } from '../core.js';
-import { M, extrudeC } from '../materials.js';
-import { FIX } from '../config.js';
+import { addMember, NZ, EY, EX, V, MM } from '../core.js';
 
-/* 立柱：每榀前、后各一根 C 型钢，柱顶平切、与斜梁上表面齐平；地面以下单独一段（埋地部分，可隐藏） */
+// One column position, repeated at the frame coordinates supplied to build().
+export class PostPart {
+  constructor({ section, material, buriedMaterial, x, bottom, top, ground, extrudeC, track }) {
+    this.geometry = track(extrudeC(section));
+    this.material = material;
+    this.buriedMaterial = buriedMaterial;
+    this.position = { x, bottom, top, ground };
+  }
 
-
-
-// c：model.js 里的构建上下文
-function build(c) {
-  const { S, layout, zw } = c;
-  const post = (x, yBot, yTop, yG, z0, section) => {
-    const geo = track(extrudeC(section));
-    const cut = Math.min(Math.max(yG, yBot), yTop);
-    if (yTop - cut > 1) addMember(c.model, geo, M.post, V(x, cut, z0 + zw), EX, NZ, EY.clone().multiplyScalar((yTop - cut) * MM));
-    if (cut - yBot > 1) addMember(c.buried, geo, M.buried, V(x, yBot, z0 + zw), EX, NZ, EY.clone().multiplyScalar((cut - yBot) * MM));
-  };
-  for (const z0 of layout.zs) {
-    post(S.xf, S.botF, S.topF, S.gy(S.xf), z0, FIX.postF);
-    post(S.xr, S.botR, S.topR, S.gy(S.xr), z0, FIX.postR);
+  build({ layout, zw, model, buried }) {
+    const { x, bottom, top, ground } = this.position;
+    const cut = Math.min(Math.max(ground, bottom), top);
+    for (const z of layout.zs) {
+      if (top - cut > 1) addMember(model, this.geometry, this.material, V(x, cut, z + zw), EX, NZ, EY.clone().multiplyScalar((top - cut) * MM));
+      if (cut - bottom > 1) addMember(buried, this.geometry, this.buriedMaterial, V(x, bottom, z + zw), EX, NZ, EY.clone().multiplyScalar((cut - bottom) * MM));
+    }
   }
 }
-
-
-export { build };
