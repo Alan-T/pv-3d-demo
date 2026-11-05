@@ -157,5 +157,5 @@ function limits(key) {
 }
 
 const P = Object.assign({}, DEFAULTS);
-const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, overlay: false };
+const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true };
 export { FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

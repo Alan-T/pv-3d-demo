@@ -78,7 +78,6 @@ function applyVisibility() {
   ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
   ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
   g.hw.visible = show.bolts;
-  st.overlay.visible = show.overlay && st.preset === 'A';   // 原图只有图纸一（2 排）的侧视图
   const gm = M.ground;
   const wantTransparent = show.buried;
   if (gm.transparent !== wantTransparent) {

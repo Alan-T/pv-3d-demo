@@ -1,7 +1,6 @@
 import { CLIP, FIX, P, PARAMS, limits, SECTION_LIB, SECTION_LABEL, PRESETS, show } from './config.js';
 import { shared } from './core.js';
 import { build } from './model.js';
-import { ensure as overlayEnsure } from './overlay.js';
 import { setView as viewSetView, applyVisibility as viewApplyVisibility, buttons as viewButtons } from './view.js';
 
 const params = P;
@@ -129,14 +128,12 @@ function init() {
     }
   }
   refreshRows();
-  // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值。原图叠加只有图纸一
-  const presetEl = document.getElementById('preset'), overlayCb = document.querySelector('[data-k=overlay]');
+  // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值
+  const presetEl = document.getElementById('preset');
   const applyPreset = () => {
     Object.assign(P, PRESETS[st.preset]);
     for (const k in inputs) inputs[k].show(P[k]);
     refreshRows();
-    overlayCb.disabled = st.preset !== 'A';
-    overlayCb.closest('label').classList.toggle('off', st.preset !== 'A');
     build();
     viewSetView(st.view);
   };
@@ -146,10 +143,6 @@ function init() {
     cb.addEventListener('change', () => {
       show[cb.dataset.k] = cb.checked;
       viewApplyVisibility();
-      if (cb.dataset.k === 'overlay' && cb.checked) {
-        overlayEnsure();
-        if (st.view !== 'side') viewSetView('side');
-      }
     });
   });
   viewButtons.forEach((b) => b.addEventListener('click', () => viewSetView(b.dataset.view)));

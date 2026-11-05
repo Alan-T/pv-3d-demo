@@ -31,7 +31,6 @@ const constants = {
     layout: null,        // 东西向布置、连接节点、零件数量
     groups: null,        // 模型分组：model / buried / modules / hw / slope / hwSlope，地面 ground
     dims: null,          // 标注分组
-    overlay: null,
   },
 }
 

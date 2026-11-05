@@ -1,7 +1,7 @@
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import * as THREE from '../vendor/three.module.js';
 
-/* 渲染器、相机、控制器、灯光；root 下放每次重建的模型、标注和原图叠加 */
+/* 渲染器、相机、控制器、灯光；root 下放每次重建的模型、标注 */
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');

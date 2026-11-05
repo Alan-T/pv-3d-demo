@@ -8,7 +8,6 @@ import { FIX, P } from './config.js';
 import { MM, track, ewPlace, shared } from './core.js';
 import { solve, layoutEW } from './solve.js';
 import { update as panelUpdate } from './panel.js';
-import { build as overlayBuild } from './overlay.js';
 import { build as dimsBuild } from './dims.js';
 import { savePose as viewSavePose, sectionRange as viewSectionRange, applyVisibility as viewApplyVisibility, placeSun as viewPlaceSun, follow as viewFollow } from './view.js';
 import * as THREE from '../vendor/three.module.js';
@@ -48,7 +47,6 @@ function displayBracket(bracket, state) {
 
   g.ground = buildGround(S, layout);
   dimsBuild();
-  overlayBuild();
   viewApplyVisibility();
   viewPlaceSun();
   panelUpdate();
