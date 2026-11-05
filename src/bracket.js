@@ -58,18 +58,18 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
   const connector = new BraceConnectorPart(partOptions.brace.braceConnector);
   const O = S.outer;
   layout.joints = [
-    connector.braceJoint(S, S.bF, S.tFp, O && O.oF, O && O.toFp),
-    connector.braceJoint(S, S.bR, S.tRp, O && O.oR, O && O.toRp),
+    connector.braceJoint(S.connections[0], S.tFp, O && O.toFp),
+    connector.braceJoint(S.connections[1], S.tRp, O && O.toRp),
   ];
   const postOptions = partOptions.post;
   const frontPost = new PostPart({ section: postOptions.postFSection, material: postOptions.postMaterial,
     buriedMaterial: postOptions.buriedMaterial, x: S.xf, bottom: S.botF, top: S.topF, ground: S.gy(S.xf),
-    extrudeC: postOptions.extrudeC, track: postOptions.track });
+    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
   const rearPost = new PostPart({ section: postOptions.postRSection, material: postOptions.postMaterial,
     buriedMaterial: postOptions.buriedMaterial, x: S.xr, bottom: S.botR, top: S.topR, ground: S.gy(S.xr),
-    extrudeC: postOptions.extrudeC, track: postOptions.track });
+    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
   const braceOptions = partOptions.brace;
-  const braceConfig = { material: braceOptions.braceMaterial, extrudeC: braceOptions.extrudeC, track: braceOptions.track };
+  const braceConfig = { material: braceOptions.braceMaterial, createSectionGeometry: braceOptions.createSectionGeometry, track: braceOptions.track };
   const frontBrace = new BracePart({ ...braceConfig, section: braceOptions.braceFSection, node: layout.joints[0] });
   const rearBrace = new BracePart({ ...braceConfig, section: braceOptions.braceRSection, node: layout.joints[1] });
   const frontOuterBrace = O ? new BracePart({ ...braceConfig, section: braceOptions.braceOFSection, node: layout.joints[0].o }) : null;

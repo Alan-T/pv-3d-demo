@@ -4,9 +4,8 @@
 
 // ---------- 图纸尺寸与假设 ----------
 const FIX = {
-  beamPastPurlin: 114,  // 斜梁伸出第一根、最后一根檩条（两张图：3802+228→4030，6204+228→6430，长度取整到 10）
+  beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
   modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
-  arrayShift: 32.1,     // 组件阵列中心相对斜梁中心沿坡向上移（按图量取，两张图柱高都在 1 mm 内吻合）
   // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
   purlinExt: { bolt: 50, clamp: 100 },
   maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
@@ -54,24 +53,43 @@ for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
 for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条' };
+// 截面随方案恢复，保持各 FIX 对象引用不变；图纸二保留原规格。
+const copySections = () => Object.fromEntries(
+  ['post', 'brace', ...Object.keys(SECTION_LABEL)].map(key => [key, { ...FIX[key] }]),
+);
+const PRESET_SECTIONS = { A: copySections(), B: copySections() };
+Object.assign(PRESET_SECTIONS.A, {
+  post: { d: 90, f: 55, l: 20, t: 3 },
+  postF: { d: 90, f: 55, l: 20, t: 3 },
+  postR: { d: 90, f: 55, l: 20, t: 3 },
+  brace: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceF: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceR: { d: 59, f: 39, l: 8, t: 1.8 },
+  beam: { d: 90, f: 50, l: 15, t: 2 },
+  purlin: { d: 100, f: 55, l: 20, t: 1.8 },
+});
+function applyPresetSections(preset) {
+  for (const [key, value] of Object.entries(PRESET_SECTIONS[preset])) Object.assign(FIX[key], value);
+}
+applyPresetSections('A');
 // 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
 const PRESETS = {
   A: {
-    tilt: 25, span: 2900, h0: 800, pitch: 2800, pitchEnd: 2800, slopeEW: 0,
-    slope: -5,          // 地面南北坡度 %：图纸一按北向坡 5% 设计（后柱 4336 = 2391 + 145 + 1800）
+    tilt: 20, span: 3000, h0: 620, pitch: 2800, pitchEnd: 2500, slopeEW: 0,
+    slope: 0,           // 图纸一：平地
     rows: 2,           // 沿坡组件排数（竖排）
-    cols: 28,           // 东西向组件列数（榀数由它算出）
+    cols: 26,           // 东西向组件列数（榀数由它算出）
     outer: 0,           // 是否带外斜撑（立柱外侧、撑斜梁悬挑段）
     braceHF: 250,       // 前柱斜撑下节点离 ±0（内、外斜撑共用一块连接板）
-    braceHR: 350,       // 后柱斜撑下节点离 ±0
+    braceHR: 250,       // 后柱斜撑下节点离 ±0
     braceTopF: 1650,    // 前斜撑上节点到斜梁下端
     braceTopR: 1650,    // 后斜撑上节点到斜梁上端
     braceOutF: 400,     // 前外斜撑上节点到斜梁下端
     braceOutR: 400,     // 后外斜撑上节点到斜梁上端
-    embed: 1800,        // 立柱埋深
-    modL: 2382,         // 组件长度（沿坡）
-    modW: 1134,         // 组件宽度（东西向）
-    modT: 35,           // 组件厚度
+    embed: 1500,        // 立柱埋深
+    modL: 2384,         // 组件长度（沿坡）
+    modW: 1303,         // 组件宽度（东西向）
+    modT: 33,           // 组件厚度
     hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
     fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
     maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
@@ -158,4 +176,4 @@ function limits(key) {
 
 const P = Object.assign({}, DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true };
-export { FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };
+export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

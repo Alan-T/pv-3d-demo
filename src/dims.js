@@ -139,8 +139,8 @@ function build() {
   ed(side.dim(at(S.purlins[0], S.hModBot), at(S.purlins[1], S.hModBot), offN(330), P.hole, 'in'), 'hole');
 
   // 斜撑长度（标在斜撑外下侧）
-  const braceDims = [[S.bF, S.tFp, S.braceF], [S.bR, S.tRp, S.braceR]];
-  if (O) braceDims.push([O.oF, O.toFp, O.braceOF], [O.oR, O.toRp, O.braceOR]);
+  const braceDims = layout.joints.flatMap(j => [j, ...(j.o ? [j.o] : [])])
+    .map(j => [j.E, j.end, j.len]);
   for (const [B, T, Lb] of braceDims) {
     const dx = T.x - B.x, dy = T.y - B.y, l = Math.hypot(dx, dy);
     let px = -dy / l, py = dx / l;

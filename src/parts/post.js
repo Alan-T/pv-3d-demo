@@ -2,8 +2,8 @@ import { addMember, NZ, EY, EX, V, MM } from '../core.js';
 
 // One column position, repeated at the frame coordinates supplied to build().
 export class PostPart {
-  constructor({ section, material, buriedMaterial, x, bottom, top, ground, extrudeC, track }) {
-    this.geometry = track(extrudeC(section));
+  constructor({ section, material, buriedMaterial, x, bottom, top, ground, createSectionGeometry, track }) {
+    this.geometry = track(createSectionGeometry(section));
     this.material = material;
     this.buriedMaterial = buriedMaterial;
     this.position = { x, bottom, top, ground };

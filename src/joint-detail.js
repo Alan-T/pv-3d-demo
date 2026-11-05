@@ -1,5 +1,5 @@
 import { mats, DimSet } from './dims.js';
-import { CLAMP, CLIP, DBL, JOINT, FIX, P, section } from './config.js';
+import { CLAMP, CLIP, JOINT, FIX, P, section } from './config.js';
 import { V, V3, MM, DEG, ewPlace } from './core.js';
 
 import * as THREE from '../vendor/three.module.js';
@@ -24,7 +24,7 @@ function build(S, layout) {
   for (const fr of [0, 1]) {
     const J = layout.joints[fr];
     if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
-      const o = J.o, yBot = J.yc - J.hh, ax = J.xc - J.side * (DBL.half + 60);   // 文字挂在板外侧 60
+      const o = J.o, yBot = J.yc - J.hh, ax = J.xc - J.side * (J.extent + 60);   // 文字挂在板外侧 60
       const ly = (k) => yBot - 50 - 48 * k;
       specs.foot.push({
         labelSide: -J.side, anchorX: ax,
@@ -32,14 +32,14 @@ function build(S, layout) {
           [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(section('brace', !!fr, true))}`],
           [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(section('brace', !!fr))}`],
           [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
-          [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×4（平垫 + 弹垫），长圆孔'],
-          [J.xc - J.side * 30, J.yc - 25, ly(4), `双面斜撑连接板 ${J.spec}`],
+          [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×' + J.bolts.length + '（平垫 + 弹垫），长圆孔'],
+          [J.xc - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
           [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
         ],
         lines: [[J.xc, yBot - 70, J.xc, J.yTop + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260],
           [o.E.x - o.ax * 40, o.E.y - o.ay * 40, o.Q.x + o.ax * 260, o.Q.y + o.ay * 260]],
-        box: [J.xc + J.side * (DBL.half + 160), ax, ly(5) - 30, J.yTop + 200],
+        box: [J.xc + J.side * (J.extent + 160), ax, ly(5) - 30, J.yTop + 200],
       });
     } else { // 斜撑-立柱：文字放在立柱另一侧
       specs.foot.push({
@@ -65,7 +65,7 @@ function build(S, layout) {
         labelSide: ls, anchorX: ax,
         leaders: [
           [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
-          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, '柱顶平切，与斜梁上表面齐平'],   // 下坡一侧的柱顶角露在斜梁上方
+          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${JOINT.postTopHole}`],
           [hole.x, hole.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫）'],
           [hole.x, hole.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
           [node.x, node.y - 190, y0 - 260, `立柱 ${sec(section('post', !!fr))}`],

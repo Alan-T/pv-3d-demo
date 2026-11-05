@@ -2,11 +2,11 @@ import { addMember, NZ, V, V3, MM } from '../core.js';
 
 // One inner/outer brace position. Connection plates are assembled separately.
 export class BracePart {
-  constructor({ section, material, node, extrudeC, track }) {
+  constructor({ section, material, node, createSectionGeometry, track }) {
     this.section = section;
     this.material = material;
     this.node = node;
-    this.geometry = track(extrudeC(section));
+    this.geometry = track(createSectionGeometry(section));
   }
 
   build({ layout, zw, u, model, bolts }) {

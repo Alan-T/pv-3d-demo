@@ -1,3 +1,4 @@
+import { braceMember } from '../brace-layout.js';
 import { NZ, EY, V, MM } from '../core.js';
 import * as THREE from '../../vendor/three.module.js';
 
@@ -20,45 +21,38 @@ export class BraceConnectorPart {
     : (outer ? (rear ? braceORSection : braceOFSection) : (rear ? braceRSection : braceFSection));
   // 斜撑连接板：节点几何、孔位及连接螺栓。
 
-  // 实际斜撑：从连接板上的螺栓 Q 连到斜梁节点 T，两端端头（垂直切口）都在孔心外 braceEdge：下端 E 在 Q 下方，上端过 T
-  function braceEnds(Q, T) {
-    const dx = T.x - Q.x, dy = T.y - Q.y, len = Math.hypot(dx, dy);
-    const ax = dx / len, ay = dy / len, eTop = JOINT.braceEdge;
-    const E = { x: Q.x - ax * JOINT.braceEdge, y: Q.y - ay * JOINT.braceEdge };
-    return { T, E, Q, ax, ay, eTop, len: len + JOINT.braceEdge + eTop };
-  }
-
-  // 斜撑下端连接板。B：内斜撑理论节点（立柱内侧面，高 braceH）；T：内斜撑上节点；Bo/To：外斜撑（可无）。
-  // 连接板竖向中点（= 两颗立柱螺栓的中点）就在 braceH，也就是图上“离地 250 / 350”标的位置。
-  // 只有内斜撑：单面五边形板 160×120，斜撑一侧竖直板边高 55，斜切到宽 50 的下边；
-  // 带外斜撑：对称六边形双面板 280×120（Bracing Connector），两侧竖直板边高 55，斜切到宽 60 的下边。
-  // 孔位两种板相同：立柱中心线上 2 孔（间距 boltPitch），斜撑孔离立柱中心 ±boltU、比两立柱孔中点高 rise
-  function braceJoint(S, B, T, Bo, To) {
-    const dbl = !!Bo, side = Math.sign(T.x - B.x);            // +1 前柱（内斜撑向北），−1 后柱
-    const postSection = section('post', side < 0);
-    const xc = B.x - (side * postSection.d) / 2, yc = B.y;
+  // 孔位由求解层提供，模型、长度和标注共用坐标。
+  function braceJoint(connection, T, To) {
+    const { side, yc, Q, Qo, plateShift, split } = connection;
+    const dbl = !!Qo, postSection = section('post', side < 0);
+    const xc = connection.xc + (dbl ? 0 : side * plateShift);
     const hh = JOINT.plateH / 2, yTop = yc + hh;
-    const U = (u) => xc + side * u;                             // u：离立柱中心线、朝内斜撑一侧的水平距离
-    let pts, Qo = null;
-    const yc5 = yc + JOINT.chamferY;
-    if (!dbl) {
-      const back = -JOINT.singleBack, out = JOINT.singleW - JOINT.singleBack;
-      pts = [[U(back), yc - hh], [U(JOINT.singleBot), yc - hh], [U(out), yc5], [U(out), yTop], [U(back), yTop]];
-    } else {
-      pts = [[U(-DBL.half), yTop], [U(DBL.half), yTop], [U(DBL.half), yc5], [U(DBL.botHalf), yc - hh],
-        [U(-DBL.botHalf), yc - hh], [U(-DBL.half), yc5]];
-      Qo = { x: U(-JOINT.boltU), y: yc + JOINT.rise };
-    }
-    const Q = { x: U(JOINT.boltU), y: yc + JOINT.rise };
-    const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q[0] * MM, q[1] * MM)));
-    const plateGeo = track(new THREE.ExtrudeGeometry(shape, { depth: JOINT.plateT * MM, bevelEnabled: false }));
-    const inner = braceEnds(Q, T), o = dbl ? braceEnds(Qo, To) : null;
-    const bolts = [[xc, yc - JOINT.boltPitch / 2], [xc, yc + JOINT.boltPitch / 2], [Q.x, Q.y]];
-    if (o) bolts.push([o.Q.x, o.Q.y]);
-    const spec = `${dbl ? DBL.half * 2 : JOINT.singleW}×${JOINT.plateH}×${JOINT.plateT}`;
-    return { ...inner, B, side, postSection, xc, yc, hh, yTop, plateGeo, bolts, o, spec };
+    const inner = braceMember(Q, T, JOINT.braceEdge);
+    const o = dbl ? braceMember(Qo, To, JOINT.braceEdge) : null;
+    const shapes = [], bolts = [], boltRoles = [];
+    const addPlate = (center, direction, double) => {
+      const U = u => center + direction * u;
+      const yc5 = yc + JOINT.chamferY;
+      const pts = double
+        ? [[U(-DBL.half), yTop], [U(DBL.half), yTop], [U(DBL.half), yc5], [U(DBL.botHalf), yc - hh], [U(-DBL.botHalf), yc - hh], [U(-DBL.half), yc5]]
+        : [[U(-JOINT.singleBack), yc - hh], [U(JOINT.singleBot), yc - hh], [U(JOINT.singleW - JOINT.singleBack), yc5], [U(JOINT.singleW - JOINT.singleBack), yTop], [U(-JOINT.singleBack), yTop]];
+      shapes.push(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x * MM, y * MM))));
+      bolts.push([center, yc - JOINT.boltPitch / 2], [center, yc + JOINT.boltPitch / 2]);
+      boltRoles.push('post', 'post');
+    };
+    // 大截面带外斜撑时，两侧各使用一块单面板。
+    if (split) {
+      addPlate(connection.xc + side * plateShift, side, false);
+      addPlate(connection.xc - side * plateShift, -side, false);
+    } else addPlate(xc, side, dbl);
+    bolts.push([Q.x, Q.y]); boltRoles.push('inner');
+    if (o) { bolts.push([Qo.x, Qo.y]); boltRoles.push('outer'); }
+    const plateGeo = track(new THREE.ExtrudeGeometry(shapes, { depth: JOINT.plateT * MM, bevelEnabled: false }));
+    const width = dbl && !split ? DBL.half * 2 : JOINT.singleW;
+    const spec = width + '×' + JOINT.plateH + '×' + JOINT.plateT + (split ? '（两块）' : '');
+    const extent = dbl ? Math.abs(plateShift) + DBL.half : JOINT.singleW - JOINT.singleBack;
+    return { ...inner, B: Q, side, postSection, xc, yc, hh, yTop, plateGeo, bolts, boltRoles, o, spec, split, extent };
   }
-
   function build(c, J, z0) {
     const { zw } = c;
     const plate = new THREE.Mesh(J.plateGeo, bracketMaterial);
@@ -67,8 +61,9 @@ export class BraceConnectorPart {
     c.hw.add(plate);
     // 连接板外侧放螺栓头，螺母及平垫/弹垫在杆件槽内。
     J.bolts.forEach(([x, y], i) => {
-      const thickness = i < 2 ? J.postSection.t : (i === 3 ? section('brace', J.side < 0, true).t : section('brace', J.side < 0).t);
-      c.bolts.add(i < 2 ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
+      const role = J.boltRoles[i];
+      const thickness = role === 'post' ? J.postSection.t : section('brace', J.side < 0, role === 'outer').t;
+      c.bolts.add(role === 'post' ? 'foot' : 'footBrace', V(x, y, z0 + zw - thickness), NZ, EY, thickness);
     });
   }
     Object.assign(this, { braceJoint, build });

@@ -1,9 +1,8 @@
 import { renderer } from './scene.js';
-import { MM } from './core.js';
 import { show } from './config.js';
 import * as THREE from '../vendor/three.module.js';
 
-/* 材质、贴图、配色，以及各构件共用的卷边槽钢截面 */
+/* 材质、贴图、配色 */
 
 function cellTexture() {
   const cv = document.createElement('canvas');
@@ -89,16 +88,4 @@ function ghostModules(on, opacity) {
   }
 }
 
-// 卷边槽钢截面形状（局部 a 沿腹板高度、b 沿翼缘方向，腹板在 b=0），单位米
-function cShape(sec) {
-  const d = (sec.d / 2) * MM, f = sec.f * MM, l = sec.l * MM, t = sec.t * MM;
-  const pts = [[-d, 0], [d, 0], [d, f], [d - l, f], [d - l, f - t], [d - t, f - t], [d - t, t],
-    [-d + t, t], [-d + t, f - t], [-d + l, f - t], [-d + l, f], [-d, f]];
-  return new THREE.Shape(pts.map((q) => new THREE.Vector2(q[0], q[1])));
-}
-// 杆件几何体：沿 z 拉伸单位长度，靠矩阵拉伸
-function extrudeC(sec) {
-  return new THREE.ExtrudeGeometry(cShape(sec), { depth: 1, bevelEnabled: false });
-}
-
-export {  M, modMats, applyPalette, ghostMat, ghostModules, cShape, extrudeC  };
+export { M, modMats, applyPalette, ghostMat, ghostModules };

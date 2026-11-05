@@ -136,6 +136,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/parts/bolts.js` | 螺栓、螺母、垫圈几何及实例收集器 |
 | `src/model.js` | 求解后组装构件、地面、封口、标注并刷新界面 |
 | `src/part-options.js` | 将截面、材质、连接规格转换为各构件的构造参数，不读取页面状态 |
+| `src/section-geometry.js` | 独立截面轮廓、单位长度杆件和剖切封口；支持 C 型钢与圆管几何 |
+| `src/brace-layout.js` | 双立柱斜撑连接孔布局、截面变化引起的板位偏移，以及由孔位推导的杆件端点和长度 |
 | `src/bracket.js` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
 | `src/dims.js` / `src/joint-detail.js` | 尺寸标注及节点引线 |
 | `src/view.js` | 视图显隐、剖切、相机取景及动画 |
@@ -147,6 +149,12 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
 
 构件现由 `createBracket(parameters, dependencies)` 统一创建，各文件导出 `PostPart`、`BeamPart` 等类，通过 `new` 创建实例。构造函数直接解构 options，显式接收截面与连接规格、材质、截面几何工具和资源跟踪器；构建函数接收本次支架的上下文。`parts` 不直接导入页面配置和材质模块，几何缓存属于当前构件实例。`model.js` 是页面默认配置的组装入口。
+
+立柱、斜梁、斜撑和檩条通过注入的 `createSectionGeometry(section)` 创建杆件，檩条通过 `createSectionCapGeometry(section)` 创建剖切封口。两者共用 `createSectionShape(section)`，截面模块只依赖 three.js，不读取页面配置、材质或运行状态。返回的几何体由构件通过 `track` 管理释放。
+
+截面尺寸以 mm 输入：`{ type: 'C', d: 100, f: 55, l: 15, t: 1.8 }` 表示 C 型钢，省略 `type` 时兼容现有 C 型钢参数；`{ type: 'roundTube', d: 100, t: 3 }` 表示圆管，`d` 为外径。局部 x 沿截面高度，y 沿截面宽度，z 为杆件轴向，几何体沿 z 拉伸 1 m，再由构件放置矩阵缩放到实际长度。C 型钢腹板外表面在 y=0；圆管外包络从 y=0 开始，中心为 `(0, d/2)`。
+
+圆管目前仅支持截面几何生成，尚未加入页面选型。立柱换成圆管时，还需要适配放置基准、连接节点、尺寸标注与重量计算，不能只替换截面参数。后续增加截面类型，在截面模块中添加轮廓生成函数和类型分支即可，构件继续使用同一几何接口。
 
 修改后刷新浏览器即可。建议核对两套方案、非零坡度、两种固定方式及受影响节点。
 

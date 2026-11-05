@@ -1,21 +1,21 @@
 /** Page-independent translation from section/material configuration to part options. */
 export function createPartOptions({ sections, materials, connections, geometry, track }) {
   const { JOINT, DBL, CLIP, CLAMP } = connections;
-  const { extrudeC, cShape, modMats } = geometry;
+  const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
     post: { postFSection: sections.postF,
       postRSection: sections.postR,
       postMaterial: materials.post,
       buriedMaterial: materials.buried,
-      extrudeC,
+      createSectionGeometry,
       track },
     beam: { beamSection: sections.beam,
       postFSection: sections.postF,
       beamMaterial: materials.beam,
-      extrudeC,
+      createSectionGeometry,
       track },
     brace: { braceMaterial: materials.brace,
-      extrudeC,
+      createSectionGeometry,
       DBL,
       JOINT,
       postFSection: sections.postF,
@@ -38,8 +38,8 @@ export function createPartOptions({ sections, materials, connections, geometry, 
     purlin: { purlinSection: sections.purlin,
       purlinMaterial: materials.purlin,
       purlinCapMaterial: materials.purlinCap,
-      extrudeC,
-      cShape,
+      createSectionGeometry,
+      createSectionCapGeometry,
       CLIP,
       purlinConnector: { purlinSection: sections.purlin,
       purlinConnectorMaterial: materials.purlinConnector,

@@ -1,3 +1,4 @@
+import { braceConnection, braceMember } from './brace-layout.js';
 import { cutPurlin } from './purlin-cut.js';
 import { JOINT, FIX } from './config.js';
 import { DEG, ewMatrix } from './core.js';
@@ -8,12 +9,15 @@ import { DEG, ewMatrix } from './core.js';
 export function solve(p) {
   const th = p.tilt * DEG, c = Math.cos(th), s = Math.sin(th);
   const L = p.span;
-  // 沿坡 rows 块组件，每块下 2 根檩条（安装孔距 hole）；斜梁伸出首末檩条各 114，长度取整到 10；立柱在斜梁上居中
-  const arrLen = p.rows * p.modL + (p.rows - 1) * FIX.modGap;
+  // 安装孔在每块组件上居中；首末孔距加下端 135、上端 85 后向上取整到 10。
+  // 与二维一致：取整增加的长度平均分到上下两端。
+  const a = (p.modL - p.hole) / 2;                         // 组件下沿到下安装孔（沿坡）
   const purlinSpan = (p.rows - 1) * (p.modL + FIX.modGap) + p.hole;
-  const beamLen = Math.round((purlinSpan + 2 * FIX.beamPastPurlin) / 10) * 10;
+  const ret = purlinSpan + FIX.beamEndOffsets.low + FIX.beamEndOffsets.high;
+  const beamLen = Math.ceil(ret / 10) * 10;
+  const endAllowance = (beamLen - ret) / 2;
   const ovh = (beamLen - L / c) / 2;                        // 斜梁两端伸出立柱中心（悬挑）
-  const extLow = (arrLen - beamLen) / 2 - FIX.arrayShift;   // 组件下沿伸出斜梁下端
+  const extLow = a - FIX.beamEndOffsets.low - endAllowance; // 组件下沿伸出斜梁下端
   const sLow = ovh + extLow;                                // 前柱节点 → 组件下沿（沿坡）
   const hBeamTop = FIX.beam.d / 2;                          // 斜梁中心线 → 上表面
   const hModBot = hBeamTop + FIX.purlin.d;                  // 斜梁中心线 → 组件底面
@@ -21,9 +25,9 @@ export function solve(p) {
   const xr = xf + L;
   const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
   const nodeR = nodeF + L * s / c;
-  const topF = nodeF + hBeamTop / c, topR = nodeR + hBeamTop / c;
-  // 立柱-斜梁螺栓：立柱中心线上、孔心距柱顶 postTopHole（比两条中心线交点略低）
-  const holeF = topF - JOINT.postTopHole, holeR = topR - JOINT.postTopHole;
+  // 连接孔位于立柱中心线与斜梁腹板中心线的交点；柱顶水平切，孔心向上留边。
+  const holeF = nodeF, holeR = nodeR;
+  const topF = holeF + JOINT.postTopHole, topR = holeR + JOINT.postTopHole;
   // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
   // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
   // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
@@ -41,29 +45,29 @@ export function solve(p) {
     tF = beamLen / 2 - 75; tR = beamLen / 2 + 75;
     warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
   }
-  // 斜撑下端理论节点：立柱侧面、离 ±0 高 braceH（= 连接板竖向中点）。斜撑长度按理论节点到斜梁节点算，
-  // 与两张图纸的斜撑长度一致；实际斜撑从连接板上的螺栓连到斜梁节点（见 parts/brace.js）
-  const bx = FIX.postF.d / 2, bxR = FIX.postR.d / 2;
-  const bF = { x: xf + bx, y: p.braceHF };
-  const bR = { x: xr - bxR, y: p.braceHR };
+  // 连接件中心高度仍相对 ±0；斜撑下孔在中心上方 rise，水平偏移随各自柱截面计算。
+  const connections = [
+    braceConnection({ x: xf, y: p.braceHF, side: 1, postWidth: FIX.postF.d, outer: p.outer, boltOffset: JOINT.boltU, rise: JOINT.rise }),
+    braceConnection({ x: xr, y: p.braceHR, side: -1, postWidth: FIX.postR.d, outer: p.outer, boltOffset: JOINT.boltU, rise: JOINT.rise }),
+  ];
+  const bF = connections[0].Q, bR = connections[1].Q;
   const tFp = along(tF), tRp = along(tR);
-  const braceF = Math.hypot(tFp.x - bF.x, tFp.y - bF.y);
-  const braceR = Math.hypot(tRp.x - bR.x, tRp.y - bR.y);
+  const braceMembers = [braceMember(bF, tFp, JOINT.braceEdge), braceMember(bR, tRp, JOINT.braceEdge)];
+  const braceF = braceMembers[0].len, braceR = braceMembers[1].len;
 
   // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
   let outer = null;
   if (p.outer) {
-    const oF = { x: xf - bx, y: p.braceHF }, oR = { x: xr + bxR, y: p.braceHR };
+    const oF = connections[0].Qo, oR = connections[1].Qo;
     const toF = Math.min(p.braceOutF, ovh - 100), toR = beamLen - Math.min(p.braceOutR, ovh - 100);
     if (p.braceOutF > ovh - 100 || p.braceOutR > ovh - 100) warn.push('外斜撑上节点要落在立柱外侧的斜梁悬挑段上，已临时压回悬挑段');
     const toFp = along(toF), toRp = along(toR);
     outer = {
       oF, oR, toF, toR, toFp, toRp,
-      braceOF: Math.hypot(toFp.x - oF.x, toFp.y - oF.y), braceOR: Math.hypot(toRp.x - oR.x, toRp.y - oR.y),
+      braceOF: braceMember(oF, toFp, JOINT.braceEdge).len, braceOR: braceMember(oR, toRp, JOINT.braceEdge).len,
     };
   }
 
-  const a = (p.modL - p.hole) / 2;
   const modStarts = [];
   for (let r = 0; r < p.rows; r++) modStarts.push(-extLow + r * (p.modL + FIX.modGap));
   const purlins = [];
@@ -79,7 +83,7 @@ export function solve(p) {
   return {
     c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
     lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
-    modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
+    connections, braceMembers, modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
   };
 }
 

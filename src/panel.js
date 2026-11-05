@@ -1,4 +1,4 @@
-import { CLIP, FIX, P, PARAMS, limits, SECTION_LIB, SECTION_LABEL, PRESETS, show } from './config.js';
+import { applyPresetSections, CLIP, FIX, P, PARAMS, limits, SECTION_LIB, SECTION_LABEL, PRESETS, show } from './config.js';
 import { shared } from './core.js';
 import { build } from './model.js';
 import { setView as viewSetView, applyVisibility as viewApplyVisibility, buttons as viewButtons } from './view.js';
@@ -9,6 +9,7 @@ const params = P;
 const st = shared.state;
 
 const inputs = {};
+const sectionInputs = {};
 const conditional = [];   // 带 when 的参数行：只在条件成立时显示（比如压块长度只在“压块”时）
 const refreshRows = () => { for (const [row, d] of conditional) row.style.display = d.when(P) ? '' : 'none'; };
 let pending = false;
@@ -114,6 +115,7 @@ function init() {
       ` aria-label="${SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
     const inp = row.querySelector('input');
     inp.value = curSecName(key);
+    sectionInputs[key] = inp;
     inp.addEventListener('focus', () => inp.select());
     inp.addEventListener('change', () => {
       const s = findSection(inp.value);
@@ -132,6 +134,8 @@ function init() {
   const presetEl = document.getElementById('preset');
   const applyPreset = () => {
     Object.assign(P, PRESETS[st.preset]);
+    applyPresetSections(st.preset);
+    for (const [key, inp] of Object.entries(sectionInputs)) inp.value = curSecName(key);
     for (const k in inputs) inputs[k].show(P[k]);
     refreshRows();
     build();
@@ -248,18 +252,18 @@ function update() {
 
   // 与所选图纸核对；模型里没有的项（比如关掉外斜撑）显示“—”
   const gap = (i) => (i + 1 < np ? S.purlins[i + 1] - S.purlins[i] : NaN);
-  const purlinRows = (k) => Array.from({ length: k }, (_, i) => [`檩条间距 ${i + 1}-${i + 2}`, i % 2 ? 1002 : 1400, gap(i)]);
+  const purlinRows = (k) => Array.from({ length: k }, (_, i) => [`檩条间距 ${i + 1}-${i + 2}`, i % 2 ? (st.preset === 'A' ? 1004 : 1002) : 1400, gap(i)]);
   const check = st.preset === 'A' ? [
     ['斜梁长度', 4030, S.beamLen],
-    ['斜梁上端悬挑', 415, S.ovh],
-    ['前柱露出地面', 1038, S.topF],
-    ['后柱顶高（±0 起）', 2391, S.topR],
-    ['前柱总长', 2838, S.lenF],
-    ['后柱总长', 4336, S.lenR],
-    ['前斜撑', 1649, S.braceF],
-    ['后斜撑', 1816, S.braceR],
-    ['檩条总长', 32392, L.purlinLen],
-    ['檩条端部悬挑', 796, (L.purlinLen - L.spanEW) / 2],
+    ['斜梁上端悬挑', 419, S.ovh],
+    ['前柱露出地面', 798, S.topF],
+    ['后柱顶高（±0 起）', 1890, S.topR],
+    ['前柱总长', 2298, S.lenF],
+    ['后柱总长', 3390, S.lenR],
+    ['前斜撑', 1436, S.braceF],
+    ['后斜撑', 1610, S.braceR],
+    ['檩条总长', 34478, L.purlinLen],
+    ['檩条端部悬挑', 739, (L.purlinLen - L.spanEW) / 2],
     ...purlinRows(3),
   ] : [
     ['斜梁长度', 6430, S.beamLen],

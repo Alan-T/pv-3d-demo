@@ -1,7 +1,6 @@
 import { addMember, EZ, V, MM } from '../core.js';
 import { PurlinConnectorPart } from './purlin-connector.js';
 import { PurlinClipPart } from './purlin-clip.js';
-import * as THREE from '../../vendor/three.module.js';
 
 /** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
 export class PurlinPart {
@@ -9,8 +8,8 @@ export class PurlinPart {
     purlinSection,
     purlinMaterial,
     purlinCapMaterial,
-    extrudeC,
-    cShape,
+    createSectionGeometry,
+    createSectionCapGeometry,
     CLIP,
     track,
     purlinConnector: purlinConnectorOptions,
@@ -21,8 +20,8 @@ export class PurlinPart {
   /* 檩条和檩托。檩条坐在斜梁上表面，沿东西向通长。
    * 檩条-斜梁：L 形檩托，底边压在斜梁上翼缘、立边贴檩条腹板（下坡一侧），各 1 颗 M12 */
 
-  const geo = track(extrudeC(purlinSection));
-  const capGeo = track(new THREE.ShapeGeometry(cShape(purlinSection)));
+  const geo = track(createSectionGeometry(purlinSection));
+  const capGeo = track(createSectionCapGeometry(purlinSection));
   // 檩条 t（距斜梁下端）在东西向 z 处的截面原点：截面局部 a 沿 n、b 沿 u，腹板在下坡一侧
   function origin(c, t, z) {
     const p = c.S.along(t);

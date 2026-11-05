@@ -1,6 +1,7 @@
 import { createPartOptions } from './part-options.js';
 import { JOINT, DBL, CLIP, CLAMP } from './config.js';
-import { extrudeC, cShape, modMats } from './materials.js';
+import { modMats } from './materials.js';
+import { createSectionGeometry, createSectionCapGeometry } from './section-geometry.js';
 import { createBracket } from './bracket.js';
 import { root } from './scene.js';
 import { M } from './materials.js';
@@ -62,7 +63,7 @@ export function build() {
     sections: FIX,
     materials: M,
     connections: { JOINT, DBL, CLIP, CLAMP },
-    geometry: { extrudeC, cShape, modMats },
+    geometry: { createSectionGeometry, createSectionCapGeometry, modMats },
     track,
   });
   const bracket = createBracket(P, {
