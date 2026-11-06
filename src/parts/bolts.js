@@ -9,6 +9,9 @@ export class BoltsPart {
     beamSection,
     purlinSection,
     boltSteelMaterial,
+    nutMaterial = boltSteelMaterial,
+    washerMaterial = boltSteelMaterial,
+    springMaterial = boltSteelMaterial,
     slotMaterial,
     CLAMP,
     CLIP,
@@ -50,13 +53,13 @@ export class BoltsPart {
       return g;
     };
     const parts = [
-      [cyl(washer.radius, 0, washer.thickness, 24), boltSteelMaterial],
-      [cyl(hexR, nut, top, 6), boltSteelMaterial],
+      [cyl(washer.radius, 0, washer.thickness, 24), washerMaterial],
+      [cyl(hexR, nut, top, 6), nutMaterial],
       [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), boltSteelMaterial],
       o.socket ? [cyl(b.sk.d / 2, back - hh + 0.6, back, 24), boltSteelMaterial] : [cyl(hexR, back - hh, back, 6), boltSteelMaterial],
     ];
-    if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), boltSteelMaterial]);
-    if (o.spring) parts.push([springWasher(b.sw, washer.thickness), boltSteelMaterial]);
+    if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), washerMaterial]);
+    if (o.spring) parts.push([springWasher(b.sw, washer.thickness), springMaterial]);
     if (o.socket) {
       parts.push([cyl(b.sk.d / 2 - 0.6, back - hh, back - hh + 0.6, 24, b.sk.d / 2), boltSteelMaterial]);   // 头顶倒角
       parts.push([cyl(b.sk.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), slotMaterial]);           // 内六角孔
@@ -101,8 +104,9 @@ export class BoltsPart {
   function kinds(H) {
     if (!clampKinds[H]) {
       clampKinds[H] = {
-        clampMid: boltKind(8, purlinSection.t + H - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true }),
-        clampSide: boltKind(8, purlinSection.t + H - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true }),
+        // 头部普通平垫 Ø16×1.6，螺母侧大平垫暂按 Ø24×2，上叠弹垫。
+        clampMid: boltKind(8, purlinSection.t + H - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
+        clampSide: boltKind(8, purlinSection.t + H - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
       };
     }
     return Object.assign({}, BOLTS, clampKinds[H]);
