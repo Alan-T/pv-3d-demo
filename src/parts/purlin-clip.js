@@ -37,6 +37,11 @@ export class PurlinClipPart {
         c.bolts.add('clip', at(-CLIP.baseBolt, -beamSection.t, zClip), n.clone().negate(), u);
         // 立边：头在檩托外侧，螺母和垫圈在檩条槽内。
         c.bolts.add('clipWeb', at(purlinSection.t, CLIP.webBolt, zClip), u, n);
+        // 东西坡度为零时，两翼缘贴合，增加直接连接螺栓。
+        // 位于檩条翼缘宽度中线：头及平垫在槽内，螺母、平垫和弹垫在斜梁下方。
+        if (layout.ew.i === 0) {
+          c.bolts.add('purlinBeam', at(purlinSection.f / 2, -beamSection.t, zClip), n.clone().negate(), u);
+        }
       }
     }
     instanced(c.hw, clipGeo, clipMaterial, clipMats);

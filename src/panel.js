@@ -235,6 +235,7 @@ function update() {
     ...(O ? [['前 / 后外斜撑', `${r(O.braceOF)} / ${r(O.braceOR)} × ${n}`]] : []),
     ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
     ['檩托', `${L.counts.clip} 个（L 形 t=${CLIP.t}）`],
+    ['M16×40 立柱连接螺栓', `${L.counts.m16} 套`],
     ['M12 螺栓', `${L.counts.m12} 套`],
     ...(L.counts.clamps ? [
       ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],

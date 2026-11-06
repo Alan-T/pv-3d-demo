@@ -32,14 +32,15 @@ function build(S, layout) {
           [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(section('brace', !!fr, true))}`],
           [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(section('brace', !!fr))}`],
           [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
-          [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12 螺栓 ×' + J.bolts.length + '（平垫 + 弹垫），长圆孔'],
+          [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12×35 外六角螺栓及螺母 ×' + J.bolts.length],
           [J.xc - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
           [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
+          [J.xc, J.yc - JOINT.boltPitch / 2, ly(6), '两面平垫，螺母侧弹垫；长圆孔'],
         ],
         lines: [[J.xc, yBot - 70, J.xc, J.yTop + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260],
           [o.E.x - o.ax * 40, o.E.y - o.ay * 40, o.Q.x + o.ax * 260, o.Q.y + o.ay * 260]],
-        box: [J.xc + J.side * (J.extent + 160), ax, ly(5) - 30, J.yTop + 200],
+        box: [J.xc + J.side * (J.extent + 160), ax, ly(6) - 30, J.yTop + 200],
       });
     } else { // 斜撑-立柱：文字放在立柱另一侧
       specs.foot.push({
@@ -47,14 +48,15 @@ function build(S, layout) {
         leaders: [
           [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 70, `立柱 ${sec(section('post', !!fr))}`],
           [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 15, `斜撑 ${sec(section('brace', !!fr))}`],
-          [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12 螺栓 ×3（平垫 + 弹垫），长圆孔'],
+          [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12×35 外六角螺栓及螺母 ×3'],
           [J.B.x - J.side * 25, J.yc - J.hh + 22, J.yc - 20, `斜撑连接板 ${J.spec}`],
           [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
+          [J.xc, J.yc - JOINT.boltPitch / 2, J.yc - 130, '两面平垫，螺母侧弹垫；长圆孔'],
         ],
         lines: [[J.xc, J.yc - J.hh - 70, J.xc, J.yc + J.hh + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260]],
         box: [J.xc - J.side * (section('post', !!fr).d / 2 + 110), J.xc + J.side * (JOINT.singleW - JOINT.singleBack + 170),
-          J.yc - J.hh - 70, J.yc + J.hh + 150],
+          J.yc - 160, J.yc + J.hh + 150],
       });
     }
     { // 立柱-斜梁：文字放在框架外侧、斜梁下面；螺栓在立柱中心线上、孔心距柱顶 50（尺寸标在框架内侧）
@@ -66,7 +68,7 @@ function build(S, layout) {
         leaders: [
           [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
           [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${JOINT.postTopHole}`],
-          [hole.x, hole.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫）'],
+          [hole.x, hole.y, y0 - 130, 'M16×40 外六角螺栓（平垫 + 弹垫）'],
           [hole.x, hole.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
           [node.x, node.y - 190, y0 - 260, `立柱 ${sec(section('post', !!fr))}`],
         ],
@@ -83,7 +85,7 @@ function build(S, layout) {
         leaders: [
           [end.x, end.y, y0, `斜撑端头平切，孔心到端头 ${JOINT.braceEdge}`],
           [bp.x, bp.y, y0 - 65, `斜梁 ${sec(FIX.beam)}`],
-          [T.x, T.y, y0 - 130, 'M12 螺栓（平垫 + 弹垫），中心线交点'],
+          [T.x, T.y, y0 - 130, 'M12×35 外六角螺栓（平垫 + 弹垫）'],
           [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(section('brace', !!fr))}`],
         ],
         lines: [seg2(mv(T, -340, 0), mv(T, 340, 0)),
@@ -99,7 +101,8 @@ function build(S, layout) {
         ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']]),
         [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
         [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 L 形 t=${CLIP.t}`],
-        [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), 'M12 螺栓 ×2（平垫 + 弹垫）'],
+        [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), 'M12×35 螺栓 ×2（平垫 + 弹垫）'],
+        ...(layout.ew.i === 0 ? [[mv(P0, 0, S.hBeamTop), 'M12×35：檩条下翼缘—斜梁上翼缘']] : []),
         [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],
       ];
       const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * (parts.length - 1);
@@ -156,10 +159,10 @@ function build(S, layout) {
     const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+100;
     specs.splice.push({labelSide:1,anchorX:ax,z,zl:z+160,at:q,
       leaders:[
-        [q.x,q.y,q.y+80,'檩条 1 '+sec(FIX.purlin),z-230],
-        [q.x,q.y,q.y+30,'檩条 2 '+sec(FIX.purlin),z+230],
+        [q.x,q.y,q.y+80,'檩条 1 '+sec(FIX.purlin),z-150],
+        [q.x,q.y,q.y+30,'檩条 2 '+sec(FIX.purlin),z+150],
         [q.x,q.y,q.y-30,'U108×55×3.0 连接件（长240）',z],
-        [q.x,q.y,q.y-85,'M12×35 ×6（平垫 + 弹垫）',z+60],
+        [q.x,q.y,q.y-85,'M12×35 ×6（两面平垫，螺母侧弹垫）',z+60],
         [q.x,q.y,q.y-140,'檩条接缝 4 mm',z]
       ],lines:[],box:[q.x-160,ax,q.y-170,q.y+130]});
   }
