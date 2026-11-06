@@ -24,7 +24,7 @@ export class BoltsPart {
   const BOLT_SIZE = {
     16: { wr: 15, wt: 3, af: 24, nh: 14.8, r: 8, hh: 10, out: 6, sw: { ri: 8.1, ro: 12.2, t: 4 } },
     12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6, sw: { ri: 6.1, ro: 9.2, t: 3.1 } },
-    8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sk: { d: 13, k: 8, s: 6 } },
+    8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sw: { ri: 4.1, ro: 6.35, t: 2 }, sk: { d: 13, k: 8, s: 6 } },
   };
   // 弹垫：开口的圆环，开口在局部 x-y 平面的左上方（节点正视图里看得见），从 z0 起厚 sw.t
   function springWasher(sw, z0) {
@@ -93,7 +93,7 @@ export class BoltsPart {
     // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
     splice: boltKind(12, purlinSection.t + 3, null, { len: 35, headWasher: true, spring: true }),
     // 组件上方：普通平垫 Ø16×1.6；檩条下方：大平垫（图未标尺寸，暂按 Ø24×2）。
-    module: boltKind(8, purlinSection.t + 2, null, { len: 22, headWasher: true, nutWasher: { radius: 12, thickness: 2 } }),
+    module: boltKind(8, purlinSection.t + 2, null, { len: 22, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
   };
   // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同。
   // 叠层厚度跟组件厚度 H 走，按厚度缓存
