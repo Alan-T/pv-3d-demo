@@ -1,93 +1,77 @@
-// All distances are in millimetres. Candidate positions are measured from
-// the west end; returned positions use the array centre as their origin.
+// 与二维 TopView 自动切割保持一致。搜索坐标从檩条西端起算，输出以阵列中心为原点，单位 mm。
 const CUT = {
   step: 50,
   gap: 4,
   minFrameDistance: 300,
   maxFrameDistance: 1000,
   fixtureClearance: 300,
-  minJointSpacing: 400,
-  extraSegments: 20,
   moduleGap: 20,
-  boltInset: 18,
+  maxAdjustAttempts: 400,
+  maxRecalcAttempts: 5,
 };
 
-function fixturePositions(params, gaps, width) {
-  if (params.fix === 'clamp') return [...gaps, -width / 2, width / 2];
-  return Array.from({ length: params.cols }, (_, column) => {
-    const start = -width / 2 + column * (params.modW + CUT.moduleGap);
-    return [start + CUT.boltInset, start + params.modW - CUT.boltInset];
-  }).flat();
+// 二维 pClamps：两种固定方式均按组件缝避让，包含首块组件前方的虚拟缝。
+function fixturePositions(params, total, width) {
+  const start = (total - width) / 2 - CUT.moduleGap / 2;
+  return Array.from({ length: params.cols }, (_, i) => start + i * (params.modW + CUT.moduleGap));
 }
 
-function jointCandidates(total, posts, fixtures) {
-  const candidates = [];
-  for (let offset = CUT.step; offset < total; offset += CUT.step) {
-    const position = offset - total / 2;
-    const frameDistance = Math.min(...posts.map(post => Math.abs(position - post)));
-    const clearsFrames = frameDistance >= CUT.minFrameDistance && frameDistance <= CUT.maxFrameDistance;
-    const clearsFixtures = fixtures.every(fixture => Math.abs(position - fixture) >= CUT.fixtureClearance);
-    if (clearsFrames && clearsFixtures) candidates.push(offset);
+function validJoint(position, posts, fixtures) {
+  const nearFrame = posts.some(post => {
+    const distance = Math.abs(position - post);
+    return distance >= CUT.minFrameDistance && distance <= CUT.maxFrameDistance;
+  });
+  return nearFrame && fixtures.every(fixture => Math.abs(position - fixture) >= CUT.fixtureClearance);
+}
+
+function adjustJoint(initial, total, posts, fixtures) {
+  let position = initial;
+  for (let attempt = 0; attempt < CUT.maxAdjustAttempts; attempt++) {
+    if (validJoint(position, posts, fixtures)) return position;
+    // 二维采用累加调整；未触及边界时，检查顺序为原位、+50、原位、+100、原位……。
+    const next = attempt + 1;
+    position += (next % 2 ? 1 : -1) * CUT.step * Math.ceil(next / 2);
+    position = Math.max(0, Math.min(position, total));
   }
-  return candidates;
+  // 不沿用二维超出尝试次数后仍接受非法位置的行为。
+  return null;
 }
 
-// Keep the least-cost path ending at each candidate for the current joint.
-function findPath(candidates, total, maxLength, segmentCount) {
-  const targetLength = total / segmentCount;
-  let states = [{ offset: 0, cost: 0, path: [] }];
-  for (let joint = 1; joint < segmentCount && states.length; joint++) {
-    const next = [];
-    for (const offset of candidates) {
-      let best;
-      for (const previous of states) {
-        const spacing = offset - previous.offset;
-        const length = spacing - (joint === 1 ? CUT.gap / 2 : CUT.gap);
-        if (length <= 0 || length > maxLength) continue;
-        if (joint > 1 && spacing < CUT.minJointSpacing) continue;
-        const cost = previous.cost + (length - targetLength) ** 2;
-        if (!best || cost < best.cost) {
-          best = { offset, cost, path: [...previous.path, offset] };
-        }
-      }
-      if (best) next.push(best);
-    }
-    states = next;
-  }
-
-  const lastLength = state => total - state.offset - CUT.gap / 2;
-  const valid = states.filter(state => lastLength(state) > 0 && lastLength(state) <= maxLength);
-  const totalCost = state => state.cost + (lastLength(state) - targetLength) ** 2;
-  valid.sort((a, b) => totalCost(a) - totalCost(b));
-  return valid[0]?.path;
-}
-
-function segmentsFromPath(path, total) {
-  const halfLength = total / 2;
-  const positions = path.map(offset => offset - halfLength);
+function segmentsFromPositions(offsets, total) {
+  const positions = offsets.map(offset => offset - total / 2);
   const segments = [];
-  let start = -halfLength;
+  let start = -total / 2;
   for (const position of positions) {
     segments.push({ start, length: position - CUT.gap / 2 - start });
     start = position + CUT.gap / 2;
   }
-  segments.push({ start, length: halfLength - start });
+  segments.push({ start, length: total / 2 - start });
   return { valid: true, positions, segments };
 }
 
-export function cutPurlin(params, total, posts, gaps, width) {
+export function cutPurlin(params, total, posts, width) {
   const maxLength = Number(params.maxPurlin);
   const fallback = { valid: false, positions: [], segments: [{ start: -total / 2, length: total }] };
-  if (!(maxLength > 0)) return fallback;
+  if (!Number.isFinite(maxLength) || maxLength <= 0 || !Number.isFinite(total) || total <= 0) return fallback;
   if (total <= maxLength) return { ...fallback, valid: true };
 
-  const fixtures = fixturePositions(params, gaps, width);
-  const candidates = jointCandidates(total, posts, fixtures);
-  const minimumSegments = Math.ceil(total / maxLength);
-  const maximumSegments = Math.min(candidates.length + 1, minimumSegments + CUT.extraSegments);
-  for (let count = minimumSegments; count <= maximumSegments; count++) {
-    const path = findPath(candidates, total, maxLength, count);
-    if (path) return segmentsFromPath(path, total);
+  const framePositions = posts.map(post => post + total / 2);
+  const fixtures = fixturePositions(params, total, width);
+  const minimumCount = Math.ceil(total / maxLength);
+  for (let retry = 0; retry < CUT.maxRecalcAttempts; retry++) {
+    const count = minimumCount + retry;
+    const defaultLength = Math.round(total / count / 100) * 100;
+    const offsets = [];
+    for (let i = 1; i < count; i++) {
+      const initial = i === 1 ? defaultLength + CUT.gap / 2 : i * (defaultLength + CUT.gap) - CUT.gap / 2;
+      const position = adjustJoint(initial, total, framePositions, fixtures);
+      if (position === null) break;
+      offsets.push(position);
+    }
+    if (offsets.length !== count - 1) continue;
+    offsets.sort((a, b) => a - b);
+    const result = segmentsFromPositions(offsets, total);
+    if (result.segments.every(segment => segment.length > 0 && segment.length <= maxLength)) return result;
   }
   return fallback;
 }

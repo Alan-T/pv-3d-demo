@@ -119,7 +119,7 @@ export function layoutEW(p) {
   // 换成世界坐标时沿坡 z 处水平位置 z·cos、抬高 z·sin（阵列中心不动），见 ewMatrix
   const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
   const ew = { i, ca, sa: i * ca };
-  const cuts = cutPurlin(p, purlinLen, zs, gaps, arrW);
+  const cuts = cutPurlin(p, purlinLen, zs, arrW);
   if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
   return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
 }
