@@ -8,7 +8,7 @@ export class PurlinConnectorPart {
     purlinConnectorMaterial,
     track,
   }) {
-  // U 型檩条连接件及每个接头的六套螺栓。
+  // U 型檩条连接件：上下翼板各两套、腹板四套，共八套螺栓。
   // 无卷边 U108×55×3.0，长240；纵向孔位暂按每侧30/60/90，待孔距详图确认。
   const splice = { depth: 108, length: 240, thickness: 3, flange: 55, webBolt: 60, flangeBolts: [30, 90] };
   const connectorGeo = (() => {
@@ -26,6 +26,8 @@ export class PurlinConnectorPart {
           // 中间竖向螺栓：头在上，螺母朝槽内；翻转时原点移到另一夹紧面。
           const stack = purlinSection.t + splice.thickness;
           c.bolts.add('splice',at(23,splice.depth/2-stack,side*splice.webBolt),n.clone().negate(),u);
+          // 下翼板与上翼板对称：头在下，平垫、弹垫和螺母朝槽内。
+          c.bolts.add('splice',at(23,-splice.depth/2+stack,side*splice.webBolt),n,u);
           // 两旁各一颗横穿腹板，轴线沿坡向；俯视显示杆、螺母和垫圈的侧面。
           // 横向螺栓：头在腹板外侧，平垫、弹垫和螺母朝槽内。
           for(const distance of splice.flangeBolts)
