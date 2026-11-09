@@ -3,6 +3,7 @@ export function createPartOptions({ sections, materials, connections, geometry, 
   const { JOINT, DBL, CLIP, CLAMP } = connections;
   const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
+    postTie: { section: sections.postTie, material: materials.postTie, createSectionGeometry, track },
     post: { postFSection: sections.postF,
       postRSection: sections.postR,
       postMaterial: materials.post,

@@ -1,5 +1,7 @@
 import { BraceConnectorPart } from './parts/brace-connector.js';
 import { PostPart } from './parts/post.js';
+import { PostTiePart } from './parts/post-tie.js';
+import { calculatePostTies } from './post-tie-layout.js';
 import { BeamPart } from './parts/beam.js';
 import { BracePart } from './parts/brace.js';
 import { PurlinPart } from './parts/purlin.js';
@@ -82,8 +84,10 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
     hw: new THREE.Group(),          // 连接件：螺栓、连接板、檩托
     slope: new THREE.Group(),       // 顺坡的檩条及其剖切封口
     hwSlope: new THREE.Group(),     // 顺坡的连接件：压块、组件螺栓
+    postTies: new THREE.Group(),     // 已按实际榀位计算的跨间拉杆，不再变换
   };
-  g.model.add(g.buried, g.modules, g.hw, g.slope);
+  g.model.add(g.buried, g.modules, g.hw, g.slope, g.postTies);
+  g.postTies.userData.slope = true;
   g.hw.add(g.hwSlope);
   // 东西坡度：各构件先按沿坡坐标搭，再换到坡上（见 ewMatrix）
   for (const k of ['modules', 'slope', 'hwSlope']) { g[k].userData.slope = true; ewPlace(g[k], layout.ew); }
@@ -126,6 +130,21 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
     }
   }
   if (layout.ew.i) liftFrames(g.model, layout);
+
+  layout.postTies = calculatePostTies(P, S, layout);
+  // 拉杆孔位已经是世界坐标；在榀位抬高之后独立生成紧固件，避免重复施加坡度。
+  const tieBolts = boltPart.collector(P.modT);
+  g.postTieHardware = new THREE.Group();
+  g.postTies.add(g.postTieHardware);
+  for (const row of layout.postTies) {
+    if (!row.valid && row.enabled.some(Boolean)) S.warn.push(`${row.rear ? '后' : '前'}排立柱拉杆安装高度不足，未生成拉杆，请调整柱高或斜撑下节点高度`);
+    const part = new PostTiePart({ ...partOptions.postTie,
+      postSection: row.rear ? sections.postR : sections.postF });
+    part.build({ row, parent: g.postTies, bolts: tieBolts });
+    instances[row.rear ? 'rearPostTie' : 'frontPostTie'] = part;
+  }
+  layout.counts.postTieBolts = tieBolts.flush(g.postTieHardware, g.postTieHardware).m12;
+  layout.counts.m12 += layout.counts.postTieBolts;
 
   return { model: g.model, groups: g, solution: S, layout, instances };
 }

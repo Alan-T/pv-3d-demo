@@ -125,9 +125,10 @@ export class BoltsPart {
         if (thickness !== undefined) {
           const base = kind, key = base + ':' + thickness;
           if (!K[key]) {
-            const stack = thickness + (base === 'top' || base === 'btop' ? beamSection.t : JOINT.plateT);
-            const slot = base === 'btop' ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL, width: base === 'top' ? 18 : JOINT.slotW };
-            K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop'].includes(base), spring: true });
+            // postTie 传入拉杆腹板 + 当前立柱翼缘的总夹紧厚度。
+            const stack = base === 'postTie' ? thickness : thickness + (base === 'top' || base === 'btop' ? beamSection.t : JOINT.plateT);
+            const slot = base === 'btop' || base === 'postTie' ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL, width: base === 'top' ? 18 : JOINT.slotW };
+            K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie'].includes(base), spring: true });
 
             mats[key] = [];
           }

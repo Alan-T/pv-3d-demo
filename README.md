@@ -126,6 +126,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/purlin-cut.js` | 接头避让、切割方案搜索及分段长度 |
 | `src/scene.js` / `src/materials.js` | 场景、相机、渲染器、材质、配色及透明显示 |
 | `src/parts/post.js` | 立柱和埋地段 |
+| `src/post-tie-layout.js` | 立柱拉杆孔位、跨间布置及下料长度（参考二维 TopView.vue） |
+| `src/parts/post-tie.js` | 前/后排立柱拉杆实体，接收截面、材质及安装坐标 |
 | `src/parts/beam.js` | 斜梁及柱顶连接螺栓 |
 | `src/parts/brace.js` | 内外斜撑、连接板及螺栓 |
 | `src/parts/brace-connector.js` | 单面 / 双面斜撑连接板、节点孔位及连接板螺栓 |
@@ -219,3 +221,12 @@ post.build(context);
 ```
 
 `bracket.js` 根据 `partOptions` 创建完整支架的构件实例；组装器显式调用 `parts.post.build(context)` 等方法，连接件在所属构件内单独实例化。
+
+### 立柱拉杆
+
+- 前排、后排分别选择无、首末跨、全部跨或自定义；自定义可逐跨勾选。默认启用首末跨，未启用的跨不生成实体。可单独切换显示、选择拉杆截面，默认 C59×39×8×1.6。
+- 孔位参考二维 `TopView.vue` 的 `calculateXY/getOptimalSolution`：扣除埋深、斜撑安装高度及 200 mm 后，孔高差按 100 mm 递增，柱顶余量在 150–300 mm 内优先接近 225 mm。高度不够形成 X 时使用一根水平杆；安装空间不足则提示并不生成。
+- 直埋柱下料长度沿用二维：`Math.round(Math.hypot(水平跨距, 上下孔高差 ± 东西坡高) / 10) * 10 + 270`。前后排分别计算，按规格长度统计数量并计入钢材估重。
+- 二维坡高使用 `跨距 × 坡度`，模型实际榀位使用 `跨距 × sin(atan(坡度))`；下料长度保留前者，实体孔位对准实际榀位，多出的端部余量平分，不改变既有支架坐标。
+- 当前仅适配直埋 C 型立柱；X 形两根暂放在立柱两侧翼缘外侧以避免穿插，每根两端各一套 M12×35 外六角螺栓及螺母，两面平垫、螺母侧弹垫，随连接件开关显示并计入数量；尚未对型材做真实孔洞切削。圆管抱箍、螺旋桩的孔距及埋深修正规则未启用。
+- 验证：`node --test tests/post-tie-layout.test.mjs`。

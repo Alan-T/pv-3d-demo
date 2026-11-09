@@ -19,8 +19,37 @@ function scheduleBuild() {
   requestAnimationFrame(() => { pending = false; build(); });
 }
 
+function updatePostTieControls() {
+  const container = document.getElementById('post-tie-controls');
+  container.innerHTML = shared.state.layout.postTies.map(row => {
+    const key = row.rear ? 'R' : 'F', title = row.rear ? '后排' : '前排';
+    const mode = P['postTie' + key];
+    const options = [['none', '无'], ['ends', '首末跨'], ['all', '全部跨'], ['custom', '自定义']];
+    return `<div class="prow"><label class="pl" for="post-tie-${key}">${title}立柱拉杆</label>` +
+      `<select id="post-tie-${key}" data-tie-row="${key}">${options.map(([value, text]) =>
+        `<option value="${value}"${value === mode ? ' selected' : ''}>${text}</option>`).join('')}</select>` +
+      `<small>上孔距柱顶 ${Math.round(row.topOffset)}，上下孔高差 ${row.holeRise} mm</small></div>` +
+      (mode === 'custom' ? `<div class="tie-spans">${row.enabled.map((enabled, index) =>
+        `<label><input type="checkbox" data-tie-row="${key}" data-tie-bay="${index}"${enabled ? ' checked' : ''}>第 ${index + 1} 跨</label>`).join('')}</div>` : '');
+  }).join('');
+}
+
 function init() {
   const P = params;
+  document.getElementById('post-tie-controls').addEventListener('change', event => {
+    const input = event.target, key = input.dataset.tieRow;
+    if (!key) return;
+    const row = st.layout.postTies[key === 'F' ? 0 : 1];
+    if (input.dataset.tieBay !== undefined) {
+      const selected = row.enabled.map(Number);
+      selected[Number(input.dataset.tieBay)] = Number(input.checked);
+      P['postTieSpans' + key] = selected;
+    } else {
+      if (input.value === 'custom') P['postTieSpans' + key] = row.enabled.map(Number);
+      P['postTie' + key] = input.value;
+    }
+    scheduleBuild();
+  });
   const box = document.getElementById('params');
   for (const d of PARAMS) {
     const row = document.createElement('div');
@@ -210,6 +239,7 @@ function updateJointChips() {
 
 function update() {
   refreshRows();
+  updatePostTieControls();
   updateJointChips();
   const P = params, S = st.S;
   const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, L = st.layout, n = L.frames, O = S.outer, np = S.purlins.length;
@@ -219,7 +249,8 @@ function update() {
   const braceSum = S.braceF + S.braceR + (O ? O.braceOF + O.braceOR : 0);
   const steelKg =
     n * (S.lenF * kgPerM(FIX.postF) + S.lenR * kgPerM(FIX.postR) + S.beamLen * kgPerM(FIX.beam) + S.braceF * kgPerM(FIX.braceF) + S.braceR * kgPerM(FIX.braceR) + (O ? O.braceOF * kgPerM(FIX.braceOF) + O.braceOR * kgPerM(FIX.braceOR) : 0)) / 1000 +
-    (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000;
+    (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000 +
+    L.postTies.flatMap(row => row.rods).reduce((sum, rod) => sum + rod.length * kgPerM(FIX.postTie) / 1000, 0);
   const rows = [
     ['榀数（按组件列数）', `${n} 榀（檩条两端悬挑 ${r((L.purlinLen - L.spanEW) / 2)}）`],
     ['榀距 首末跨 / 中间跨', `${P.pitchEnd} / ${P.pitch}（总 ${r(L.spanEW)}）`],
@@ -232,11 +263,18 @@ function update() {
     ['前柱 总长（露出）', `${r(S.lenF)}（${r(S.topF)}）× ${n}`],
     ['后柱 总长（顶高）', `${r(S.lenR)}（${r(S.topR)}）× ${n}`],
     ['前 / 后斜撑', `${r(S.braceF)} / ${r(S.braceR)} × ${n}`],
+    ...L.postTies.map(row => {
+      const counts = new Map();
+      for (const rod of row.rods) counts.set(rod.length, (counts.get(rod.length) || 0) + 1);
+      return [row.rear ? '后排立柱拉杆' : '前排立柱拉杆',
+        counts.size ? [...counts].map(([length, count]) => `${length} mm × ${count}`).join('；') : '无'];
+    }),
     ...(O ? [['前 / 后外斜撑', `${r(O.braceOF)} / ${r(O.braceOR)} × ${n}`]] : []),
     ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
     ['檩托', `${L.counts.clip} 个（L 形 t=${CLIP.t}）`],
     ['M16×40 立柱连接螺栓', `${L.counts.m16} 套`],
     ['M12 螺栓', `${L.counts.m12} 套`],
+    ['其中立柱拉杆 M12×35', `${L.counts.postTieBolts} 套（两面平垫，螺母侧弹垫）`],
     ...(L.counts.clamps ? [
       ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],
       ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],

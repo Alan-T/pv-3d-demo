@@ -35,6 +35,17 @@ function applyVisibility() {
   root.matrix.copy(view === 'normal' ? ewMatrix(st.layout.ew).invert() : new THREE.Matrix4());
   root.matrixWorldNeedsUpdate = true;
   if (!g) return;
+  if (renderer.shadowMap.enabled !== show.shadows) {
+    renderer.shadowMap.enabled = show.shadows;
+    sun.castShadow = show.shadows;
+    renderer.shadowMap.needsUpdate = true;
+    // 阴影开关影响材质着色器，切换时刷新已有构件，无需重建模型。
+    root.traverse(object => {
+      if (!object.material) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) material.needsUpdate = true;
+    });
+  }
   d.root.visible = show.dims;
   d.key.visible = view === '3d' || view === 'side';
   d.side.visible = view === 'side';
@@ -47,6 +58,8 @@ function applyVisibility() {
   g.buried.visible = show.buried;
   g.modules.visible = show.modules;
   const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
+  g.postTies.visible = show.postTies && !inJoint && view !== 'side';
+  g.postTieHardware.visible = show.bolts;
   // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
   // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
   // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面
