@@ -53,7 +53,7 @@ for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
 for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条' };
-// 截面随方案恢复，保持各 FIX 对象引用不变；图纸二保留原规格。
+// 截面随方案恢复，保持各 FIX 对象引用不变。
 const copySections = () => Object.fromEntries(
   ['post', 'brace', ...Object.keys(SECTION_LABEL)].map(key => [key, { ...FIX[key] }]),
 );
@@ -67,6 +67,18 @@ Object.assign(PRESET_SECTIONS.A, {
   braceR: { d: 59, f: 39, l: 8, t: 1.8 },
   beam: { d: 90, f: 50, l: 15, t: 2 },
   purlin: { d: 100, f: 55, l: 20, t: 1.8 },
+});
+Object.assign(PRESET_SECTIONS.B, {
+  post: { d: 80, f: 40, l: 15, t: 3 },
+  postF: { d: 80, f: 40, l: 15, t: 3 },
+  postR: { d: 80, f: 40, l: 15, t: 3 },
+  brace: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceF: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceR: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceOF: { d: 59, f: 39, l: 8, t: 1.8 },
+  braceOR: { d: 59, f: 39, l: 8, t: 1.8 },
+  beam: { d: 80, f: 40, l: 10, t: 2 },
+  purlin: { d: 90, f: 50, l: 15, t: 1.8 },
 });
 function applyPresetSections(preset) {
   for (const [key, value] of Object.entries(PRESET_SECTIONS[preset])) Object.assign(FIX[key], value);
@@ -94,13 +106,13 @@ const PRESETS = {
     fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
     maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
   },
-  // 图纸 B 没标斜撑上节点位置：2650 / 2656 / 402 / 379 由四根斜撑长度 1722 / 1900 / 1011 / 2184 反推
+  // 图纸二：3 排压块固定、带外斜撑，内撑距梁端 2650，外撑距梁端 400。
   B: {
-    tilt: 15, span: 3700, h0: 800, pitch: 3250, pitchEnd: 3250, slopeEW: 0,
-    slope: -2,          // 图纸二按北向坡 2% 设计（后柱 3998 = 2124 + 74 + 1800）
+    tilt: 14, span: 3700, h0: 700, pitch: 3300, pitchEnd: 3000, slopeEW: 0,
+    slope: 0,
     rows: 3, cols: 27, outer: 1,
-    braceHF: 250, braceHR: 300, braceTopF: 2650, braceTopR: 2656, braceOutF: 402, braceOutR: 379,
-    embed: 1800, modL: 2382, modW: 1134, modT: 35, hole: 1400, fix: 'bolt', maxPurlin: 9000, clampL: 50,
+    braceHF: 250, braceHR: 350, braceTopF: 2650, braceTopR: 2650, braceOutF: 400, braceOutR: 400,
+    embed: 1500, modL: 2382, modW: 1134, modT: 30, hole: 1400, fix: 'clamp', maxPurlin: 9000, clampL: 60,
   },
 };
 const DEFAULTS = PRESETS.A;
