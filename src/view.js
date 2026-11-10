@@ -182,7 +182,8 @@ function framePose(name) {
   const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
   if (st.jointType === 'splice') {
     // 接头独立取景：把构件、引线端点及标注锚点一起投影，预留完整文字宽度。
-    const dir = name === 'joint-elev' ? new V3(-S.c,-S.s,0) : new V3(-0.85,0.65,0.65).normalize();
+    // 正视沿檩条轴线看截面；有东西坡度时相机随檩条方向倾斜。
+    const dir = name === 'joint-elev' ? new V3(0,layout.ew.sa,layout.ew.ca) : new V3(-0.85,0.65,0.65).normalize();
     const [right, up] = screenAxes(dir), points = [];
     for (const x of [xL,xR]) for (const y of [yB,yT]) for (const dz of [-280,280])
       points.push(V(x,y,z+dz).applyMatrix4(W));
