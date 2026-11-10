@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from '../vendor/three.module.js';
-import { postTieHeights, calculatePostTies, enabledPostTieSpans } from '../src/post-tie-layout.js';
+import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.js';
 import { FIX, PRESETS, applyPresetSections } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';
 import { PostTiePart } from '../src/parts/post-tie.js';
@@ -20,7 +20,19 @@ test('安装状态：无、首末跨、全部、自定义；单跨不重复', ()
   assert.deepEqual(enabledPostTieSpans('custom', [0,1,0,1], 3), [false,true,false]);
 });
 
-test('两方案及正负东西坡度：二维下料长度、真实安装孔、实体长度一致', () => {
+test('±100mm含边界，整对选用平地长度；超出时使用两根实际长度', () => {
+  assert.deepEqual(postTieLengths(2500,1200,.05).lengths,[3040,3040]);
+  for (const slope of [.09,-.09]) {
+    const result=postTieLengths(2500,1200,slope);
+    assert.deepEqual(result.actualLengths.slice().sort(),[2940,3140]);
+    assert.deepEqual(result.lengths,[3040,3040]);
+  }
+  assert.deepEqual(postTieLengths(2500,1200,.1).lengths,[3150,2930]);
+  assert.deepEqual(postTieLengths(2500,1200,.096).lengths,[3150,2940]); // 仅一根超出也不能共用平地长度
+  assert.deepEqual(postTieLengths(2500,1200,-.1).lengths,[2930,3150]);
+});
+
+test('两方案及正负东西坡度：选用下料长度、真实安装孔、实体长度一致', () => {
   for (const preset of ['A','B']) for (const slopeEW of [-10,0,10]) for (const slope of [-5,0,5]) {
     applyPresetSections(preset);
     const p={...PRESETS[preset],slopeEW,slope}, s=solve(p), layout=layoutEW(p);
@@ -36,8 +48,11 @@ test('两方案及正负东西坡度：二维下料长度、真实安装孔、�
       assert.equal(boltCalls.length,row.rods.length*2);
       row.rods.forEach((rod,index)=>{
         const span=layout.zs[rod.bay+1]-layout.zs[rod.bay];
-        const expected=Math.round(Math.hypot(span*layout.ew.ca,rod.direction*row.holeRise+span*slopeEW/100)/10)*10+270;
-        assert.equal(rod.length,expected);
+        const actual=Math.round(Math.hypot(span*layout.ew.ca,rod.direction*row.holeRise+span*slopeEW/100)/10)*10+270;
+        assert.equal(rod.actualLength,actual);
+        const flat=Math.round(Math.hypot(span,row.holeRise)/10)*10+270;
+        const pair=row.rods.filter(other=>other.bay===rod.bay);
+        assert.equal(rod.length,pair.every(other=>Math.abs(other.actualLength-flat)<=100)?flat:actual);
         assert.equal(rod.start.z,layout.zs[rod.bay]*layout.ew.ca);
         const mesh=parent.children[index];
         assert.ok(mesh.matrix.determinant()>0);

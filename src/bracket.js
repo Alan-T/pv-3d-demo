@@ -12,6 +12,7 @@ import { ClampPart } from './parts/clamp.js';
 import { BoltsPart } from './parts/bolts.js';
 import * as THREE from '../vendor/three.module.js';
 import { V3, MM, ewPlace } from './core.js';
+import { captureFramePose } from './frame-projection.js';
 
 // 东西坡度：各榀的构件（立柱、斜梁、斜撑、连接板、檩托、M12 螺栓）按离得最近的榀位整体平移到坡上；
 // 顺坡剪切的分组（userData.slope）跳过
@@ -25,6 +26,7 @@ function liftFrames(obj, layout) {
   };
   const visit = (o) => {
     if (o.userData.slope) return;
+    const level = o.isMesh ? captureFramePose(o) : null;
     if (o.isInstancedMesh) {
       for (let i = 0; i < o.count; i++) {
         o.getMatrixAt(i, m);
@@ -36,6 +38,7 @@ function liftFrames(obj, layout) {
       if (o.matrixAutoUpdate) lift(o.position);
       else { lift(p.setFromMatrixPosition(o.matrix)); o.matrix.setPosition(p); }
     }
+    if (level) o.userData.frameDisplay = { level, sloped: captureFramePose(o), flat: false };
     for (const ch of o.children) visit(ch);
   };
   visit(obj);

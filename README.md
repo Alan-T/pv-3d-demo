@@ -239,3 +239,5 @@ post.build(context);
 - 随东西坡度布置，计入钢材估重；独立“檩条拉杆”显示开关，侧视和节点详图隐藏。
 - `src/purlin-tie-layout.js` 负责布置与长度；`src/parts/purlin-tie.js` 负责实体；`section-geometry.js` 增加独立 L 型角钢轮廓。
 - 验证：`node --test tests/purlin-tie-layout.test.mjs`。
+
+立柱拉杆东西坡度选长规则：前、后排及各跨分别计算平地长度与两根实际长度（均按原规则取整）。两根与平地长度的差值都在 ±100 mm 内（含边界），则两根均使用平地长度；任一根超出，两根均采用各自实际长度。模型长度、数量统计和估重使用选定长度，安装孔坐标保持实际坡度位置。

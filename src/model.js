@@ -32,6 +32,8 @@ function buildGround(S, layout) {
   ground.rotation.z = Math.atan(S.sp);
   ground.receiveShadow = true;
   M.ground.map.repeat.set(gSize, gSize);
+  ground.updateMatrix();
+  ground.userData.levelMatrix = ground.matrix.clone();
   ewPlace(ground, layout.ew);
   root.add(ground);
   return ground;

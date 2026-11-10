@@ -3,6 +3,7 @@ import { M, ghostModules, ghostMat, applyPalette } from './materials.js';
 import { FIX, show, P } from './config.js';
 import { EY, V, V3, MM, DEG, ewMatrix, shared } from './core.js';
 import * as THREE from '../vendor/three.module.js';
+import { setFlatFrameDisplay } from './frame-projection.js';
 
 const params = P;
 
@@ -66,33 +67,43 @@ function applyVisibility() {
   // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
   // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面
   const ew = st.layout.ew, ca = ew.ca;   // 剖切范围是沿坡的 z，换成水平位置
-  const sideSlope = view === 'side' && !!ew.i;
-  // 侧视对照按最东一榀作截面展示：通长构件不再投影成高低叠加的带状区域。
+  const sideView = view === 'side';
+  setFlatFrameDisplay(g.model, sideView);
+  // 侧视使用未施加东西坡度的单榀截面；通长构件与标注保持原始安装高度。
   // 只改变展示矩阵，各榀位置、实际顺坡模型和计算结果保持原值。
   for (const k of ['modules', 'slope', 'hwSlope']) {
-    g[k].matrix.copy(ewMatrix(ew, sideSlope ? st.layout.zs.at(-1) : undefined));
+    g[k].matrix.copy(sideView ? new THREE.Matrix4() : ewMatrix(ew));
     g[k].matrixWorldNeedsUpdate = true;
   }
+  for (const group of [d.key, d.side]) {
+    group.matrix.copy(sideView ? new THREE.Matrix4() : ewMatrix(ew, st.layout.zs.at(-1)));
+    group.matrixWorldNeedsUpdate = true;
+  }
+  g.ground.matrix.copy(g.ground.userData.levelMatrix);
+  if (!sideView) g.ground.matrix.premultiply(ewMatrix(ew));
+  g.ground.matrixWorldNeedsUpdate = true;
   const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
   if (sectioned) {
     const [lo, hi] = sectionRange(st.layout, key);
     clipLo.constant = -lo * ca * MM;
     clipHi.constant = hi * ca * MM;
     renderer.clippingPlanes = [clipLo, clipHi];
-  } else if (sideSlope) {
-    // 侧视：有东西坡度时只看最东一榀（后面各榀高低错开），东侧的标注不切
-    clipLo.constant = -sectionRange(st.layout, 'frame')[0] * ca * MM;
+  } else if (sideView) {
+    // 侧视统一只保留最东一榀附近，零坡度与非零坡度使用相同剖切范围。
+    clipLo.constant = -sectionRange(st.layout, 'frame')[0] * MM;
     renderer.clippingPlanes = [clipLo];
   } else {
     renderer.clippingPlanes = [];
   }
-  // 侧视里顺坡的地面会挡在最东一榀前面，不画（±0 线、实际地面线在标注里）
-  g.ground.visible = !(view === 'side' && ew.i);
+  // 侧视地面已去掉东西坡度，保留南北坡度及原有显示。
+  g.ground.visible = true;
   for (const cg of g.caps) cg.visible = sectioned && cg.userData.section === key;
   // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
   const moduleOpacity = sectioned && !mod ? 0.2 : 0.32;
   ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
   ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
+  // 檩条-檩条接头：连接件略透明，透出槽里的檩条接缝和螺栓
+  ghostMat(M.purlinConnector, inJoint && st.jointType === 'splice', 0.6);
   g.hw.visible = show.bolts;
   const gm = M.ground;
   const wantTransparent = show.buried;
@@ -249,10 +260,8 @@ function setView(name, instant) {
   applyVisibility();
   const { model } = st.groups, d = st.dims;
   const objs = name === 'side' && show.dims ? [model, d.key, d.side] : [model];
-  // 侧视在东西坡度下：各榀高低错开，按最东一榀取景——先剪切回沿坡坐标（各榀叠在一起），再抬到最东一榀
-  const { ew, zs } = st.layout;
-  const pre = name === 'side' && ew.i ? ewMatrix(ew, zs[zs.length - 1]).multiply(ewMatrix(ew).invert()) : null;
-  const box = visibleBox(objs, pre);
+  // 侧视模型及尺寸已恢复单榀原始高度，取景无需再施加东西坡度变换。
+  const box = visibleBox(objs);
   const ctr = box.getCenter(new V3()), size = box.getSize(new V3());
   const aspect = persp.aspect;
   if (FOLLOW_VIEWS.has(name)) {
