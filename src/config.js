@@ -14,6 +14,7 @@ const FIX = {
   brace:  { d: 80,  f: 40, l: 15, t: 2.0 },
   purlin: { d: 100, f: 55, l: 15, t: 1.8 },
   postTie: { d: 59, f: 39, l: 8, t: 1.6 },
+  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 },
 };
 // ---------- 构件截面选型库 ----------
 // 全部构件的截面下拉框共用这一份数据（C 型钢 C d×f×l×t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）。
@@ -53,7 +54,8 @@ const SECTION_LIB = `
 for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
 for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆' };
+const ANGLE_SECTION_LIB = [1.6, 1.8, 2, 2.5, 3].map(t => ({ type: 'L', name: `L35×35×${t.toFixed(1)}`, d: 35, f: 35, t }));
+const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
 // 截面随方案恢复，保持各 FIX 对象引用不变。
 const copySections = () => Object.fromEntries(
   ['post', 'brace', ...Object.keys(SECTION_LABEL)].map(key => [key, { ...FIX[key] }]),
@@ -106,6 +108,7 @@ const PRESETS = {
     hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
     fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
     maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
+    purlinTies: 'all', purlinTieSpans: null,
     postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
   },
   // 图纸二：3 排压块固定、带外斜撑，内撑距梁端 2650，外撑距梁端 400。
@@ -115,6 +118,7 @@ const PRESETS = {
     rows: 3, cols: 27, outer: 1,
     braceHF: 250, braceHR: 350, braceTopF: 2650, braceTopR: 2650, braceOutF: 400, braceOutR: 400,
     embed: 1500, modL: 2382, modW: 1134, modT: 30, hole: 1400, fix: 'clamp', maxPurlin: 9000, clampL: 60,
+    purlinTies: 'none', purlinTieSpans: null,
     postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
   },
 };
@@ -155,6 +159,8 @@ const CLAMP = {
 // ---------- 可调参数 ----------
 // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
 const PARAMS = [
+  { key: 'purlinTies', label: '檩条拉杆布置', type: 'select', options: [['none', '无'], ['all', '全部跨'], ['inner', '剔除首末跨'], ['custom', '自定义']],
+    hint: '每跨中间一套，贯通所有檩条，两端各伸出85 mm；自定义可逐跨勾选' },
   { key: 'tilt',   label: '组件倾角',        unit: '°',  min: 10,   max: 40,   step: 0.5 },
   { key: 'span',   label: '前后立柱间距',    unit: 'mm', min: 2000, max: 4500, step: 50 },
   { key: 'h0',     label: '组件前沿离地高度', unit: 'mm', min: 300,  max: 1500, step: 10 },
@@ -190,5 +196,6 @@ function limits(key) {
 }
 
 const P = Object.assign({}, DEFAULTS);
-const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, shadows: true };
+const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
+export { ANGLE_SECTION_LIB };
 export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

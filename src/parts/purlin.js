@@ -10,6 +10,7 @@ export class PurlinPart {
     purlinCapMaterial,
     createSectionGeometry,
     createSectionCapGeometry,
+    createDrilledPurlinGeometry,
     CLIP,
     track,
     purlinConnector: purlinConnectorOptions,
@@ -34,9 +35,14 @@ export class PurlinPart {
   function build(c) {
     const { S, layout, zw, u, n } = c;
     const clipCount = buildClip(c);
+    const segmentGeometry = layout.cuts.segments.map(seg => {
+      const holes = (layout.purlinTies?.rods || []).map(rod=>rod.z-seg.start)
+        .filter(z=>z>7 && z<seg.length-7);
+      return holes.length ? track(createDrilledPurlinGeometry(purlinSection,seg.length,holes)) : geo;
+    });
 
     for (const t of S.purlins) {
-      for(const seg of layout.cuts.segments) addMember(c.slope, geo, purlinMaterial, origin(c,t,seg.start),n,u,EZ.clone().multiplyScalar(seg.length*MM));
+      layout.cuts.segments.forEach((seg,index)=>addMember(c.slope, segmentGeometry[index], purlinMaterial, origin(c,t,seg.start),n,u,EZ.clone().multiplyScalar(seg.length*MM)));
       buildConnector(c, (z) => origin(c, t, z));
     }
     return clipCount;

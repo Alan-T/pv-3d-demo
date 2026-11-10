@@ -126,9 +126,9 @@ export class BoltsPart {
           const base = kind, key = base + ':' + thickness;
           if (!K[key]) {
             // postTie 传入拉杆腹板 + 当前立柱翼缘的总夹紧厚度。
-            const stack = base === 'postTie' ? thickness : thickness + (base === 'top' || base === 'btop' ? beamSection.t : JOINT.plateT);
-            const slot = base === 'btop' || base === 'postTie' ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL, width: base === 'top' ? 18 : JOINT.slotW };
-            K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie'].includes(base), spring: true });
+            const stack = ['postTie', 'purlinTie'].includes(base) ? thickness : thickness + (base === 'top' || base === 'btop' ? beamSection.t : JOINT.plateT);
+            const slot = ['btop', 'postTie', 'purlinTie'].includes(base) ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL, width: base === 'top' ? 18 : JOINT.slotW };
+            K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie'].includes(base), spring: true });
 
             mats[key] = [];
           }
@@ -137,12 +137,13 @@ export class BoltsPart {
         const z = axis.clone().normalize(), y = up.clone().normalize(), x = new V3().crossVectors(y, z);
         mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
       },
-      flush(parent, slopeParent) {
-        for (const k in K) for (const [g, mat] of K[k]) instanced(SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
+      flush(parent, slopeParent, purlinTieParent = slopeParent) {
+        for (const k in K) for (const [g, mat] of K[k]) instanced(k.split(':')[0] === 'purlinTie' ? purlinTieParent : SLOPE_KINDS.has(k) ? slopeParent : parent, g, mat, mats[k]);
         return {
           m16: Object.keys(mats).filter(k => k.split(':')[0] === 'top').reduce((sum,k) => sum + mats[k].length, 0),
           m12: Object.keys(mats).filter(k => !['top','module','clampMid','clampSide'].includes(k.split(':')[0])).reduce((sum,k) => sum + mats[k].length, 0),
           spliceBolts: mats.splice.length,
+          purlinTieBolts: Object.keys(mats).filter(k=>k.split(':')[0]==='purlinTie').reduce((sum,k)=>sum+mats[k].length,0),
           m8: mats.module.length,
           m8c: mats.clampMid.length + mats.clampSide.length,
         };

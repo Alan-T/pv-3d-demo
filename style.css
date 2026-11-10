@@ -172,4 +172,5 @@ button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: no
   .pbody { padding-top: 0; }
 }
 .tie-spans { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 4px 0 16px; }
+.tie-spans[hidden] { display: none; }
 .tie-spans label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }

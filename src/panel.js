@@ -1,5 +1,6 @@
 import { applyPresetSections, CLIP, FIX, P, PARAMS, limits, SECTION_LIB, SECTION_LABEL, PRESETS, show } from './config.js';
 import { shared } from './core.js';
+import { ANGLE_SECTION_LIB } from './config.js';
 import { build } from './model.js';
 import { setView as viewSetView, applyVisibility as viewApplyVisibility, buttons as viewButtons } from './view.js';
 
@@ -17,6 +18,13 @@ function scheduleBuild() {
   if (pending) return;
   pending = true;
   requestAnimationFrame(() => { pending = false; build(); });
+}
+
+function updatePurlinTieControls() {
+  const container = document.getElementById('purlin-tie-spans');
+  container.hidden = P.purlinTies !== 'custom';
+  container.innerHTML = P.purlinTies === 'custom' ? Array.from({ length: st.layout.zs.length - 1 }, (_, index) =>
+    `<label><input type="checkbox" data-purlin-tie-bay="${index}"${P.purlinTieSpans?.[index] === 1 ? ' checked' : ''}>第 ${index + 1} 跨</label>`).join('') : '';
 }
 
 function updatePostTieControls() {
@@ -56,14 +64,36 @@ function init() {
     row.className = 'prow';
     if (d.when) conditional.push([row, d]);
     if (d.type === 'select') {
-      row.innerHTML = `<span class="pl">${d.label}</span>` +
-        `<select aria-label="${d.label}">${d.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>` +
+      const container = d.key === 'purlinTies' ? document.getElementById('purlin-tie-controls') : box;
+      row.innerHTML = `<label class="pl" for="param-${d.key}">${d.key === 'purlinTies' ? '檩条拉杆' : d.label}</label>` +
+        `<select id="param-${d.key}" aria-label="${d.label}">${d.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>` +
         (d.hint ? `<small>${d.hint}</small>` : '');
       const sel = row.querySelector('select');
       sel.value = P[d.key];
-      sel.addEventListener('change', () => { P[d.key] = sel.value; refreshRows(); scheduleBuild(); });
+      sel.addEventListener('change', () => {
+        if (d.key === 'purlinTies' && sel.value === 'custom' && !Array.isArray(P.purlinTieSpans)) {
+          const installed = new Set(st.layout.purlinTies.rods.map(rod => rod.bay));
+          P.purlinTieSpans = Array.from({ length: st.layout.zs.length - 1 }, (_, index) => Number(installed.has(index)));
+        }
+        P[d.key] = sel.value; refreshRows(); scheduleBuild();
+      });
       inputs[d.key] = { show: (v) => { sel.value = v; } };
-      box.appendChild(row);
+      container.appendChild(row);
+      if (d.key === 'purlinTies') {
+        const spans = document.createElement('div');
+        spans.id = 'purlin-tie-spans';
+        spans.className = 'tie-spans';
+        spans.hidden = true;
+        spans.addEventListener('change', event => {
+          const bay = event.target.dataset.purlinTieBay;
+          if (bay === undefined) return;
+          const selected = [...(P.purlinTieSpans || [])];
+          selected[Number(bay)] = Number(event.target.checked);
+          P.purlinTieSpans = selected;
+          scheduleBuild();
+        });
+        container.appendChild(spans);
+      }
       continue;
     }
     if (d.type === 'size') {   // 一行几个数（组件 长 × 宽 × 厚），范围见 EXTRA_LIMITS
@@ -122,32 +152,37 @@ function init() {
   dl.id = 'sectionLib';
   dl.innerHTML = SECTION_LIB.map((s) => `<option value="${s.name}">`).join('');
   secBox.appendChild(dl);
+  const angleList = document.createElement('datalist');
+  angleList.id = 'angleSectionLib';
+  angleList.innerHTML = ANGLE_SECTION_LIB.map(s => `<option value="${s.name}">`).join('');
+  secBox.appendChild(angleList);
+  const sectionLibrary = key => key === 'purlinTie' ? ANGLE_SECTION_LIB : SECTION_LIB;
   const normSec = (s) => String(s).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
-  const LIB_NORM = SECTION_LIB.map((s) => normSec(s.name));
-  const findSection = (txt) => {
+  const findSection = (txt, key) => {
+    const library = sectionLibrary(key), names = library.map(s => normSec(s.name));
     const q = normSec(txt);
     if (!q) return null;
-    let i = LIB_NORM.indexOf(q);
-    if (i < 0) i = LIB_NORM.findIndex((n) => n.includes(q));
-    return i < 0 ? null : SECTION_LIB[i];
+    let i = names.indexOf(q);
+    if (i < 0) i = names.findIndex((n) => n.includes(q));
+    return i < 0 ? null : library[i];
   };
   const curSecName = (key) => {
     const c = FIX[key];
-    const hit = SECTION_LIB.find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
-    return hit ? hit.name : `C${c.d}×${c.f}×${c.l}×${c.t}`;
+    const hit = sectionLibrary(key).find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
+    return hit ? hit.name : c.type === 'L' ? `L${c.d}×${c.f}×${c.t}` : `C${c.d}×${c.f}×${c.l}×${c.t}`;
   };
   for (const key of Object.keys(SECTION_LABEL)) {
     const row = document.createElement('div');
     row.className = 'prow';
     row.innerHTML = `<span class="pl">${SECTION_LABEL[key]}</span>` +
-      `<input class="psec" type="text" list="sectionLib" placeholder="如 C80×40" autocomplete="off" spellcheck="false"` +
+      `<input class="psec" type="text" list="${key === 'purlinTie' ? 'angleSectionLib' : 'sectionLib'}" placeholder="${key === 'purlinTie' ? '如 L35×35' : '如 C80×40'}" autocomplete="off" spellcheck="false"` +
       ` aria-label="${SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
     const inp = row.querySelector('input');
     inp.value = curSecName(key);
     sectionInputs[key] = inp;
     inp.addEventListener('focus', () => inp.select());
     inp.addEventListener('change', () => {
-      const s = findSection(inp.value);
+      const s = findSection(inp.value, key);
       if (!s) { inp.value = curSecName(key); return; }
       inp.value = s.name;
       Object.assign(FIX[key], s);   // 原地改，保住 FIX 引用
@@ -223,7 +258,10 @@ function showValue(key, v) {
   if (inputs[key]) inputs[key].show(v);
 }
 
-function kgPerM(sec) { return ((sec.t * (sec.d + 2 * sec.f + 2 * sec.l) - 4 * sec.t * sec.t) * 7.85) / 1000; }
+function kgPerM(sec) {
+  const area = sec.type === 'L' ? sec.t * (sec.d + sec.f - sec.t) : sec.t * (sec.d + 2 * sec.f + 2 * sec.l) - 4 * sec.t * sec.t;
+  return area * 7.85 / 1000;
+}
 
 // 压块固定且选中“檩条-组件”时，后面多出“中压块 / 边压块”两个选项（节点种类 mod / side）；
 // 改回螺栓固定时 build() 已把边压块退回 mod
@@ -240,6 +278,7 @@ function updateJointChips() {
 function update() {
   refreshRows();
   updatePostTieControls();
+  updatePurlinTieControls();
   updateJointChips();
   const P = params, S = st.S;
   const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, L = st.layout, n = L.frames, O = S.outer, np = S.purlins.length;
@@ -250,7 +289,8 @@ function update() {
   const steelKg =
     n * (S.lenF * kgPerM(FIX.postF) + S.lenR * kgPerM(FIX.postR) + S.beamLen * kgPerM(FIX.beam) + S.braceF * kgPerM(FIX.braceF) + S.braceR * kgPerM(FIX.braceR) + (O ? O.braceOF * kgPerM(FIX.braceOF) + O.braceOR * kgPerM(FIX.braceOR) : 0)) / 1000 +
     (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000 +
-    L.postTies.flatMap(row => row.rods).reduce((sum, rod) => sum + rod.length * kgPerM(FIX.postTie) / 1000, 0);
+    L.postTies.flatMap(row => row.rods).reduce((sum, rod) => sum + rod.length * kgPerM(FIX.postTie) / 1000, 0) +
+    L.purlinTies.count * L.purlinTies.length * kgPerM(FIX.purlinTie) / 1000;
   const rows = [
     ['榀数（按组件列数）', `${n} 榀（檩条两端悬挑 ${r((L.purlinLen - L.spanEW) / 2)}）`],
     ['榀距 首末跨 / 中间跨', `${P.pitchEnd} / ${P.pitch}（总 ${r(L.spanEW)}）`],
@@ -275,6 +315,7 @@ function update() {
     ['M16×40 立柱连接螺栓', `${L.counts.m16} 套`],
     ['M12 螺栓', `${L.counts.m12} 套`],
     ['其中立柱拉杆 M12×35', `${L.counts.postTieBolts} 套（两面平垫，螺母侧弹垫）`],
+    ['其中檩条拉杆 M12×35', `${L.counts.purlinTieBolts} 套（Ø14通孔）`],
     ...(L.counts.clamps ? [
       ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],
       ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],
@@ -282,6 +323,7 @@ function update() {
     ['檩条切割（每根）', L.cuts.valid ? L.cuts.segments.map(s=>s.length).join(' / ') + ' mm（缝4）' : '无可行方案'],
     ['檩条连接件', L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套'],
     ['檩条', `${r(L.purlinLen)} × ${np}`],
+    ['檩条拉杆', L.purlinTies.count ? `${L.purlinTies.length} mm × ${L.purlinTies.count} 套` : '无'],
     ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
     ['钢材估重', `${r(steelKg)} kg`],
     ['前沿实际离地', `${r(S.clearEdge)}`],

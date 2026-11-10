@@ -28,6 +28,12 @@ function roundTubeShape({ d, t }) {
 export function createSectionShape(section) {
   switch (section.type ?? 'C') {
     case 'C': return cChannelShape(section);
+    case 'L': {
+      const { d, f, t } = section;
+      if (!(t > 0 && d > t && f > t)) throw new RangeError('角钢截面要求 d、f > t > 0');
+      return new THREE.Shape([[0,0],[d,0],[d,t],[t,t],[t,f],[0,f]]
+        .map(([x,y]) => new THREE.Vector2(x * MM, y * MM)));
+    }
     case 'roundTube': return roundTubeShape(section);
     default: throw new RangeError(`不支持的截面类型：${section.type}`);
   }

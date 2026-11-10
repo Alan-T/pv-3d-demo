@@ -60,6 +60,8 @@ function applyVisibility() {
   const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
   g.postTies.visible = show.postTies && !inJoint && view !== 'side';
   g.postTieHardware.visible = show.bolts;
+  g.purlinTies.visible = show.purlinTies && !inJoint && view !== 'side';
+  g.purlinTieHardware.visible = show.bolts;
   // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
   // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
   // 檩条-组件、边压块的正视也剖切（看到的是封口截面），不然最东一榀的斜梁、檩托和檩条端头都挡在前面

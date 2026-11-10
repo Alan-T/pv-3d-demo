@@ -1,5 +1,7 @@
 import { BraceConnectorPart } from './parts/brace-connector.js';
 import { PostPart } from './parts/post.js';
+import { PurlinTiePart } from './parts/purlin-tie.js';
+import { calculatePurlinTies } from './purlin-tie-layout.js';
 import { PostTiePart } from './parts/post-tie.js';
 import { calculatePostTies } from './post-tie-layout.js';
 import { BeamPart } from './parts/beam.js';
@@ -109,10 +111,18 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
   frontOuterBrace?.build(c);
   rearOuterBrace?.build(c);
   for (const z of layout.zs) for (const joint of layout.joints) connector.build(c, joint, z);
+  layout.purlinTies = calculatePurlinTies({ mode: P.purlinTies, selected: P.purlinTieSpans, purlins: S.purlins, framePositions: layout.zs });
   const clip = purlin.build(c);
+  g.purlinTies = new THREE.Group();
+  g.slope.add(g.purlinTies);
+  g.purlinTieHardware = new THREE.Group();
+  g.purlinTies.add(g.purlinTieHardware);
+  const purlinTie = new PurlinTiePart(partOptions.purlinTie);
+  purlinTie.build({ solution: S, ties: layout.purlinTies, parent: g.purlinTies, u: c.u, n: c.n, bolts });
+  instances.purlinTie = purlinTie;
   module.build(c);
   const clamps = P.fix === 'clamp' ? clamp.build(c) : null;
-  layout.counts = Object.assign({ clip, clamps }, bolts.flush(g.hw, g.hwSlope));
+  layout.counts = Object.assign({ clip, clamps }, bolts.flush(g.hw, g.hwSlope, g.purlinTieHardware));
 
   // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。支架节点、檩条-组件、边压块三种剖切范围各一套。
   // 略往保留的一侧挪 0.5，免得被剖切面自己裁掉；组件的封口放进组件分组，跟着“光伏组件”开关
