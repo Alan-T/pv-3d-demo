@@ -9,121 +9,189 @@ const FIX = {
   // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
   purlinExt: { bolt: 50, clamp: 100 },
   maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
-  post:   { d: 120, f: 60, l: 20, t: 2.5 },
   beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
-  brace:  { d: 80,  f: 40, l: 15, t: 2.0 },
   purlin: { d: 100, f: 55, l: 15, t: 1.8 },
   postTie: { d: 59, f: 39, l: 8, t: 1.6 },
   purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 },
 };
 // ---------- 构件截面选型库 ----------
-// 全部构件的截面下拉框共用这一份数据（C 型钢 C d×f×l×t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）。
+// 全部构件的截面下拉框共用这一份数据（C 型钢 C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）。
 // 选中后把尺寸写进 FIX 同名对象并重建模型；加新规格往字符串里追加即可。
 const SECTION_LIB = `
-  C50x30x10x1.8    C50x30x10x2.0    C59x39x8x1.6     C59x39x8x1.8     C60x40x10x1.6
-  C60x40x10x1.8    C60x40x10x2.0    C70x40x10x1.8    C70x40x10x2.0    C75x40x10x1.85
-  C79x39x8x1.8     C79x39x8x2.0     C80x40x10x1.8    C80x40x10x2.0    C80x40x15x1.8
-  C80x40x15x2.0    C80x40x15x3.0    C80x45x15x1.8    C80x45x15x2.0    C80x45x15x3.0
-  C80x50x10x2.0    C80x50x15x1.8    C80x50x15x2.0    C80x50x15x3.0    C80x50x20x2.0
-  C80x55x15x1.8    C80x55x15x3.0    C80x55x20x1.8    C80x55x20x2.0    C80x60x15x1.8
-  C80x60x15x2.0    C80x60x15x3.0    C80x60x20x1.8    C80x60x20x2.0    C90x40x10x1.8
-  C90x40x10x2.0    C90x40x15x1.8    C90x40x15x3.0    C90x45x15x1.8    C90x45x15x2.0
-  C90x45x15x3.0    C90x50x10x2.0    C90x50x15x1.8    C90x50x15x2.0    C90x50x15x3.0
-  C90x50x20x1.8    C90x50x20x2.0    C90x55x15x1.8    C90x55x15x3.0    C90x55x20x1.8
-  C90x55x20x2.0    C90x55x20x3.0    C90x60x15x1.8    C90x60x15x2.0    C90x60x15x3.0
-  C90x60x20x1.8    C90x60x20x2.0    C90x60x20x3.0    C99x39x8x1.8     C99x39x8x2.0
-  C99x39x8x2.3     C99x49x8x1.8     C99x49x8x2.0     C99x49x8x2.3     C100x40x10x1.8
-  C100x40x10x2.0   C100x40x10x2.3   C100x40x15x1.8   C100x40x15x2.0   C100x40x15x2.3
-  C100x40x15x3.0   C100x45x10x1.8   C100x45x15x1.8   C100x50x10x1.8   C100x50x10x2.0
-  C100x50x10x2.3   C100x50x15x1.8   C100x50x15x2.0   C100x50x15x2.3   C100x50x15x3.0
-  C100x50x20x1.8   C100x50x20x2.0   C100x50x20x2.3   C100x50x20x3.0   C100x55x15x1.8
-  C100x55x15x2.0   C100x55x20x1.8   C100x55x20x2.0   C100x55x20x3.0   C100x60x15x1.8
-  C100x60x15x2.0   C100x60x20x1.8   C100x60x20x2.0   C100x60x20x3.0   C110x50x20x1.8
-  C110x50x20x2.0   C110x50x20x3.0   C110x55x20x1.8   C110x60x20x1.8   C110x60x20x2.3
-  C110x60x20x3.0   C120x50x15x1.8   C120x50x20x1.8   C120x50x20x2.0   C120x50x20x2.3
-  C120x50x20x3.0   C120x55x20x1.8   C120x60x20x1.8   C120x60x20x2.0   C120x60x20x2.3
-  C120x60x20x2.5   C120x60x20x3.0   C130x60x20x3.0   C130x60x25x2.0   C140x60x20x3.0
-  C150x60x20x3.0   C160x60x20x3.0   C160x70x20x3.0   C170x60x20x3.0   C170x70x20x3.0
-  C170x70x30x3.0   C180x70x20x3.0   C180x70x30x3.0   C180x70x30x3.5   C180x80x30x3.5
-  C200x80x30x3.0   C200x80x30x3.5   C200x100x30x3.5  C200x100x30x4.0  C220x100x30x3.5
-  C220x100x30x4.0  C230x100x30x3.5  C230x100x30x4.0  C250x100x30x3.5  C250x100x30x4.0
+  C50*30*10*1.8    C50*30*10*2.0    C59*39*8*1.6     C59*39*8*1.8     C60*40*10*1.6
+  C60*40*10*1.8    C60*40*10*2.0    C70*40*10*1.8    C70*40*10*2.0    C75*40*10*1.85
+  C79*39*8*1.8     C79*39*8*2.0     C80*40*10*1.8    C80*40*10*2.0    C80*40*15*1.8
+  C80*40*15*2.0    C80*40*15*3.0    C80*45*15*1.8    C80*45*15*2.0    C80*45*15*3.0
+  C80*50*10*2.0    C80*50*15*1.8    C80*50*15*2.0    C80*50*15*3.0    C80*50*20*2.0
+  C80*55*15*1.8    C80*55*15*3.0    C80*55*20*1.8    C80*55*20*2.0    C80*60*15*1.8
+  C80*60*15*2.0    C80*60*15*3.0    C80*60*20*1.8    C80*60*20*2.0    C90*40*10*1.8
+  C90*40*10*2.0    C90*40*15*1.8    C90*40*15*3.0    C90*45*15*1.8    C90*45*15*2.0
+  C90*45*15*3.0    C90*50*10*2.0    C90*50*15*1.8    C90*50*15*2.0    C90*50*15*3.0
+  C90*50*20*1.8    C90*50*20*2.0    C90*55*15*1.8    C90*55*15*3.0    C90*55*20*1.8
+  C90*55*20*2.0    C90*55*20*3.0    C90*60*15*1.8    C90*60*15*2.0    C90*60*15*3.0
+  C90*60*20*1.8    C90*60*20*2.0    C90*60*20*3.0    C99*39*8*1.8     C99*39*8*2.0
+  C99*39*8*2.3     C99*49*8*1.8     C99*49*8*2.0     C99*49*8*2.3     C100*40*10*1.8
+  C100*40*10*2.0   C100*40*10*2.3   C100*40*15*1.8   C100*40*15*2.0   C100*40*15*2.3
+  C100*40*15*3.0   C100*45*10*1.8   C100*45*15*1.8   C100*50*10*1.8   C100*50*10*2.0
+  C100*50*10*2.3   C100*50*15*1.8   C100*50*15*2.0   C100*50*15*2.3   C100*50*15*3.0
+  C100*50*20*1.8   C100*50*20*2.0   C100*50*20*2.3   C100*50*20*3.0   C100*55*15*1.8
+  C100*55*15*2.0   C100*55*20*1.8   C100*55*20*2.0   C100*55*20*3.0   C100*60*15*1.8
+  C100*60*15*2.0   C100*60*20*1.8   C100*60*20*2.0   C100*60*20*3.0   C110*50*20*1.8
+  C110*50*20*2.0   C110*50*20*3.0   C110*55*20*1.8   C110*60*20*1.8   C110*60*20*2.3
+  C110*60*20*3.0   C120*50*15*1.8   C120*50*20*1.8   C120*50*20*2.0   C120*50*20*2.3
+  C120*50*20*3.0   C120*55*20*1.8   C120*60*20*1.8   C120*60*20*2.0   C120*60*20*2.3
+  C120*60*20*2.5   C120*60*20*3.0   C130*60*20*3.0   C130*60*25*2.0   C140*60*20*3.0
+  C150*60*20*3.0   C160*60*20*3.0   C160*70*20*3.0   C170*60*20*3.0   C170*70*20*3.0
+  C170*70*30*3.0   C180*70*20*3.0   C180*70*30*3.0   C180*70*30*3.5   C180*80*30*3.5
+  C200*80*30*3.0   C200*80*30*3.5   C200*100*30*3.5  C200*100*30*4.0  C220*100*30*3.5
+  C220*100*30*4.0  C230*100*30*3.5  C230*100*30*4.0  C250*100*30*3.5  C250*100*30*4.0
 `.split(/\s+/).filter(Boolean).map((s) => {
-  const m = s.match(/^C(\d+)x(\d+)x(\d+)x([\d.]+)$/);
-  return { name: `C${m[1]}×${m[2]}×${m[3]}×${m[4]}`, d: +m[1], f: +m[2], l: +m[3], t: +m[4] };
+  const m = s.match(/^C(\d+)\*(\d+)\*(\d+)\*([\d.]+)$/);
+  return { name: `C${m[1]}*${m[2]}*${m[3]}*${m[4]}`, d: +m[1], f: +m[2], l: +m[3], t: +m[4] };
 });
-for (const key of ['postF','postR']) FIX[key] = { ...FIX.post };
-for (const key of ['braceF','braceR','braceOF','braceOR']) FIX[key] = { ...FIX.brace };
+for (const key of ['postF', 'postR', 'braceF', 'braceR', 'braceOF', 'braceOR']) FIX[key] = {};
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-const ANGLE_SECTION_LIB = [1.6, 1.8, 2, 2.5, 3].map(t => ({ type: 'L', name: `L35×35×${t.toFixed(1)}`, d: 35, f: 35, t }));
+const ANGLE_SECTION_LIB = [1.6, 1.8, 2, 2.5, 3].map(t => ({ type: 'L', name: `L35*35*${t.toFixed(1)}`, d: 35, f: 35, t }));
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
-// 截面随方案恢复，保持各 FIX 对象引用不变。
-const copySections = () => Object.fromEntries(
-  ['post', 'brace', ...Object.keys(SECTION_LABEL)].map(key => [key, { ...FIX[key] }]),
-);
-const PRESET_SECTIONS = { A: copySections(), B: copySections() };
-Object.assign(PRESET_SECTIONS.A, {
-  post: { d: 90, f: 55, l: 20, t: 3 },
-  postF: { d: 90, f: 55, l: 20, t: 3 },
-  postR: { d: 90, f: 55, l: 20, t: 3 },
-  brace: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceF: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceR: { d: 59, f: 39, l: 8, t: 1.8 },
-  beam: { d: 90, f: 50, l: 15, t: 2 },
-  purlin: { d: 100, f: 55, l: 20, t: 1.8 },
-});
-Object.assign(PRESET_SECTIONS.B, {
-  post: { d: 80, f: 40, l: 15, t: 3 },
-  postF: { d: 80, f: 40, l: 15, t: 3 },
-  postR: { d: 80, f: 40, l: 15, t: 3 },
-  brace: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceF: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceR: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceOF: { d: 59, f: 39, l: 8, t: 1.8 },
-  braceOR: { d: 59, f: 39, l: 8, t: 1.8 },
-  beam: { d: 80, f: 40, l: 10, t: 2 },
-  purlin: { d: 90, f: 50, l: 15, t: 1.8 },
-});
-function applyPresetSections(preset) {
-  for (const [key, value] of Object.entries(PRESET_SECTIONS[preset])) Object.assign(FIX[key], value);
-}
-applyPresetSections('A');
-// 两套图纸参数。A：2 排组件（侧视图 + 檩条图）；B：3 排组件 + 外斜撑（侧视图 + 檩条图）
+// ---------- 图纸预设参数 ----------
+// 两套预设使用相同字段和分组顺序；长度单位 mm，角度单位 °，坡度单位 %。
+// F / R 表示前 / 后；保留未启用构件的参数，便于切换固定方式或启用外斜撑。
 const PRESETS = {
+  // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
-    tilt: 20, span: 3000, h0: 620, pitch: 2800, pitchEnd: 2500, slopeEW: 0,
-    slope: 0,           // 图纸一：平地
-    rows: 2,           // 沿坡组件排数（竖排）
-    cols: 26,           // 东西向组件列数（榀数由它算出）
-    outer: 0,           // 是否带外斜撑（立柱外侧、撑斜梁悬挑段）
-    braceHF: 250,       // 前柱斜撑下节点离 ±0（内、外斜撑共用一块连接板）
-    braceHR: 250,       // 后柱斜撑下节点离 ±0
-    braceTopF: 1650,    // 前斜撑上节点到斜梁下端
-    braceTopR: 1650,    // 后斜撑上节点到斜梁上端
-    braceOutF: 400,     // 前外斜撑上节点到斜梁下端
-    braceOutR: 400,     // 后外斜撑上节点到斜梁上端
-    embed: 1500,        // 立柱埋深
-    modL: 2384,         // 组件长度（沿坡）
-    modW: 1303,         // 组件宽度（东西向）
-    modT: 33,           // 组件厚度
-    hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
-    fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
-    serratedWasher: false,
-    maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
-    purlinTies: 'all', purlinTieSpans: null,
-    postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
+    // 构件截面名称：对应 C 型钢 / L 型角钢截面库
+    sections: {
+      postF: 'C90*55*20*3.0', // 前立柱
+      postR: 'C90*55*20*3.0', // 后立柱
+      beam: 'C90*50*15*2.0', // 斜梁
+      braceF: 'C59*39*8*1.8', // 前斜撑
+      braceR: 'C59*39*8*1.8', // 后斜撑
+      braceOF: 'C80*40*15*2.0', // 前外斜撑
+      braceOR: 'C80*40*15*2.0', // 后外斜撑
+      purlin: 'C100*55*20*1.8', // 檩条
+      postTie: 'C59*39*8*1.6', // 立柱拉杆
+      purlinTie: 'L35*35*1.6', // 檩条拉杆
+    },
+
+    // 组件尺寸与阵列
+    modL: 2384, // 组件长度（沿坡）
+    modW: 1303, // 组件宽度（东西向）
+    modT: 33, // 组件厚度
+    hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
+    rows: 2, // 沿坡组件排数
+    cols: 26, // 东西向组件列数，榀数由此计算
+
+    // 组件固定
+    fix: 'bolt', // bolt：安装孔螺栓；clamp：中压块 + 边压块
+    serratedWasher: false, // 螺栓固定时，锯齿垫圈替换头下普通平垫
+    clampL: 50, // 压块长度（沿坡），仅压块固定时生效
+
+    // 安装位置与地形
+    tilt: 20, // 组件倾角（°）
+    h0: 620, // 组件前沿离地高度
+    span: 3000, // 前后立柱水平间距
+    embed: 1500, // 立柱埋深
+    slopeNS: 0, // 南北坡度（%），正值北高南低
+    slopeEW: 0, // 东西坡度（%），正值东高西低
+
+    // 榀距与檩条
+    pitch: 2800, // 中间跨榀距（沿檩条）
+    pitchEnd: 2500, // 首末跨榀距（沿檩条）
+    maxPurlin: 9000, // 檩条切割最大长度
+
+    // 斜撑布置
+    outer: 0, // 是否带外斜撑：0 无，1 有
+    braceHF: 250, // 前柱斜撑连接板中心标高，相对 ±0
+    braceHR: 250, // 后柱斜撑连接板中心标高，相对 ±0
+    braceTopF: 1650, // 前内斜撑上节点距斜梁下端（沿梁）
+    braceTopR: 1650, // 后内斜撑上节点距斜梁上端（沿梁）
+    braceOutF: 400, // 前外斜撑上节点距斜梁下端（沿梁）
+    braceOutR: 400, // 后外斜撑上节点距斜梁上端（沿梁）
+
+    // 立柱拉杆布置
+    postTieF: 'ends', // 前排：none 无 / ends 首末跨 / all 全部跨 / custom 自定义
+    postTieR: 'ends', // 后排：同前排布置选项
+    postTieSpansF: [], // 前排自定义逐跨开关，0 不安装、1 安装
+    postTieSpansR: [], // 后排自定义逐跨开关，0 不安装、1 安装
+
+    // 檩条拉杆布置
+    purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
+    purlinTieSpans: [], // 自定义逐跨开关，0 不安装、1 安装
   },
-  // 图纸二：3 排压块固定、带外斜撑，内撑距梁端 2650，外撑距梁端 400。
+  // 图纸二：3 排组件、压块固定、带外斜撑。
   B: {
-    tilt: 14, span: 3700, h0: 700, pitch: 3300, pitchEnd: 3000, slopeEW: 0,
-    slope: 0,
-    rows: 3, cols: 27, outer: 1,
-    braceHF: 250, braceHR: 350, braceTopF: 2650, braceTopR: 2650, braceOutF: 400, braceOutR: 400,
-    embed: 1500, modL: 2382, modW: 1134, modT: 30, hole: 1400, fix: 'clamp', maxPurlin: 9000, clampL: 60,
-    serratedWasher: false,
-    purlinTies: 'none', purlinTieSpans: null,
-    postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
+    // 构件截面名称：对应 C 型钢 / L 型角钢截面库
+    sections: {
+      postF: 'C80*40*15*3.0', // 前立柱
+      postR: 'C80*40*15*3.0', // 后立柱
+      beam: 'C80*40*10*2.0', // 斜梁
+      braceF: 'C59*39*8*1.8', // 前斜撑
+      braceR: 'C59*39*8*1.8', // 后斜撑
+      braceOF: 'C59*39*8*1.8', // 前外斜撑
+      braceOR: 'C59*39*8*1.8', // 后外斜撑
+      purlin: 'C90*50*15*1.8', // 檩条
+      postTie: 'C59*39*8*1.6', // 立柱拉杆
+      purlinTie: 'L35*35*1.6', // 檩条拉杆
+    },
+
+    // 组件尺寸与阵列
+    modL: 2382, // 组件长度（沿坡）
+    modW: 1134, // 组件宽度（东西向）
+    modT: 30, // 组件厚度
+    hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
+    rows: 3, // 沿坡组件排数
+    cols: 27, // 东西向组件列数，榀数由此计算
+
+    // 组件固定
+    fix: 'clamp', // bolt：安装孔螺栓；clamp：中压块 + 边压块
+    serratedWasher: false, // 螺栓固定时，锯齿垫圈替换头下普通平垫
+    clampL: 60, // 压块长度（沿坡），仅压块固定时生效
+
+    // 安装位置与地形
+    tilt: 14, // 组件倾角（°）
+    h0: 700, // 组件前沿离地高度
+    span: 3700, // 前后立柱水平间距
+    embed: 1500, // 立柱埋深
+    slopeNS: 0, // 南北坡度（%），正值北高南低
+    slopeEW: 0, // 东西坡度（%），正值东高西低
+
+    // 榀距与檩条
+    pitch: 3300, // 中间跨榀距（沿檩条）
+    pitchEnd: 3000, // 首末跨榀距（沿檩条）
+    maxPurlin: 9000, // 檩条切割最大长度
+
+    // 斜撑布置
+    outer: 1, // 是否带外斜撑：0 无，1 有
+    braceHF: 250, // 前柱斜撑连接板中心标高，相对 ±0
+    braceHR: 350, // 后柱斜撑连接板中心标高，相对 ±0
+    braceTopF: 2650, // 前内斜撑上节点距斜梁下端（沿梁）
+    braceTopR: 2650, // 后内斜撑上节点距斜梁上端（沿梁）
+    braceOutF: 400, // 前外斜撑上节点距斜梁下端（沿梁）
+    braceOutR: 400, // 后外斜撑上节点距斜梁上端（沿梁）
+
+    // 立柱拉杆布置
+    postTieF: 'ends', // 前排：none 无 / ends 首末跨 / all 全部跨 / custom 自定义
+    postTieR: 'ends', // 后排：同前排布置选项
+    postTieSpansF: [], // 前排自定义逐跨开关，0 不安装、1 安装
+    postTieSpansR: [], // 后排自定义逐跨开关，0 不安装、1 安装
+
+    // 檩条拉杆布置
+    purlinTies: 'none', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
+    purlinTieSpans: [], // 自定义逐跨开关，0 不安装、1 安装
   },
 };
+// 应用截面时复制尺寸，保留运行时 FIX 引用，避免修改预设。
+function applyPresetSections(preset) {
+  const sections = Object.entries(PRESETS[preset].sections).map(([key, name]) => {
+    const library = key === 'purlinTie' ? ANGLE_SECTION_LIB : SECTION_LIB;
+    const value = library.find(item => item.name === name);
+    if (!value) throw new Error(`图纸 ${preset} 的 ${SECTION_LABEL[key] || key} 截面不存在：${name}`);
+    return [key, value];
+  });
+  // 全部名称校验通过后再应用，复制尺寸，避免修改截面库或预设。
+  for (const [key, { name, ...dimensions }] of sections) Object.assign(FIX[key], dimensions);
+}
+applyPresetSections('A');
 const DEFAULTS = PRESETS.A;
 
 // ---------- 连接件尺寸 ----------
@@ -181,7 +249,7 @@ const PARAMS = [
   { key: 'pitch',  label: '中间跨榀距',      unit: 'mm', min: 2000, max: 4500, step: 100 },
   { key: 'pitchEnd', label: '首末跨榀距',    unit: 'mm', min: 1500, max: 4500, step: 100,
     hint: '第 1–2 榀、倒数第 2–1 榀之间的距离' },
-  { key: 'slope',  label: '地面南北坡度',    unit: '%',  min: -10,  max: 10,   step: 0.5,
+  { key: 'slopeNS',  label: '地面南北坡度',    unit: '%',  min: -10,  max: 10,   step: 0.5,
     hint: '正 = 南向坡（北高南低），负 = 北向坡（北低南高）。前柱处地面为 ±0，后柱按实际地面埋深：后柱总长 = 柱顶高 − 坡度 × 立柱间距 + 埋深' },
   { key: 'slopeEW', label: '地面东西坡度',  unit: '%',  min: -10,  max: 10,   step: 0.5,
     hint: '正 = 东高西低，负 = 东低西高。各榀立柱竖直、跟着地面抬高，檩条顺坡；榀距、阵列宽、檩条长都是沿檩条量的长度，水平距离 = 长度 ÷ √(1 + 坡度²)' },
@@ -199,7 +267,9 @@ function limits(key) {
   return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
 }
 
-const P = Object.assign({}, DEFAULTS);
+// 截面由 FIX 管理；可调参数单独复制，数组也不与预设共享。
+const { sections: defaultSections, ...defaultParameters } = DEFAULTS;
+const P = Object.fromEntries(Object.entries(defaultParameters).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value]));
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
 export { ANGLE_SECTION_LIB };
 export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

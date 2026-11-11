@@ -107,10 +107,10 @@ function build() {
   }
   ed(key.label(`${P.tilt}°`, arcAt(th / 2), 'in'), 'tilt');
   // 南北坡度不为 0 时才画坡度线（实际地面，过前柱处 ±0），坡度写在北端；后柱处标出 ±0 到坡度线的高差
-  if (P.slope) {
-    const up = P.slope > 0;
+  if (P.slopeNS) {
+    const up = P.slopeNS > 0;
     groundLine.seg(v(gx0, S.gy(gx0)), v(gx1, S.gy(gx1)));
-    ed(groundLine.label(`${up ? '南向坡' : '北向坡'} ${Math.abs(P.slope)}%`, v(gx1 + 380, S.gy(gx1) + (up ? 40 : -40)), 'in', 13), 'slope');
+    ed(groundLine.label(`${up ? '南向坡' : '北向坡'} ${Math.abs(P.slopeNS)}%`, v(gx1 + 380, S.gy(gx1) + (up ? 40 : -40)), 'in', 13), 'slopeNS');
     side.dim(v(S.xr, 0), v(S.xr, S.gR), off(620, 0), r(Math.abs(S.gR)), 'out');
   }
 
@@ -173,7 +173,7 @@ function build() {
   const offZ = (k) => new V3(0, 0, k * MM);
   const halfL = layout.purlinLen / 2;
   const tLow = S.modStarts[0], tHigh = S.modStarts[S.modStarts.length - 1] + P.modL;
-  const pSec = `C${FIX.purlin.d}×${FIX.purlin.f}×${FIX.purlin.l}×${FIX.purlin.t.toFixed(1)}`;
+  const pSec = `C${FIX.purlin.d}*${FIX.purlin.f}*${FIX.purlin.l}*${FIX.purlin.t.toFixed(1)}`;
   nrm.dim(pS(tHigh, -halfL), pS(tHigh, halfL), offU(700), `檩条 ×${S.purlins.length}　${pSec}　总长 ${r(layout.purlinLen)}`, 'out', 13);
   // 每根檩条使用相同切割方案；标注材料净长，不含段间4 mm接缝。
   const topCuts = new DimSet();

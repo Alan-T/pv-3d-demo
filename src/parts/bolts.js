@@ -5,8 +5,6 @@ import * as THREE from '../../vendor/three.module.js';
 /** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
 export class BoltsPart {
   constructor({
-    postSection,
-    braceSection,
     beamSection,
     purlinSection,
     boltSteelMaterial,
@@ -99,13 +97,7 @@ export class BoltsPart {
   }
   // M12 螺栓的螺母下都是一个平垫、一个弹垫（节点图）
   const BOLTS = {
-    // 斜撑-立柱：连接板 + 腹板，长圆孔在连接板上（螺栓头一侧）；头下平垫，螺母下平垫 + 弹垫。
-    foot: boltKind(12, JOINT.plateT + postSection.t, { at: [-JOINT.plateT - postSection.t - 0.4], len: JOINT.slotL }, { len: 35, headWasher: true, spring: true }),
-    footBrace: boltKind(12, JOINT.plateT + braceSection.t, { at: [-JOINT.plateT - braceSection.t - 0.4], len: JOINT.slotL }, { len: 35, headWasher: true, spring: true }),
-    // 立柱-斜梁：螺母在斜梁腹板一侧，竖向长圆孔开在立柱腹板上：画在立柱腹板贴着斜梁的那面（节点图里斜梁半透明，看得见）
-    // 和立柱槽里那面
-    top: boltKind(16, beamSection.t + postSection.t, { at: [-beamSection.t, -beamSection.t - postSection.t - 0.4], len: 40, width: 18 }, { len: 40, headWasher: true, spring: true }),
-    btop: boltKind(12, beamSection.t + braceSection.t, null, { len: 35, headWasher: true, spring: true }), // 斜撑-斜梁：两面平垫，螺母侧弹垫
+    // 立柱、内外斜撑连接螺栓由 add() 按各构件实际板厚生成。
     clip: boltKind(12, CLIP.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }), // 底边：檩托+斜梁翼缘，两面平垫
     clipWeb: boltKind(12, CLIP.t + purlinSection.t, null, { len: 35, headWasher: true, spring: true }), // 立边：檩托+檩条腹板，两面平垫
     purlinBeam: boltKind(12, purlinSection.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }), // 平坡：檩条下翼缘直接连接斜梁上翼缘

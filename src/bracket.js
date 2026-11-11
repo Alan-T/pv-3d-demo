@@ -99,7 +99,7 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
 
   // 各构件共用的构建上下文：u 沿坡向上、n 垂直斜梁向上；zw 是立柱腹板所在平面（框架平面东侧），
   // zBeamWeb 是斜梁腹板内表面（相对榀位 z0），柱顶、撑顶螺栓的螺母在这一侧
-  const zw = sections.post.f / 2;
+  const zw = sections.postF.f / 2;
     const bolts = boltPart.collector(P.modT, { moduleSerratedWasher: P.fix === 'bolt' && !!P.serratedWasher });
   const c = {
     P, S, layout, bolts, ...g,

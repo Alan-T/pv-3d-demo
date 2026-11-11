@@ -33,9 +33,9 @@ test('±100mm含边界，整对选用平地长度；超出时使用两根实际�
 });
 
 test('两方案及正负东西坡度：选用下料长度、真实安装孔、实体长度一致', () => {
-  for (const preset of ['A','B']) for (const slopeEW of [-10,0,10]) for (const slope of [-5,0,5]) {
+  for (const preset of ['A','B']) for (const slopeEW of [-10,0,10]) for (const slopeNS of [-5,0,5]) {
     applyPresetSections(preset);
-    const p={...PRESETS[preset],slopeEW,slope}, s=solve(p), layout=layoutEW(p);
+    const p={...PRESETS[preset],slopeEW,slopeNS}, s=solve(p), layout=layoutEW(p);
     const rows=calculatePostTies(p,s,layout);
     for (const row of rows) {
       assert.equal(row.rods.length,4);

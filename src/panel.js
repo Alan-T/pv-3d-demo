@@ -24,7 +24,7 @@ function updatePurlinTieControls() {
   const container = document.getElementById('purlin-tie-spans');
   container.hidden = P.purlinTies !== 'custom';
   container.innerHTML = P.purlinTies === 'custom' ? Array.from({ length: st.layout.zs.length - 1 }, (_, index) =>
-    `<label><input type="checkbox" data-purlin-tie-bay="${index}"${P.purlinTieSpans?.[index] === 1 ? ' checked' : ''}>第 ${index + 1} 跨</label>`).join('') : '';
+    `<label><input type="checkbox" data-purlin-tie-bay="${index}"${P.purlinTieSpans[index] === 1 ? ' checked' : ''}>第 ${index + 1} 跨</label>`).join('') : '';
 }
 
 function updatePostTieControls() {
@@ -71,7 +71,7 @@ function init() {
       const sel = row.querySelector('select');
       sel.value = P[d.key];
       sel.addEventListener('change', () => {
-        if (d.key === 'purlinTies' && sel.value === 'custom' && !Array.isArray(P.purlinTieSpans)) {
+        if (d.key === 'purlinTies' && sel.value === 'custom') {
           const installed = new Set(st.layout.purlinTies.rods.map(rod => rod.bay));
           P.purlinTieSpans = Array.from({ length: st.layout.zs.length - 1 }, (_, index) => Number(installed.has(index)));
         }
@@ -87,7 +87,7 @@ function init() {
         spans.addEventListener('change', event => {
           const bay = event.target.dataset.purlinTieBay;
           if (bay === undefined) return;
-          const selected = [...(P.purlinTieSpans || [])];
+          const selected = [...P.purlinTieSpans];
           selected[Number(bay)] = Number(event.target.checked);
           P.purlinTieSpans = selected;
           scheduleBuild();
@@ -169,13 +169,13 @@ function init() {
   const curSecName = (key) => {
     const c = FIX[key];
     const hit = sectionLibrary(key).find((s) => s.d === c.d && s.f === c.f && s.l === c.l && s.t === c.t);
-    return hit ? hit.name : c.type === 'L' ? `L${c.d}×${c.f}×${c.t}` : `C${c.d}×${c.f}×${c.l}×${c.t}`;
+    return hit ? hit.name : c.type === 'L' ? `L${c.d}*${c.f}*${c.t}` : `C${c.d}*${c.f}*${c.l}*${c.t}`;
   };
   for (const key of Object.keys(SECTION_LABEL)) {
     const row = document.createElement('div');
     row.className = 'prow';
     row.innerHTML = `<span class="pl">${SECTION_LABEL[key]}</span>` +
-      `<input class="psec" type="text" list="${key === 'purlinTie' ? 'angleSectionLib' : 'sectionLib'}" placeholder="${key === 'purlinTie' ? '如 L35×35' : '如 C80×40'}" autocomplete="off" spellcheck="false"` +
+      `<input class="psec" type="text" list="${key === 'purlinTie' ? 'angleSectionLib' : 'sectionLib'}" placeholder="${key === 'purlinTie' ? '如 L35*35' : '如 C80*40'}" autocomplete="off" spellcheck="false"` +
       ` aria-label="${SECTION_LABEL[key]}截面" title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以">`;
     const inp = row.querySelector('input');
     inp.value = curSecName(key);
@@ -197,7 +197,8 @@ function init() {
   // 图纸方案：整套参数切换到对应图纸；“恢复图纸参数”回到当前方案的图纸值
   const presetEl = document.getElementById('preset');
   const applyPreset = () => {
-    Object.assign(P, PRESETS[st.preset]);
+    const { sections, ...parameters } = PRESETS[st.preset];
+    for (const [key, value] of Object.entries(parameters)) P[key] = Array.isArray(value) ? [...value] : value;
     applyPresetSections(st.preset);
     for (const [key, inp] of Object.entries(sectionInputs)) inp.value = curSecName(key);
     for (const k in inputs) inputs[k].show(P[k]);

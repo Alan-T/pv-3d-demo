@@ -8,7 +8,7 @@ test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保�
   const geometries = [];
   const material = new THREE.MeshBasicMaterial();
   const part = new BoltsPart({
-    postSection: FIX.post, braceSection: FIX.brace, beamSection: FIX.beam,
+    beamSection: FIX.beam,
     purlinSection: FIX.purlin, boltSteelMaterial: material, slotMaterial: material,
     CLAMP, CLIP, JOINT, track: g => (geometries.push(g), g),
   });

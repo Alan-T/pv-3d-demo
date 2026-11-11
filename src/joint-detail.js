@@ -33,11 +33,11 @@ function keepAnnotationsUnclipped(group) {
 function build(S, layout) {
   const P = params, clamp = P.fix === 'clamp';
   const zLast = layout.zs[layout.zs.length - 1];
-  const zj = zLast + FIX.post.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
+  const zj = zLast + FIX.postF.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
   const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
   const mv = (p, du, dn) => ({ x: p.x + S.c * du - S.s * dn, y: p.y + S.s * du + S.c * dn });   // 沿坡 du、法向 dn
   const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
-  const sec = (s) => s.l ? `C${s.d}×${s.f}×${s.l}×${s.t.toFixed(1)}` : `U${s.d}×${s.f}×${s.t.toFixed(1)}`;
+  const sec = (s) => s.l ? `C${s.d}*${s.f}*${s.l}*${s.t.toFixed(1)}` : `U${s.d}*${s.f}*${s.t.toFixed(1)}`;
   const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
   const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [] };
   for (const fr of [0, 1]) {
@@ -186,7 +186,7 @@ function build(S, layout) {
         [upperLip.x,upperLip.y,q.y+100,'檩条 1 '+sec(FIX.purlin)],
         [q.x,q.y,q.y+45,'檩条接缝 4 mm'],
         [lowerLip.x,lowerLip.y,q.y-10,'檩条 2 '+sec(FIX.purlin)],
-        [connectorBottom.x,connectorBottom.y,q.y-65,'U108×55×3.0 连接件（长240）'],
+        [connectorBottom.x,connectorBottom.y,q.y-65,'U108*55*3.0 连接件（长240）'],
         [lowerBolt.x,lowerBolt.y,q.y-120,'M12×35 ×8（两面平垫，螺母侧弹垫）']
       ],
       // 接缝中心处的法线，沿组件法向贯穿檩条截面，上下各伸出 40 mm。

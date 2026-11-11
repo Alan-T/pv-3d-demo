@@ -31,7 +31,7 @@ export function solve(p) {
   // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
   // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
   // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
-  const sp = p.slope / 100;
+  const sp = p.slopeNS / 100;
   const gy = (x) => sp * (x - xf);
   const gR = gy(xr);
   const botF = -p.embed, botR = gR - p.embed;

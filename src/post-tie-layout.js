@@ -41,7 +41,7 @@ export function calculatePostTies(parameters, solution, layout) {
     const heights = postTieHeights({
       postLength: Math.round(rear ? s.lenR : s.lenF), embed: p.embed,
       strutHeight: rear ? p.braceHR : p.braceHF,
-      slopeHeight: rear ? Math.abs(p.span * p.slope / 100) : 0,
+      slopeHeight: rear ? Math.abs(p.span * p.slopeNS / 100) : 0,
     });
     const top = (rear ? s.topR : s.topF) - heights.topOffset;
     const bottom = top - heights.holeRise;

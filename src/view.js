@@ -189,7 +189,7 @@ function framePose(name) {
   // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
   const sp = layout.jointSpecs[st.jointType][st.jointSel];
   const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
-  const z = sp.z === undefined ? zLast + FIX.post.f / 2 : sp.z;
+  const z = sp.z === undefined ? zLast + FIX.postF.f / 2 : sp.z;
   const W = ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
   const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
   const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;
