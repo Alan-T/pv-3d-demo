@@ -107,6 +107,7 @@ const PRESETS = {
     modT: 33,           // 组件厚度
     hole: 1400,        // 组件安装孔距 = 同一块组件下两根檩条的间距
     fix: 'bolt',        // 组件固定方式：bolt 安装孔螺栓，clamp 压块（中压块 + 边压块）
+    serratedWasher: false,
     maxPurlin: 9000, clampL: 50,         // 压块长度（沿坡）
     purlinTies: 'all', purlinTieSpans: null,
     postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
@@ -118,6 +119,7 @@ const PRESETS = {
     rows: 3, cols: 27, outer: 1,
     braceHF: 250, braceHR: 350, braceTopF: 2650, braceTopR: 2650, braceOutF: 400, braceOutR: 400,
     embed: 1500, modL: 2382, modW: 1134, modT: 30, hole: 1400, fix: 'clamp', maxPurlin: 9000, clampL: 60,
+    serratedWasher: false,
     purlinTies: 'none', purlinTieSpans: null,
     postTieF: 'ends', postTieR: 'ends', postTieSpansF: [], postTieSpansR: [],
   },
@@ -168,6 +170,8 @@ const PARAMS = [
     hint: '长（沿坡）× 宽（东西向）× 厚；组件间隙固定 20' },
   { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
     hint: '螺栓固定：组件安装孔 M8×22，檩条两端各伸出组件 50；压块：缝上中压块、两端边压块，M8×35 内六角，檩条两端各伸出 100' },
+  { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
+    hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
   { key: 'maxPurlin', label: '檩条最大长度', type: 'select', options: [['5700', '5700 mm'], ['7200', '7200 mm'], ['9000', '9000 mm']] },
   { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
   { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },

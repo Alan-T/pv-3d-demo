@@ -1,4 +1,5 @@
 import { V3, MM, instanced } from '../core.js';
+import { createSerratedWasherGeometry } from '../serrated-washer-geometry.js';
 import * as THREE from '../../vendor/three.module.js';
 
 /** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
@@ -44,7 +45,10 @@ export class BoltsPart {
     // 螺母侧平垫可单独配置；头部平垫仍采用该螺栓的普通规格。
     const washer = o.nutWasher || { radius: b.wr, thickness: b.wt };
     const nut = washer.thickness + (o.spring ? b.sw.t : 0), top = nut + b.nh;   // 螺母底面、顶面
-    const back = -stack - (o.headWasher ? b.wt : 0);    // 螺栓头支承面
+    // 图示 H≈3S，暂用 S=0.6、H=1.8 mm。
+    const serratedThickness = 0.6;
+    const headWasherHeight = o.serratedHeadWasher ? 3 * serratedThickness : b.wt;
+    const back = -stack - (o.headWasher ? headWasherHeight : 0);    // 螺栓头支承面
     const hh = o.socket ? b.sk.k : b.hh;
     const cyl = (r, z0, z1, seg, r1) => {   // r1：z1 一端的半径（倒角用），不给就是圆柱
       const g = track(new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg));
@@ -58,7 +62,19 @@ export class BoltsPart {
       [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), boltSteelMaterial],
       o.socket ? [cyl(b.sk.d / 2, back - hh + 0.6, back, 24), boltSteelMaterial] : [cyl(hexR, back - hh, back, 6), boltSteelMaterial],
     ];
-    if (o.headWasher) parts.push([cyl(b.wr, back, -stack, 24), washerMaterial]);
+    if (o.headWasher) {
+      // 锯齿垫圈仅替换头下普通平垫，上下齿尖贴合螺栓头与组件。
+      let geometry;
+      if (o.serratedHeadWasher) {
+        geometry = track(createSerratedWasherGeometry({
+          outerRadius: b.wr, innerRadius: b.r + 0.4, thickness: serratedThickness,
+        }));
+        geometry.translate(0, 0, back * MM);
+      } else {
+        geometry = cyl(b.wr, back, -stack, 24);
+      }
+      parts.push([geometry, washerMaterial]);
+    }
     if (o.spring) parts.push([springWasher(b.sw, washer.thickness), springMaterial]);
     if (o.socket) {
       parts.push([cyl(b.sk.d / 2 - 0.6, back - hh, back - hh + 0.6, 24, b.sk.d / 2), boltSteelMaterial]);   // 头顶倒角
@@ -116,8 +132,16 @@ export class BoltsPart {
   const SLOPE_KINDS = new Set(['splice', 'module', 'clampMid', 'clampSide']);
 
   // 一次重建用一个收集器（modT：组件厚度）：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
-  function collector(modT) {
+  let serratedModule;
+  function collector(modT, { moduleSerratedWasher = false } = {}) {
     const K = kinds(modT), mats = {};
+    if (moduleSerratedWasher) {
+      serratedModule ??= boltKind(8, purlinSection.t + 2, null, {
+        len: 22, headWasher: true, serratedHeadWasher: true, spring: true,
+        nutWasher: { radius: 12, thickness: 2 },
+      });
+      K.module = serratedModule;
+    }
     for (const k in K) mats[k] = [];
     return {
       // axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）
