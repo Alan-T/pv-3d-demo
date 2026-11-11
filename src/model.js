@@ -45,7 +45,7 @@ function displayBracket(bracket, state) {
   state.S = S;
   state.layout = layout;
   state.groups = g;
-  if (state.jointType === 'splice' && !layout.cuts.positions.length) state.jointType = 'mod';
+  if (state.jointType === 'splice' && (!layout.cuts.positions.length || !layout.purlinConnector)) state.jointType = 'mod';
   root.add(g.model);
 
   g.ground = buildGround(S, layout);

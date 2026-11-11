@@ -1,3 +1,4 @@
+import { getPurlinConnectorSpec } from './purlin-connector-spec.js';
 import { BraceConnectorPart } from './parts/brace-connector.js';
 import { PostPart } from './parts/post.js';
 import { PurlinTiePart } from './parts/purlin-tie.js';
@@ -55,7 +56,10 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
 
   const beam = new BeamPart(partOptions.beam);
 
-  const purlin = new PurlinPart(partOptions.purlin);
+  const purlin = new PurlinPart({
+    ...partOptions.purlin,
+    purlinConnector: { ...partOptions.purlin.purlinConnector, connectorSpec: getPurlinConnectorSpec(P.purlinConnector) },
+  });
   const module = new ModulePart(partOptions.module);
   const clamp = new ClampPart(partOptions.clamp);
   const boltPart = new BoltsPart(partOptions.bolts);
@@ -115,6 +119,8 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
   rearOuterBrace?.build(c);
   for (const z of layout.zs) for (const joint of layout.joints) connector.build(c, joint, z);
   layout.purlinTies = calculatePurlinTies({ mode: P.purlinTies, selected: P.purlinTieSpans, purlins: S.purlins, framePositions: layout.zs });
+  layout.purlinConnector = purlin.splice;
+  if (!purlin.splice && layout.cuts.positions.length) layout.warn.push('请选择有效的檩条连接件规格，接头暂不生成连接件。');
   const clip = purlin.build(c);
   g.purlinTies = new THREE.Group();
   g.slope.add(g.purlinTies);

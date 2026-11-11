@@ -268,8 +268,8 @@ function kgPerM(sec) {
 // 改回螺栓固定时 build() 已把边压块退回 mod
 function updateJointChips() {
   const spliceButton = document.querySelector('[data-jtype=splice]');
-  spliceButton.disabled = !st.layout.cuts.positions.length;
-  spliceButton.title = spliceButton.disabled ? '当前檩条没有切割接头' : '预览实际檩条切割接头';
+  spliceButton.disabled = !st.layout.cuts.positions.length || !st.layout.purlinConnector;
+  spliceButton.title = spliceButton.disabled ? '当前檩条没有切割接头或未选择有效连接件' : '预览实际檩条切割接头';
   const jt = st.jointType, modLike = jt === 'mod' || jt === 'side';
   document.querySelectorAll('[data-jtype]').forEach((b) => b.classList.toggle('on', b.dataset.jtype === (jt === 'side' ? 'mod' : jt)));
   document.querySelectorAll('[data-clampopt]').forEach((el) => { el.style.display = P.fix === 'clamp' && modLike ? '' : 'none'; });
@@ -322,7 +322,7 @@ function update() {
       ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],
     ] : [['M8×22 组件安装螺栓', `${L.counts.m8} 套`]]),
     ['檩条切割（每根）', L.cuts.valid ? L.cuts.segments.map(s=>s.length).join(' / ') + ' mm（缝4）' : '无可行方案'],
-    ['檩条连接件', L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套'],
+    ['檩条连接件', L.purlinConnector ? L.purlinConnector.name + '，' + L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套' : '未选择有效规格'],
     ['檩条', `${r(L.purlinLen)} × ${np}`],
     ['檩条拉杆', L.purlinTies.count ? `${L.purlinTies.length} mm × ${L.purlinTies.count} 套` : '无'],
     ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],

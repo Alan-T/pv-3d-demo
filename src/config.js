@@ -53,6 +53,24 @@ for (const key of ['postF', 'postR', 'braceF', 'braceR', 'braceOF', 'braceOR']) 
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
 const ANGLE_SECTION_LIB = [1.6, 1.8, 2, 2.5, 3].map(t => ({ type: 'L', name: `L35*35*${t.toFixed(1)}`, d: 35, f: 35, t }));
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
+// 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
+const PURLIN_CONNECTOR_SPECS = [
+  'U88*45*2.75*220',
+  'U88*55*2.75*220',
+  'U88*55*3.0*220',
+  'U98*45*2.75*220',
+  'U98*45*3.0*220',
+  'U98*55*2.75*220',
+  'U98*55*3.0*220',
+  'U108*45*2.75*240',
+  'U108*45*3.0*240',
+  'U108*55*3.0*240',
+  'U118*45*3.0*240',
+  'U118*55*3.0*240',
+  'U128*45*3.0*240',
+  'U128*53*3.0*240',
+];
+
 // ---------- 图纸预设参数 ----------
 // 两套预设使用相同字段和分组顺序；长度单位 mm，角度单位 °，坡度单位 %。
 // F / R 表示前 / 后；保留未启用构件的参数，便于切换固定方式或启用外斜撑。
@@ -98,6 +116,7 @@ const PRESETS = {
     pitch: 2800, // 中间跨榀距（沿檩条）
     pitchEnd: 2500, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
+    purlinConnector: 'U108*55*3.0*240', // 手动选择连接件规格
 
     // 斜撑布置
     outer: 0, // 是否带外斜撑：0 无，1 有
@@ -159,6 +178,7 @@ const PRESETS = {
     pitch: 3300, // 中间跨榀距（沿檩条）
     pitchEnd: 3000, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
+    purlinConnector: 'U98*55*3.0*220', // 手动选择连接件规格
 
     // 斜撑布置
     outer: 1, // 是否带外斜撑：0 无，1 有
@@ -241,6 +261,9 @@ const PARAMS = [
   { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
     hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
   { key: 'maxPurlin', label: '檩条最大长度', type: 'select', options: [['5700', '5700 mm'], ['7200', '7200 mm'], ['9000', '9000 mm']] },
+  { key: 'purlinConnector', label: '檩条连接件', type: 'select',
+    options: PURLIN_CONNECTOR_SPECS.map(name => [name, name]),
+    hint: '手动选择 U 型连接件规格（高度*翼缘宽*板厚*长度），不随檩条截面自动切换' },
   { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
   { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
   { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },
@@ -271,5 +294,5 @@ function limits(key) {
 const { sections: defaultSections, ...defaultParameters } = DEFAULTS;
 const P = Object.fromEntries(Object.entries(defaultParameters).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value]));
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { ANGLE_SECTION_LIB };
+export { ANGLE_SECTION_LIB, PURLIN_CONNECTOR_SPECS };
 export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

@@ -22,7 +22,7 @@ const sectionKey = (type) => (type === 'mod' || type === 'side' || type === 'spl
 function sectionRange(layout, key) {
   if (key === 'clip') { const z = layout.zs.at(-1); return [z - 150, z + 150]; }
   // 连接件长 240，两端各保留 60 的檩条；避开邻近榀的斜梁及檩托。
-  if (key === 'splice') { const z = layout.cuts.positions.at(-1) || 0; return [z - 180, z + 180]; }
+  if (key === 'splice') { const z = layout.cuts.positions.at(-1) || 0; const half = (layout.purlinConnector?.length || 240) / 2 + 60; return [z - half, z + half]; }
   if (key === 'mod') return [layout.gapZ - SECTION.gap, layout.gapZ + SECTION.gap];
   if (key === 'side') return [layout.arrW / 2 - SECTION.end, layout.purlinLen / 2 + SECTION.end];
   const z = layout.zs[layout.zs.length - 1];

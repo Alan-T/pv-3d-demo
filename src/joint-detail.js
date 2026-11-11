@@ -173,20 +173,21 @@ function build(S, layout) {
       });
     }
   }
-  for (const fr of [0,1]) {
+  for (const fr of (layout.purlinConnector ? [0,1] : [])) {
+    const splice = layout.purlinConnector;
     const p=S.along(S.purlins[fr?S.purlins.length-1:0]), z=layout.cuts.positions.at(-1)||0;
     const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+100;
     // 截面标注共用接缝平面，各引线分别指向翼缘、接缝、连接件和下翼缘螺栓。
     const upperLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, FIX.purlin.d / 2 - FIX.purlin.l / 2);
     const lowerLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, -FIX.purlin.d / 2 + FIX.purlin.l / 2);
-    const connectorBottom = mv(q, 8, -54);
-    const lowerBolt = mv(q, 23, -62);
+    const connectorBottom = mv(q, 8, -splice.d / 2);
+    const lowerBolt = mv(q, splice.flangeHoleOffset - splice.t, -splice.d / 2 - 8);
     specs.splice.push({labelSide:1,anchorX:ax,z,zl:z,at:q,
       leaders:[
         [upperLip.x,upperLip.y,q.y+100,'檩条 1 '+sec(FIX.purlin)],
         [q.x,q.y,q.y+45,'檩条接缝 4 mm'],
         [lowerLip.x,lowerLip.y,q.y-10,'檩条 2 '+sec(FIX.purlin)],
-        [connectorBottom.x,connectorBottom.y,q.y-65,'U108*55*3.0 连接件（长240）'],
+        [connectorBottom.x,connectorBottom.y,q.y-65,splice.name + ' 连接件'],
         [lowerBolt.x,lowerBolt.y,q.y-120,'M12×35 ×8（两面平垫，螺母侧弹垫）']
       ],
       // 接缝中心处的法线，沿组件法向贯穿檩条截面，上下各伸出 40 mm。

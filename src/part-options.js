@@ -48,6 +48,7 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       createSectionCapGeometry,
       CLIP,
       purlinConnector: { purlinSection: sections.purlin,
+
       purlinConnectorMaterial: materials.purlinConnector,
       track },
       purlinClip: { beamSection: sections.beam,
