@@ -1,9 +1,9 @@
-# 光伏固定支架 3D 设计 Demo
+# 光伏固定支架 3D 设计
 
 根据固定倾角地面光伏支架图纸构建的交互式 three.js 模型。支持调整组件、榀距、坡度和固定方式，查看构件尺寸、檩条分段及连接节点。
 
 - 仓库：[Alan-T/pv-3d-demo](https://github.com/Alan-T/pv-3d-demo)
-- 在线演示：[光伏固定支架 3D 设计 Demo](http://47.116.75.159:257/)
+- 在线演示：[光伏固定支架 3D 设计](http://47.116.75.159:257/)
 - 技术：原生 JavaScript ES Modules、three.js r128、OrbitControls、HTML / CSS。
 - 无需安装 npm 依赖或执行构建；运行资源随项目提供，不依赖 CDN。
 

@@ -1,7 +1,7 @@
 
 import * as THREE from '../vendor/three.module.js';
 
-/* 光伏固定支架 3D 设计 Demo —— three.js r128（ES Modules）
+/* 光伏固定支架 3D 设计 —— three.js r128（ES Modules）
  *
  * 坐标约定（与原图侧视一致）：x 向北（图右）、y 向上、z 向东（侧视图从东往西看）。
  * 图纸尺寸都用 mm，建模时乘 MM 换成米。原点 (0,0) 在组件前沿正下方的 ±0 地面。
