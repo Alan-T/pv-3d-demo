@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.js';
-import { FIX, PRESETS, applyPresetSections } from '../src/config.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';
 import { PostTiePart } from '../src/parts/post-tie.js';
-import { createSectionGeometry } from '../src/section-geometry.js';
+import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';
 
 test('二维孔位规则：整百孔距、柱顶余量优先接近225，低柱退化为水平杆', () => {
   assert.deepEqual(postTieHeights({postLength:2298,embed:1500,strutHeight:250}), {topOffset:248,holeRise:100});
@@ -77,4 +77,71 @@ test('两方案及正负东西坡度：选用下料长度、真实安装孔、�
     }
   }
   applyPresetSections('A');
+});
+
+test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留引用且不污染规格库', () => {
+  const libraryBefore = structuredClone(TIE_SECTION_LIB);
+  const areas = { 'L35*35*1.6': 109.44, 'C59*39*8*1.6': 234.56, 'C60*40*10*1.6': 245.76 };
+  try {
+    for (const key of ['postTie', 'purlinTie']) {
+      const reference = FIX[key];
+      const area = () => Math.abs(THREE.ShapeUtils.area(createSectionShape(FIX[key]).getPoints())) * 1e6;
+      for (const name of ['L35*35*1.6', 'C59*39*8*1.6', 'L35*35*1.6', 'C60*40*10*1.6']) {
+        applySection(key, getSectionLibrary(key).find(section => section.name === name));
+        assert.equal(FIX[key], reference);
+        assert.ok(Math.abs(area() - areas[name]) < 1e-6, name);
+        if (name.startsWith('L')) assert.equal('l' in FIX[key], false);
+      }
+      for (const preset of ['A', 'B']) {
+        applySection(key, TIE_SECTION_LIB[key === 'postTie' ? 0 : 1]);
+        applyPresetSections(preset);
+        assert.equal(FIX[key], reference);
+        const defaultName = PRESETS[preset].sections[key];
+        assert.equal(FIX[key].type, defaultName[0]);
+        assert.ok(Math.abs(area() - areas[defaultName]) < 1e-6);
+      }
+    }
+    assert.deepEqual(TIE_SECTION_LIB, libraryBefore);
+  } finally {
+    applyPresetSections('A');
+  }
+});
+
+test('三种立柱拉杆截面：安装肢居中，前后排及正负坡度下螺栓轴线穿过实际板厚', () => {
+  applyPresetSections('A');
+  for (const section of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
+    const parameters = { ...PRESETS.A, slopeEW };
+    const solution = solve(parameters), layout = layoutEW(parameters);
+    for (const row of calculatePostTies(parameters, solution, layout)) {
+      const parent = new THREE.Group();
+      const postSection = row.rear ? FIX.postR : FIX.postF;
+      const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      const part = new PostTiePart({ section, postSection, material, createSectionGeometry, track: geometry => geometry });
+      try {
+        const bolts = [];
+        part.build({ row, parent, bolts: { add: (kind, point, axis, up, thickness) => bolts.push({ point, thickness }) } });
+        part.geometry.computeBoundingBox();
+        const box = part.geometry.boundingBox;
+        assert.ok(Math.abs(box.min.x + section.d / 2 * .001) < 1e-7);
+        assert.ok(Math.abs(box.max.x - section.d / 2 * .001) < 1e-7);
+        parent.updateMatrixWorld(true);
+        row.rods.forEach((rod, index) => {
+          const mesh = parent.children[index];
+          const outward = new THREE.Vector3(rod.direction, 0, 0);
+          for (const bolt of bolts.slice(index * 2, index * 2 + 2)) {
+            assert.equal(bolt.thickness, postSection.t + section.t);
+            const surface = bolt.point.clone().addScaledVector(outward, postSection.t * .001);
+            const ray = new THREE.Raycaster(surface.addScaledVector(outward, -.01), outward);
+            const hits = ray.intersectObject(mesh, false);
+            assert.ok(hits.length >= 2, `${section.name}: 螺栓轴线必须穿过安装肢`);
+            assert.ok(Math.abs(hits[0].distance - .01) < 1e-7);
+            assert.ok(Math.abs(hits.at(-1).distance - (.01 + section.t * .001)) < 1e-7);
+          }
+        });
+      } finally {
+        part.geometry.dispose();
+        material.dispose();
+      }
+    }
+  }
 });

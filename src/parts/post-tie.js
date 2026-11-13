@@ -7,6 +7,8 @@ export class PostTiePart {
     this.postSection = postSection;
     this.material = material;
     this.geometry = track(createSectionGeometry(section));
+    // 角钢贴柱的一肢以螺栓轴线居中；通用 L 截面原点在角部，需平移半个肢宽。
+    if (section.type === 'L') this.geometry.translate(-section.d * MM / 2, 0, 0);
   }
 
   build({ row, parent, bolts }) {
@@ -18,7 +20,7 @@ export class PostTiePart {
       const axis = b.clone().sub(a).normalize();
       const width = new V3(side, 0, 0);
       const height = width.clone().cross(axis);
-      // 螺栓头在拉杆槽内，穿过拉杆腹板及柱翼缘；螺母在立柱槽内。
+      // 螺栓头在拉杆内侧，穿过贴柱板及柱翼缘；螺母在立柱槽内。
       // 收集器原点为螺母侧夹紧面，轴线朝立柱内侧。
       for (const point of [a, b]) {
         bolts?.add('postTie', point.clone().addScaledVector(width, -this.postSection.t * MM),

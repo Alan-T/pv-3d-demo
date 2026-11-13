@@ -1,5 +1,5 @@
 <script setup>
-import { ANGLE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
+import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
 import ParameterField from './ParameterField.vue';
 import DesignNotes from './DesignNotes.vue';
 
@@ -83,11 +83,14 @@ const displays = [
         <h3>构件截面</h3>
         <div id="sections">
           <datalist id="sectionLib"><option v-for="section in SECTION_LIB" :key="section.name" :value="section.name" /></datalist>
-          <datalist id="angleSectionLib"><option v-for="section in ANGLE_SECTION_LIB" :key="section.name" :value="section.name" /></datalist>
           <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow">
             <label class="pl" :for="`section-${key}`">{{ label }}</label>
-            <input :id="`section-${key}`" class="psec" type="text" :list="key === 'purlinTie' ? 'angleSectionLib' : 'sectionLib'"
-              :placeholder="key === 'purlinTie' ? '如 L35*35' : '如 C80*40'" :value="snapshot.sections[key]"
+            <select v-if="key === 'postTie' || key === 'purlinTie'" :id="`section-${key}`" :value="snapshot.sections[key]" :aria-label="`${label}截面`"
+              @change="$emit('section', key, $event.target.value, $event.target)">
+              <option v-for="section in TIE_SECTION_LIB" :key="section.name" :value="section.name">{{ section.name }}</option>
+            </select>
+            <input v-else :id="`section-${key}`" class="psec" type="text" list="sectionLib"
+              placeholder="如 C80*40" :value="snapshot.sections[key]"
               autocomplete="off" spellcheck="false" :aria-label="`${label}截面`"
               title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以" @focus="$event.target.select()"
               @change="$emit('section', key, $event.target.value, $event.target)">

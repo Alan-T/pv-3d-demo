@@ -49,3 +49,22 @@ export function createDrilledPurlinGeometry(section,length,holePositions,radius=
     flange({x:-h,y0:t,y1:f,length,thickness:t,radius,holes:holePositions.map(z=>({y:f/2,z}))}),
   ],length);
 }
+
+// C 型拉杆在腹板中线开孔；输出仍使用标准 C 截面的局部坐标。
+export function createDrilledChannelWebGeometry(section, length, holePositions, radius = 7) {
+  const { d, f, l, t } = section, h = d / 2;
+  const outline = shape([[-h, 0], [h, 0], [h, length], [-h, length]]);
+  for (const z of holePositions) {
+    const hole = new THREE.Path();
+    hole.absarc(0, z * MM, radius * MM, 0, Math.PI * 2, true);
+    outline.holes.push(hole);
+  }
+  // 二维轮廓的第二轴对应杆件长度，拉伸方向转到腹板厚度方向 y。
+  const web = extrude(outline, t);
+  web.rotateX(Math.PI / 2).translate(0, t * MM, 0);
+  return unitLength([
+    web,
+    extrude(shape([[-h,t],[-h+t,t],[-h+t,f-t],[-h+l,f-t],[-h+l,f],[-h,f]]), length),
+    extrude(shape([[h-t,t],[h,t],[h,f],[h-l,f],[h-l,f-t],[h-t,f-t]]), length),
+  ], length);
+}

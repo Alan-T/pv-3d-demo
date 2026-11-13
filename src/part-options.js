@@ -1,11 +1,11 @@
-import { createDrilledAngleGeometry, createDrilledPurlinGeometry } from './drilled-section-geometry.js';
+import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledChannelWebGeometry } from './drilled-section-geometry.js';
 
 /** Page-independent translation from section/material configuration to part options. */
 export function createPartOptions({ sections, materials, connections, geometry, track }) {
   const { JOINT, DBL, CLIP, CLAMP } = connections;
   const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
-    purlinTie: { section: sections.purlinTie, purlinSection: sections.purlin, material: materials.postTie, createSectionGeometry, createDrilledAngleGeometry, track },
+    purlinTie: { section: sections.purlinTie, purlinSection: sections.purlin, material: materials.purlinTie, createSectionGeometry, createDrilledAngleGeometry, createDrilledChannelWebGeometry, track },
     postTie: { section: sections.postTie, material: materials.postTie, createSectionGeometry, track },
     post: { postFSection: sections.postF,
       postRSection: sections.postR,

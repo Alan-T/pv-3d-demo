@@ -1,4 +1,4 @@
-import { ANGLE_SECTION_LIB, applyPresetSections, FIX, P, PARAMS, PRESETS, SECTION_LABEL, SECTION_LIB, show } from './config.js';
+import { applyPresetSections, applySection, getSectionLibrary, FIX, P, PARAMS, PRESETS, SECTION_LABEL, show } from './config.js';
 import { shared } from './core.js';
 import { initScene, disposeScene, scene, renderer, controls, resize } from './scene.js';
 import { initMaterials, disposeMaterials } from './materials.js';
@@ -10,12 +10,12 @@ import { solve } from './solve.js';
 import { createReport } from './report.js';
 
 const state = shared.state;
-const sectionLibrary = key => key === 'purlinTie' ? ANGLE_SECTION_LIB : SECTION_LIB;
 const normalizeSection = name => String(name).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
 
 function sectionName(key) {
   const section = FIX[key];
-  const match = sectionLibrary(key).find(item => item.d === section.d && item.f === section.f && item.l === section.l && item.t === section.t);
+  const match = getSectionLibrary(key).find(item => (item.type ?? 'C') === (section.type ?? 'C')
+    && item.d === section.d && item.f === section.f && item.l === section.l && item.t === section.t);
   return match?.name ?? (section.type === 'L'
     ? `L${section.d}*${section.f}*${section.t}`
     : `C${section.d}*${section.f}*${section.l}*${section.t}`);
@@ -133,11 +133,11 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
 
   function changeSection(key, text) {
     const query = normalizeSection(text);
-    const library = sectionLibrary(key);
+    const library = getSectionLibrary(key);
     const section = query && (library.find(item => normalizeSection(item.name) === query)
       ?? library.find(item => normalizeSection(item.name).includes(query)));
     if (section) {
-      Object.assign(FIX[key], section);
+      applySection(key, section);
       scheduleBuild();
     }
     return sectionName(key);

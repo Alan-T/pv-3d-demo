@@ -15,7 +15,7 @@ const FIX = {
   purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 },
 };
 // ---------- 构件截面选型库 ----------
-// 全部构件的截面下拉框共用这一份数据（C 型钢 C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）。
+// 常规 C 型构件共用这一份数据（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）；拉杆使用专用库。
 // 选中后把尺寸写进 FIX 同名对象并重建模型；加新规格往字符串里追加即可。
 const SECTION_LIB = `
   C50*30*10*1.8    C50*30*10*2.0    C59*39*8*1.6     C59*39*8*1.8     C60*40*10*1.6
@@ -51,7 +51,24 @@ const SECTION_LIB = `
 });
 for (const key of ['postF', 'postR', 'braceF', 'braceR', 'braceOF', 'braceOR']) FIX[key] = {};
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-const ANGLE_SECTION_LIB = [1.6, 1.8, 2, 2.5, 3].map(t => ({ type: 'L', name: `L35*35*${t.toFixed(1)}`, d: 35, f: 35, t }));
+// 立柱拉杆和檩条拉杆共用规格，仅按截面尺寸选型，暂不区分 S420GD 等材质牌号。
+const TIE_SECTION_LIB = [
+  { type: 'L', name: 'L35*35*1.6', d: 35, f: 35, t: 1.6 },
+  { type: 'C', name: 'C59*39*8*1.6', d: 59, f: 39, l: 8, t: 1.6 },
+  { type: 'C', name: 'C60*40*10*1.6', d: 60, f: 40, l: 10, t: 1.6 },
+];
+
+function getSectionLibrary(key) {
+  return key === 'postTie' || key === 'purlinTie' ? TIE_SECTION_LIB : SECTION_LIB;
+}
+
+function applySection(key, { name, ...dimensions }) {
+  const target = FIX[key];
+  // 保留对象引用，但清掉旧截面字段，避免 C/L 切换后残留 type、卷边或名称。
+  for (const field of Object.keys(target)) delete target[field];
+  Object.assign(target, dimensions);
+}
+
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
 // 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
 const PURLIN_CONNECTOR_SPECS = [
@@ -203,13 +220,13 @@ const PRESETS = {
 // 应用截面时复制尺寸，保留运行时 FIX 引用，避免修改预设。
 function applyPresetSections(preset) {
   const sections = Object.entries(PRESETS[preset].sections).map(([key, name]) => {
-    const library = key === 'purlinTie' ? ANGLE_SECTION_LIB : SECTION_LIB;
+    const library = getSectionLibrary(key);
     const value = library.find(item => item.name === name);
     if (!value) throw new Error(`图纸 ${preset} 的 ${SECTION_LABEL[key] || key} 截面不存在：${name}`);
     return [key, value];
   });
   // 全部名称校验通过后再应用，复制尺寸，避免修改截面库或预设。
-  for (const [key, { name, ...dimensions }] of sections) Object.assign(FIX[key], dimensions);
+  for (const [key, dimensions] of sections) applySection(key, dimensions);
 }
 applyPresetSections('A');
 const DEFAULTS = PRESETS.A;
@@ -294,5 +311,5 @@ function limits(key) {
 const { sections: defaultSections, ...defaultParameters } = DEFAULTS;
 const P = Object.fromEntries(Object.entries(defaultParameters).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value]));
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { ANGLE_SECTION_LIB, PURLIN_CONNECTOR_SPECS };
+export { TIE_SECTION_LIB, PURLIN_CONNECTOR_SPECS, getSectionLibrary, applySection };
 export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

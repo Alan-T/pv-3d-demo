@@ -43,7 +43,7 @@ function gridTexture() {
 
 const steel = () => new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.18 });
 const M = {
-  post: steel(), beam: steel(), brace: steel(), postTie: steel(), purlin: steel(), buried: steel(), bracket: steel(), clip: steel(),
+  post: steel(), beam: steel(), brace: steel(), postTie: steel(), purlinTie: steel(), purlin: steel(), buried: steel(), bracket: steel(), clip: steel(),
   clamp: new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.45 }),   // 铝压块
   ground: new THREE.MeshLambertMaterial(),
   // 紧固件统一金属灰色系，以色阶区分零件；六角头/螺母使用平面着色突出棱面。
@@ -58,8 +58,8 @@ const M = {
   }),
 };
 const PALETTE = {
-  drawing: { post: 0xb3b7bb, beam: 0xf0a020, brace: 0x96a6a5, postTie: 0x526563, purlin: 0x3d7a50, buried: 0x858c92, bracket: 0x2f8fd8, clip: 0x38b26a, clamp: 0x8a63d2, purlinConnector: 0xff287d },
-  steel:   { post: 0xb8bfc5, beam: 0xb8bfc5, brace: 0xb1b8be, postTie: 0x687078, purlin: 0xa9b1b8, buried: 0x7d858c, bracket: 0x98a1a9, clip: 0xa3abb3, clamp: 0xc4cad0, purlinConnector: 0xa9b1b8 },
+  drawing: { post: 0xb3b7bb, beam: 0xf0a020, brace: 0x96a6a5, postTie: 0x168eae, purlinTie: 0xa34fba, purlin: 0x3d7a50, buried: 0x858c92, bracket: 0x2f8fd8, clip: 0x38b26a, clamp: 0x8a63d2, purlinConnector: 0xff287d },
+  steel:   { post: 0xb8bfc5, beam: 0xb8bfc5, brace: 0xb1b8be, postTie: 0xb8bfc5, purlinTie: 0xb8bfc5, purlin: 0xa9b1b8, buried: 0x7d858c, bracket: 0x98a1a9, clip: 0xa3abb3, clamp: 0xc4cad0, purlinConnector: 0xa9b1b8 },
 };
 // 剖切面封口（轴测节点图里被切开的檩条、组件补画的截面）：双面，转到背面看也在
 M.purlinCap = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.18, side: THREE.DoubleSide });
