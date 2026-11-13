@@ -1,4 +1,4 @@
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { MM } from './core.js';
 
 /** 带 14×25 长圆孔的 U 型连接件，局部 x 截面高、y 翼缘宽、z 纵向单位长度。 */

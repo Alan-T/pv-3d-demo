@@ -2,7 +2,7 @@ import { sun, controls, ortho, persp, renderer, canvas, root } from './scene.js'
 import { M, ghostModules, ghostMat, applyPalette } from './materials.js';
 import { FIX, show, P } from './config.js';
 import { EY, V, V3, MM, DEG, ewMatrix, shared } from './core.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { setFlatFrameDisplay } from './frame-projection.js';
 
 const params = P;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { BoltsPart } from '../src/parts/bolts.js';
 import { FIX, CLAMP, CLIP, JOINT, PARAMS, PRESETS } from '../src/config.js';
 

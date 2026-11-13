@@ -11,7 +11,7 @@ import { solve, layoutEW } from './solve.js';
 import { update as panelUpdate } from './panel.js';
 import { build as dimsBuild } from './dims.js';
 import { savePose as viewSavePose, sectionRange as viewSectionRange, applyVisibility as viewApplyVisibility, placeSun as viewPlaceSun, follow as viewFollow } from './view.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 /* 整体重建：改任何参数都重新求几何、依次搭各构件，再画标注、刷新视图和面板 */
 

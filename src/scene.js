@@ -1,5 +1,5 @@
-import { OrbitControls } from '../vendor/OrbitControls.js';
-import * as THREE from '../vendor/three.module.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
 
 /* 渲染器、相机、控制器、灯光；root 下放每次重建的模型、标注 */
 

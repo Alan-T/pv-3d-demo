@@ -4,7 +4,7 @@ import { build } from './model.js';
 import { show, P, limits } from './config.js';
 import { showValue as panelShowValue } from './panel.js';
 import { getCamera } from './view.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 const params = P;
 

@@ -1,4 +1,4 @@
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { MM } from './core.js';
 
 /** 外齿扭转垫圈：内环平整，外缘窄切口，两侧齿尖分别翘起、压下。尺寸为 mm。 */

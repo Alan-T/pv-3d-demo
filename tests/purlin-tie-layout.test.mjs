@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
 import { PurlinTiePart } from '../src/parts/purlin-tie.js';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.js';
 import { createPurlinConnectorGeometry } from '../src/purlin-connector-geometry.js';
 import { PurlinConnectorPart } from '../src/parts/purlin-connector.js';

@@ -11,7 +11,7 @@ import { PurlinPart } from './parts/purlin.js';
 import { ModulePart } from './parts/module.js';
 import { ClampPart } from './parts/clamp.js';
 import { BoltsPart } from './parts/bolts.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { V3, MM, ewPlace } from './core.js';
 import { captureFramePose } from './frame-projection.js';
 

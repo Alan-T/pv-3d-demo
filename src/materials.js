@@ -1,6 +1,6 @@
 import { renderer } from './scene.js';
 import { show } from './config.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 /* 材质、贴图、配色 */
 

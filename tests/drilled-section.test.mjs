@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { createDrilledAngleGeometry, createDrilledPurlinGeometry } from '../src/drilled-section-geometry.js';
 
 test('Ø14孔贯通水平肢及檩条下翼缘，孔旁仍有实体',()=>{

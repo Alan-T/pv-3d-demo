@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.js';
 import { FIX, PRESETS, applyPresetSections } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';

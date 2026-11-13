@@ -1,4 +1,4 @@
-// 极简静态文件服务：把 pv-3d-demo 目录当网站根目录，只用 Node 内置模块。
+// 静态文件服务：把 Vite 构建的 dist 目录当网站根目录，只用 Node 内置模块。
 // 用法：PORT=257 node deploy/serve.js（默认 8765，监听 0.0.0.0）
 'use strict';
 const http = require('http');
@@ -7,7 +7,11 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '../dist');
+if (!fs.existsSync(path.join(ROOT, 'index.html'))) {
+  console.error('Missing dist/index.html. Run yarn build before starting the server.');
+  process.exit(1);
+}
 const PORT = Number(process.env.PORT) || 8765;
 const HOST = process.env.HOST || '0.0.0.0';
 const TYPES = {
@@ -30,8 +34,7 @@ function load(file, st) {
   if (hit && hit.mtime === st.mtimeMs) return hit;
   const raw = fs.readFileSync(file);
   const zip = /^text\/|json|svg/.test(typeOf(file));
-  // ETag 按内容算：部署包用 git archive 打，所有文件的时间都是提交时间，按时间判断的话每次部署后
-  // three.min.js 这些没改的大文件也要重新下载；按内容判断，没改的文件部署后照样 304
+  // ETag 按内容计算，重新部署后内容相同的资源仍可返回 304。
   const etag = 'W/"' + crypto.createHash('md5').update(raw).digest('hex').slice(0, 16) + '"';
   const entry = { mtime: st.mtimeMs, raw, gz: zip ? zlib.gzipSync(raw, { level: 9 }) : null, etag };
   cache.set(file, entry);

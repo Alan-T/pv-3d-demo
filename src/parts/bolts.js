@@ -1,6 +1,6 @@
 import { V3, MM, instanced } from '../core.js';
 import { createSerratedWasherGeometry } from '../serrated-washer-geometry.js';
-import * as THREE from '../../vendor/three.module.js';
+import * as THREE from 'three';
 
 /** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
 export class BoltsPart {

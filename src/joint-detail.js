@@ -2,7 +2,7 @@ import { mats, DimSet } from './dims.js';
 import { CLAMP, CLIP, JOINT, FIX, P, section } from './config.js';
 import { V, V3, MM, DEG, ewPlace, track } from './core.js';
 
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 const params = P;
 

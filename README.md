@@ -4,24 +4,46 @@
 
 - 仓库：[Alan-T/pv-3d-demo](https://github.com/Alan-T/pv-3d-demo)
 - 在线演示：[光伏固定支架 3D 设计](http://47.116.75.159:257/)
-- 技术：原生 JavaScript ES Modules、three.js r128、OrbitControls、HTML / CSS。
-- 无需安装 npm 依赖或执行构建；运行资源随项目提供，不依赖 CDN。
+- 技术：原生 JavaScript ES Modules、three.js r128、OrbitControls、HTML / CSS，使用 Vite 开发和构建。
+- 使用 Yarn 管理依赖，three.js 固定为 `0.128.0`，OrbitControls 从同一个 `three` 包导入。
 
 ## 本地启动
 
-需要安装 Node.js，并使用支持 WebGL 和 ES Modules 的现代浏览器。
+需要使用支持 WebGL 和 ES Modules 的现代浏览器。
+
+### Vite 开发与构建
+
+使用 Node.js `20.19+` 或 `22.12+` 和 Yarn `1.22.22`。项目通过 `packageManager` 声明 Yarn 版本，已安装 Corepack 的环境可运行 `corepack enable` 启用 Yarn。在项目根目录运行：
+
+```powershell
+yarn install --frozen-lockfile
+yarn dev
+```
+
+打开终端显示的地址（默认 `http://localhost:5173/`）。修改前端文件时，Vite 会更新或刷新页面。
+
+```powershell
+yarn test
+yarn build
+yarn preview
+```
+
+`yarn test` 运行现有 Node.js 测试，`yarn build` 生成 `dist/`，`yarn preview` 在本机预览构建产物（默认 `http://localhost:4173/`）。提交 `yarn.lock` 以固定依赖版本。
+
+`vite.config.js` 集中配置开发端口 `5173`、预览端口 `4173` 和构建目录 `dist/`。Vite 启动及构建时会自动加载该文件。
 
 ### Windows 一键预览
 
-双击根目录的 `启动预览.bat`，脚本会检查 Node.js，在 `127.0.0.1:8765` 启动后台服务，等待就绪后自动打开浏览器。
+双击根目录的 `启动预览.bat`，脚本会检查 Node.js 和 Yarn，按锁文件安装依赖，在 `127.0.0.1:8765` 启动 Vite 后台服务，等待就绪后自动打开浏览器。
 
 已有项目服务时直接打开页面；端口被其他服务占用时会提示。关闭浏览器不会停止后台服务，需要停止时可在任务管理器中确认对应的 Node.js 进程后结束。
 
-### 命令行启动
+### 部署服务本地验证
 
-在项目根目录运行：
+安装依赖后，在项目根目录构建并启动静态服务：
 
 ```powershell
+yarn build
 node deploy/serve.js
 ```
 
@@ -33,7 +55,7 @@ $env:PORT = '8766'
 node deploy/serve.js
 ```
 
-此时访问 `http://localhost:8766/`。一键脚本固定使用 8765 端口。
+此时访问 `http://localhost:8766/`。静态服务读取 `dist/`，修改源码后需要重新执行 `yarn build`。一键脚本使用 Vite 开发服务，固定使用 8765 端口。
 
 ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://` 会受到浏览器模块加载限制。
 
@@ -114,7 +136,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ## 代码结构
 
-`index.html` 仅加载 `src/main.js`。模块通过具名 `import/export` 声明依赖并显式调用函数，不再通过 `PV.parts` 或 `PV` 功能注册表间接调用。`src/core.js` 导出工具与共享运行状态 `shared`，参数由 `src/config.js` 导出。无打包流程，`deploy/serve.js` 保持 Node.js CommonJS 脚本。
+`index.html` 以 `src/main.js` 为模块入口，Vite 开发服务和构建均使用这个页面。模块通过具名 `import/export` 声明依赖并显式调用函数，不再通过 `PV.parts` 或 `PV` 功能注册表间接调用。`src/core.js` 导出工具与共享运行状态 `shared`，参数由 `src/config.js` 导出。`deploy/serve.js` 是独立的 Node.js CommonJS 脚本。
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
@@ -145,7 +167,8 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/view.js` | 视图显隐、剖切、相机取景及动画 |
 | `src/edit.js` / `src/panel.js` | 尺寸编辑、参数交互及计算结果 |
 | `src/main.js` | 功能模块注册、初始化、渲染循环与调试入口 |
-| `vendor/three.module.js` / `vendor/OrbitControls.js` | 本地 three.js r128 模块和相机控制器 |
+| `package.json` / `yarn.lock` | Yarn 脚本、three.js r128 和 Vite 依赖及锁定版本 |
+| `vite.config.js` | 开发服务、预览服务和构建目录配置 |
 | `deploy/` | 静态服务及 systemd 配置 |
 
 构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
@@ -172,21 +195,25 @@ pvDemo.rebuild();         // 修改参数后重建
 
 ## 部署与维护
 
-项目可由支持 JavaScript 模块 MIME 类型的静态 HTTP 服务托管。现有目录为 `/opt/pv-3d-demo`，systemd 服务名为 `pv-3d-demo`，监听 257 端口。
+执行 `yarn build` 后，将 `dist/` 内容发布到静态 HTTP 服务的站点根目录。`yarn preview` 用于本机预览。
 
-`deploy/serve.js` 仅依赖 Node.js 内置模块，支持 gzip、基于内容的 ETag 与缓存校验；点开头目录及 `deploy/` 不对外提供。
+项目提供的 systemd 服务使用 `deploy/serve.js` 托管 `dist/`，部署目录为 `/opt/pv-3d-demo`，服务名为 `pv-3d-demo`，监听 257 端口。
 
-建议从已提交版本打包，避免携带本地配置、日志及 Git 目录：
+`deploy/serve.js` 仅依赖 Node.js 内置模块，支持 gzip、基于内容的 ETag 与缓存校验。启动前需要存在 `dist/index.html`，服务根目录为 `dist/`。
+
+安装、构建并打包运行所需文件：
 
 ```powershell
-git -c core.autocrlf=false archive --format=tar.gz -o pv-3d-demo.tar.gz HEAD
+yarn install --frozen-lockfile
+yarn build
+tar -czf pv-3d-demo.tar.gz dist deploy
 ```
 
 服务器更新步骤：
 
 1. 上传压缩包并核对校验值。
 2. 备份当前 `/opt/pv-3d-demo`。
-3. 解压覆盖到该目录，保留现有服务配置。
+3. 将 `dist/` 和 `deploy/` 解压覆盖到该目录，保留现有服务配置。服务运行时只需要 Node.js。
 4. 只更新前端资源无需重启；修改 `deploy/serve.js` 后重启服务。
 5. 检查入口及模块资源、模型加载和浏览器控制台。
 
@@ -233,7 +260,7 @@ post.build(context);
 - 直埋柱下料长度沿用二维：`Math.round(Math.hypot(水平跨距, 上下孔高差 ± 东西坡高) / 10) * 10 + 270`。前后排分别计算，按规格长度统计数量并计入钢材估重。
 - 二维坡高使用 `跨距 × 坡度`，模型实际榀位使用 `跨距 × sin(atan(坡度))`；下料长度保留前者，实体孔位对准实际榀位，多出的端部余量平分，不改变既有支架坐标。
 - 当前仅适配直埋 C 型立柱；X 形两根暂放在立柱两侧翼缘外侧以避免穿插，每根两端各一套 M12×35 外六角螺栓及螺母，两面平垫、螺母侧弹垫，随连接件开关显示并计入数量；尚未对型材做真实孔洞切削。圆管抱箍、螺旋桩的孔距及埋深修正规则未启用。
-- 验证：`node --test tests/post-tie-layout.test.mjs`。
+- 验证：`yarn node --test tests/post-tie-layout.test.mjs`。
 
 ### 檩条拉杆
 
@@ -242,7 +269,7 @@ post.build(context);
 - 默认角钢 L35*35*1.6，可在“构件截面”选择板厚。水平肢暂贴檩条下翼缘底面，竖肢向下；每个檩条交点一套 M12×35 外六角螺栓及螺母（沿用既有连接规格），两面平垫、螺母侧弹垫；头在檩条槽内，螺母在角钢下面。角钢水平肢和檩条下翼缘使用真实 Ø14 通孔（孔径暂定）。图纸一共48套，随连接件开关显示。
 - 随东西坡度布置，计入钢材估重；独立“檩条拉杆”显示开关，侧视和节点详图隐藏。
 - `src/purlin-tie-layout.js` 负责布置与长度；`src/parts/purlin-tie.js` 负责实体；`section-geometry.js` 增加独立 L 型角钢轮廓。
-- 验证：`node --test tests/purlin-tie-layout.test.mjs`。
+- 验证：`yarn node --test tests/purlin-tie-layout.test.mjs`。
 
 立柱拉杆东西坡度选长规则：前、后排及各跨分别计算平地长度与两根实际长度（均按原规则取整）。两根与平地长度的差值都在 ±100 mm 内（含边界），则两根均使用平地长度；任一根超出，两根均采用各自实际长度。模型长度、数量统计和估重使用选定长度，安装孔坐标保持实际坡度位置。
 

@@ -1,5 +1,5 @@
 
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 /* 光伏固定支架 3D 设计 —— three.js r128（ES Modules）
  *

@@ -1,4 +1,4 @@
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 const MM = .001;
 const shape = points => new THREE.Shape(points.map(([x,y]) => new THREE.Vector2(x*MM,y*MM)));

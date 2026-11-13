@@ -2,7 +2,7 @@ import { root, canvas } from './scene.js';
 import { FONT, V, V3, MM, DEG, track, ewPlace, shared } from './core.js';
 import { FIX, P } from './config.js';
 import { build as jointDetailBuild } from './joint-detail.js';
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 
 const params = P;
 

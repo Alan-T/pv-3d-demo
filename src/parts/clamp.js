@@ -1,5 +1,5 @@
 import { EZ, V, MM, instanced } from '../core.js';
-import * as THREE from '../../vendor/three.module.js';
+import * as THREE from 'three';
 
 /** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
 export class ClampPart {
