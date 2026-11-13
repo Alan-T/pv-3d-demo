@@ -45,7 +45,7 @@ const steel = () => new THREE.MeshStandardMaterial({ roughness: 0.55, metalness:
 const M = {
   post: steel(), beam: steel(), brace: steel(), postTie: steel(), purlin: steel(), buried: steel(), bracket: steel(), clip: steel(),
   clamp: new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.45 }),   // 铝压块
-  ground: new THREE.MeshLambertMaterial({ map: gridTexture() }),
+  ground: new THREE.MeshLambertMaterial(),
   // 紧固件统一金属灰色系，以色阶区分零件；六角头/螺母使用平面着色突出棱面。
   boltSteel: new THREE.MeshStandardMaterial({ color: 0xb4b4b4, roughness: 0.42, metalness: 0.5, flatShading: true }),
   boltNut: new THREE.MeshStandardMaterial({ color: 0x929292, roughness: 0.42, metalness: 0.5, flatShading: true }),
@@ -72,7 +72,7 @@ function applyPalette() {
 // 光伏组件：边框、背板、正面电池片（BoxGeometry 六个面的材质顺序 +x −x +y −y +z −z）
 const modFrame = new THREE.MeshStandardMaterial({ color: 0xc9ced3, roughness: 0.35, metalness: 0.4 });
 const modBack = new THREE.MeshStandardMaterial({ color: 0xe9ebed, roughness: 0.8 });
-const modTop = new THREE.MeshStandardMaterial({ map: cellTexture(), roughness: 0.32, metalness: 0.15 });
+const modTop = new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.15 });
 const modMats = [modFrame, modFrame, modTop, modBack, modFrame, modFrame];
 M.moduleCap = new THREE.MeshStandardMaterial({ color: 0xc9ced3, roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
 
@@ -92,4 +92,19 @@ function ghostModules(on, opacity) {
   }
 }
 
-export { M, modMats, applyPalette, ghostMat, ghostModules };
+function initMaterials() {
+  M.ground.map = gridTexture();
+  modTop.map = cellTexture();
+  M.ground.needsUpdate = true;
+  modTop.needsUpdate = true;
+}
+
+function disposeMaterials() {
+  for (const material of new Set([...Object.values(M), ...modMats])) {
+    material.map?.dispose();
+    material.map = null;
+    material.dispose();
+  }
+}
+
+export { M, modMats, applyPalette, ghostMat, ghostModules, initMaterials, disposeMaterials };

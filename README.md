@@ -4,7 +4,7 @@
 
 - 仓库：[Alan-T/pv-3d-demo](https://github.com/Alan-T/pv-3d-demo)
 - 在线演示：[光伏固定支架 3D 设计](http://47.116.75.159:257/)
-- 技术：原生 JavaScript ES Modules、three.js r128、OrbitControls、HTML / CSS，使用 Vite 开发和构建。
+- 技术：Vue 3 单文件组件、JavaScript ES Modules、three.js r128、OrbitControls，使用 Vite 开发和构建。
 - 使用 Yarn 管理依赖，three.js 固定为 `0.128.0`，OrbitControls 从同一个 `three` 包导入。
 
 ## 本地启动
@@ -136,11 +136,15 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ## 代码结构
 
-`index.html` 以 `src/main.js` 为模块入口，Vite 开发服务和构建均使用这个页面。模块通过具名 `import/export` 声明依赖并显式调用函数，不再通过 `PV.parts` 或 `PV` 功能注册表间接调用。`src/core.js` 导出工具与共享运行状态 `shared`，参数由 `src/config.js` 导出。`deploy/serve.js` 是独立的 Node.js CommonJS 脚本。
+`src/main.js` 将 Vue 根组件 `App.vue` 挂载到 `index.html`。页面控件、结果表格和视图按钮使用 Vue 模板与事件绑定。`App.vue` 在挂载时创建 3D 场景，在卸载时释放动画循环、监听器、控制器和渲染资源。`designer.js` 接收页面操作并向 Vue 提供普通数据快照，Three.js 对象由场景模块管理。参数和求解逻辑仍通过 ES Modules 共享。`deploy/serve.js` 是独立的 Node.js CommonJS 脚本。
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
-| `index.html` / `style.css` | 页面、视图按钮、参数面板与说明抽屉 |
+| `index.html` / `style.css` | Vue 挂载入口和全局样式 |
+| `src/App.vue` | 页面布局、场景生命周期、加载状态及面板折叠 |
+| `src/components/` | 视图工具栏、参数控件、参数与结果面板及图纸说明 |
+| `src/designer.js` | 页面操作、场景初始化与清理、数据快照和调试入口 |
+| `src/report.js` | 计算结果、提示和图纸核对数据 |
 | `启动预览.bat` | Windows 本地预览入口 |
 | `src/core.js` | 单位、向量、矩阵工具、实例化及共享状态 |
 | `src/config.js` | 图纸方案、默认截面、截面库、连接尺寸与参数范围 |
@@ -165,10 +169,10 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/bracket.js` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
 | `src/dims.js` / `src/joint-detail.js` | 尺寸标注及节点引线 |
 | `src/view.js` | 视图显隐、剖切、相机取景及动画 |
-| `src/edit.js` / `src/panel.js` | 尺寸编辑、参数交互及计算结果 |
-| `src/main.js` | 功能模块注册、初始化、渲染循环与调试入口 |
-| `package.json` / `yarn.lock` | Yarn 脚本、three.js r128 和 Vite 依赖及锁定版本 |
-| `vite.config.js` | 开发服务、预览服务和构建目录配置 |
+| `src/edit.js` | 3D 尺寸拾取、原位编辑及编辑事件清理 |
+| `src/main.js` | 创建并挂载 Vue 应用，加载全局样式 |
+| `package.json` / `yarn.lock` | Yarn 脚本、Vue、three.js 和 Vite 依赖及锁定版本 |
+| `vite.config.js` | Vue 单文件组件插件、开发服务、预览服务和构建目录配置 |
 | `deploy/` | 静态服务及 systemd 配置 |
 
 构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。

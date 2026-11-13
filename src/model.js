@@ -8,18 +8,17 @@ import { M } from './materials.js';
 import { FIX, P } from './config.js';
 import { MM, track, ewPlace, shared } from './core.js';
 import { solve, layoutEW } from './solve.js';
-import { update as panelUpdate } from './panel.js';
 import { build as dimsBuild } from './dims.js';
 import { savePose as viewSavePose, sectionRange as viewSectionRange, applyVisibility as viewApplyVisibility, placeSun as viewPlaceSun, follow as viewFollow } from './view.js';
 import * as THREE from 'three';
 
 /* 整体重建：改任何参数都重新求几何、依次搭各构件，再画标注、刷新视图和面板 */
 
-function clearDynamic() {
+export function clearDynamic() {
   for (const d of shared.disposables) d.dispose();
   shared.disposables.length = 0;
   shared.labels.length = 0;
-  while (root.children.length) root.remove(root.children[0]);
+  while (root?.children.length) root.remove(root.children[0]);
 }
 
 // 地面：过前柱脚，按南北坡度绕 z 轴倾斜，再按东西坡度沿 z 剪切
@@ -52,7 +51,6 @@ function displayBracket(bracket, state) {
   dimsBuild();
   viewApplyVisibility();
   viewPlaceSun();
-  panelUpdate();
 }
 
 export function build() {

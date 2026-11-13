@@ -10,7 +10,7 @@ const params = P;
 /* 视角与显示：各视图下显示哪些部分、相机取景和切换动画 */
 const st = shared.state;
 
-let cam = persp;
+let cam = null;
 let tween = null;
 
 // ---------- 显示开关 ----------
@@ -145,16 +145,13 @@ function placeSun() {
 }
 
 // ---------- 视角切换 ----------
-const viewButtons = document.querySelectorAll('.views button[data-view]');
 
 // 侧视、正视、俯视、垂直组件锁定方向：不能旋转，左键/单指改为平移，缩放照常
 const LOCKED_VIEWS = new Set(['side', 'front', 'top', 'normal']);
-const hintEl = document.getElementById('hint');
 function lockView(locked) {
   controls.enableRotate = !locked;
   controls.mouseButtons.LEFT = locked ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
   controls.touches.ONE = locked ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
-  hintEl.textContent = locked ? '视图已锁定：拖动平移 · 滚轮/双指缩放' : '拖动旋转 · 滚轮/双指缩放 · 右键/双指平移';
 }
 
 // 垂直组件、连接节点这几个视图的取景跟着几何走（法向随倾角变、节点随尺寸移动）。
@@ -255,7 +252,6 @@ function follow(oldPose) {
 
 function setView(name, instant) {
   st.view = name;
-  viewButtons.forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   lockView(LOCKED_VIEWS.has(name));
   applyVisibility();
   const { model } = st.groups, d = st.dims;
@@ -329,7 +325,19 @@ function stepTween(now) {
   cam.lookAt(controls.target);
   if (k >= 1) { tween = null; controls.update(); }
 }
-controls.addEventListener('start', () => { tween = null; });
+function cancelTween() { tween = null; }
+
+export function initView() {
+  cam = persp;
+  tween = null;
+  controls.addEventListener('start', cancelTween);
+}
+
+export function disposeView() {
+  controls?.removeEventListener('start', cancelTween);
+  cam = null;
+  tween = null;
+}
 
 // 每帧调用：切换动画或控制器阻尼
 function tick(now) {
@@ -337,10 +345,9 @@ function tick(now) {
 }
 
 export const view = {
-  set: setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange, buttons: viewButtons,
+  set: setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange,
   get camera() { return cam; },
 };
 
 export { setView, applyVisibility, placeSun, savePose, follow, tick, sectionRange };
 export function getCamera() { return cam; }
-export { viewButtons as buttons };

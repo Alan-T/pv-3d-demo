@@ -1,8 +1,6 @@
 import { canvas } from './scene.js';
 import { V3, shared } from './core.js';
-import { build } from './model.js';
 import { show, P, limits } from './config.js';
-import { showValue as panelShowValue } from './panel.js';
 import { getCamera } from './view.js';
 import * as THREE from 'three';
 
@@ -11,7 +9,7 @@ const params = P;
 /* 蓝字（输入参数）点击修改：点击蓝字 → 原位出现红字输入框（带光标）；回车或点别处完成，Esc 取消。
  * 数值超范围自动夹到范围内 */
 
-const editEl = document.getElementById('dimEdit');
+let editEl, parameterChanged, listeners;
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let editing = null;   // { sprite, key }
 const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
@@ -64,8 +62,7 @@ function setParam(key, v) {
   if (P[key] === v) return;
   P[key] = v;
   if (key === 'modL') P.hole = Math.min(P.hole, P.modL - 200);
-  panelShowValue(key, v);
-  build();
+  parameterChanged();
 }
 
 // 每帧在标注文字更新之后调用：正在修改的那个文字由输入框代替
@@ -76,25 +73,38 @@ function update() {
 }
 
 let downAt = null;
-canvas.addEventListener('pointerdown', (e) => {
-  // OrbitControls 会 preventDefault，输入框不会自己失焦，这里手动提交
-  if (editing) editEl.blur();
-  downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
-});
-canvas.addEventListener('pointerup', (e) => {
-  if (!downAt) return;
-  const click = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6 && performance.now() - downAt.t < 1000;
-  downAt = null;
-  const sp = click && pickLabel(e);
-  if (sp) openEdit(sp);
-});
-canvas.addEventListener('pointermove', (e) => {
-  if (!e.buttons) canvas.style.cursor = pickLabel(e) ? 'text' : '';
-});
-editEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); editEl.blur(); }
-  else if (e.key === 'Escape') { e.preventDefault(); closeEdit(false); }
-});
-editEl.addEventListener('blur', () => closeEdit(true));
+export function initEditing(input, onParameterChange) {
+  editEl = input;
+  parameterChanged = onParameterChange;
+  listeners = new AbortController();
+  const options = { signal: listeners.signal };
+  canvas.addEventListener('pointerdown', (e) => {
+    // OrbitControls 会 preventDefault，输入框不会自己失焦，这里手动提交
+    if (editing) editEl.blur();
+    downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+  }, options);
+  canvas.addEventListener('pointerup', (e) => {
+    if (!downAt) return;
+    const click = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6 && performance.now() - downAt.t < 1000;
+    downAt = null;
+    const sp = click && pickLabel(e);
+    if (sp) openEdit(sp);
+  }, options);
+  canvas.addEventListener('pointermove', (e) => {
+    if (!e.buttons) canvas.style.cursor = pickLabel(e) ? 'text' : '';
+  }, options);
+  editEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); editEl.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeEdit(false); }
+  }, options);
+  editEl.addEventListener('blur', () => closeEdit(true), options);
+}
 
-export { pickLabel, setParam, update };
+export function disposeEditing() {
+  listeners?.abort();
+  closeEdit(false);
+  downAt = null;
+  editEl = parameterChanged = listeners = null;
+}
+
+export { pickLabel, setParam, update, closeEdit };

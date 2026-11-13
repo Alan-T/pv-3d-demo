@@ -256,4 +256,11 @@ function updateLabels(cam) {
 }
 
 const mats = { line: dimLineMat, center: centerLineMat };
-export { build, updateLabels, DimSet, mats };
+
+function disposeDimensions() {
+  for (const material of [dimLineMat, refLineMat, groundLineMat, centerLineMat, purlinLineMat, beamLineMat, dashMat]) {
+    material.dispose();
+  }
+}
+
+export { build, updateLabels, disposeDimensions, DimSet, mats };
