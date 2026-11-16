@@ -70,6 +70,8 @@ function applySection(key, { name, ...dimensions }) {
 }
 
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
+// 檩托：立边高*底边宽*厚度*长度（mm）。
+const PURLIN_CLIP_SPECS = ['L100*63*6.0*50', 'L90*56*5.0*50', 'L75*50*5.0*50'];
 // 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
 const PURLIN_CONNECTOR_SPECS = [
   'U88*45*2.75*220',
@@ -94,6 +96,28 @@ const PURLIN_CONNECTOR_SPECS = [
 const PRESETS = {
   // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
+    // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
+    projectInfo: {
+      number: '202611041101',
+      version: '1',
+      name: 'Sunel- Romania-Buzoesti-38',
+      customer: '0',
+      productType: '双立柱',
+      tradeTerm: 'DDP',
+      country: 'Romania',
+      longitude: 6,
+      latitude: 52,
+      designStandard: 'US2010(ASCE 7-10)',
+      designMethod: 'ASD',
+      terrainCategory: '3',
+      buildingCategory: 'Ⅱ',
+      windSpeed: 79.167, // m/s
+      snowPressure: 0, // kN/m²
+      elevation: 0, // m
+      airDensity: 1.225, // kg/m³
+      designLife: 25, // 年
+    },
+
     // 构件截面名称：对应 C 型钢 / L 型角钢截面库
     sections: {
       postF: 'C90*55*20*3.0', // 前立柱
@@ -112,6 +136,8 @@ const PRESETS = {
     modL: 2384, // 组件长度（沿坡）
     modW: 1303, // 组件宽度（东西向）
     modT: 33, // 组件厚度
+    modPower: 670, // 单块组件功率（Wp）
+    modWeight: 33.1, // 单块组件重量（kg）
     hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
     rows: 2, // 沿坡组件排数
     cols: 26, // 东西向组件列数，榀数由此计算
@@ -134,6 +160,7 @@ const PRESETS = {
     pitchEnd: 2500, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
     purlinConnector: 'U108*55*3.0*240', // 手动选择连接件规格
+    purlinClip: 'L100*63*6.0*50', // 檩托规格，独立选择
 
     // 斜撑布置
     outer: 0, // 是否带外斜撑：0 无，1 有
@@ -156,6 +183,28 @@ const PRESETS = {
   },
   // 图纸二：3 排组件、压块固定、带外斜撑。
   B: {
+    // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
+    projectInfo: {
+      number: '202611041101',
+      version: '1',
+      name: 'Sunel- Romania-Buzoesti-38',
+      customer: '0',
+      productType: '双立柱',
+      tradeTerm: 'DDP',
+      country: 'Romania',
+      longitude: 6,
+      latitude: 52,
+      designStandard: 'US2010(ASCE 7-10)',
+      designMethod: 'ASD',
+      terrainCategory: '3',
+      buildingCategory: 'Ⅱ',
+      windSpeed: 79.167, // m/s
+      snowPressure: 0, // kN/m²
+      elevation: 0, // m
+      airDensity: 1.225, // kg/m³
+      designLife: 25, // 年
+    },
+
     // 构件截面名称：对应 C 型钢 / L 型角钢截面库
     sections: {
       postF: 'C80*40*15*3.0', // 前立柱
@@ -174,6 +223,8 @@ const PRESETS = {
     modL: 2382, // 组件长度（沿坡）
     modW: 1134, // 组件宽度（东西向）
     modT: 30, // 组件厚度
+    modPower: 670, // 单块组件功率（Wp）
+    modWeight: 33.1, // 单块组件重量（kg）
     hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
     rows: 3, // 沿坡组件排数
     cols: 27, // 东西向组件列数，榀数由此计算
@@ -196,6 +247,7 @@ const PRESETS = {
     pitchEnd: 3000, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
     purlinConnector: 'U98*55*3.0*220', // 手动选择连接件规格
+    purlinClip: 'L90*56*5.0*50', // 檩托规格，独立选择
 
     // 斜撑布置
     outer: 1, // 是否带外斜撑：0 无，1 有
@@ -250,7 +302,6 @@ const JOINT = {
 // 带外斜撑时的双面连接板 280×120×5.75：左右对称，上边 ±half，两侧竖直板边高 55，再斜切到下边 ±botHalf（下边宽 60）。
 // 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
 const DBL = { half: 140, botHalf: 30 };
-const CLIP = { t: 4, base: 64, height: 80, width: 50, baseBolt: 32, webBolt: 50 };   // 檩托（假设）
 // 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
 // 中压块：U 形槽外宽 = 组件缝，两翼压住两侧组件边框 press，翼板上表面根部高 top、翼尖高 tip，翼板底面带齿；
 //   槽壁厚 wall，槽底上表面（螺栓头支承面）在 floor，槽底板厚 plate
@@ -266,6 +317,9 @@ const CLAMP = {
 // ---------- 可调参数 ----------
 // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
 const PARAMS = [
+  { key: 'purlinClip', label: '檩托规格', type: 'select',
+    options: PURLIN_CLIP_SPECS.map(name => [name, name]),
+    hint: '立边高 × 底边宽 × 厚度 × 长度（mm）' },
   { key: 'purlinTies', label: '檩条拉杆布置', type: 'select', options: [['none', '无'], ['all', '全部跨'], ['inner', '剔除首末跨'], ['custom', '自定义']],
     hint: '每跨中间一套，贯通所有檩条，两端各伸出85 mm；自定义可逐跨勾选' },
   { key: 'tilt',   label: '组件倾角',        unit: '°',  min: 10,   max: 40,   step: 0.5 },
@@ -273,6 +327,8 @@ const PARAMS = [
   { key: 'h0',     label: '组件前沿离地高度', unit: 'mm', min: 300,  max: 1500, step: 10 },
   { keys: ['modL', 'modW', 'modT'], label: '组件尺寸', type: 'size', unit: 'mm',
     hint: '长（沿坡）× 宽（东西向）× 厚；组件间隙固定 20' },
+  { key: 'modPower', label: '组件功率', type: 'number', unit: 'Wp', min: 1, step: 1 },
+  { key: 'modWeight', label: '组件重量', type: 'number', unit: 'kg', min: 0.1, step: 0.1 },
   { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
     hint: '螺栓固定：组件安装孔 M8×22，檩条两端各伸出组件 50；压块：缝上中压块、两端边压块，M8×35 内六角，檩条两端各伸出 100' },
   { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
@@ -302,14 +358,14 @@ const EXTRA_LIMITS = {
 // 返回 [最小, 最大, 步长]；安装孔距不能超过组件长度 − 200
 function limits(key) {
   const d = PARAMS.find((q) => q.key === key);
-  if (d) return [d.min, d.max, key === 'tilt' || d.unit === '%' ? 0.1 : 1];
+  if (d) return [d.min ?? -Infinity, d.max ?? Infinity, key === 'tilt' || d.unit === '%' ? 0.1 : Math.min(d.step ?? 1, 1)];
   const [lo, hi] = EXTRA_LIMITS[key];
   return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
 }
 
-// 截面由 FIX 管理；可调参数单独复制，数组也不与预设共享。
-const { sections: defaultSections, ...defaultParameters } = DEFAULTS;
+// 项目资料由页面单独管理，截面由 FIX 管理；可调参数与数组复制后使用。
+const { projectInfo: defaultProjectInfo, sections: defaultSections, ...defaultParameters } = DEFAULTS;
 const P = Object.fromEntries(Object.entries(defaultParameters).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value]));
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { TIE_SECTION_LIB, PURLIN_CONNECTOR_SPECS, getSectionLibrary, applySection };
-export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLIP, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };
+export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, PURLIN_CONNECTOR_SPECS, getSectionLibrary, applySection };
+export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

@@ -11,7 +11,6 @@ export class PurlinPart {
     createSectionGeometry,
     createSectionCapGeometry,
     createDrilledPurlinGeometry,
-    CLIP,
     track,
     purlinConnector: purlinConnectorOptions,
     purlinClip: purlinClipOptions,

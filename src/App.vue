@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { createDesigner, getSnapshot } from './designer.js';
+import { PRESETS } from './config.js';
 import ParameterPanel from './components/ParameterPanel.vue';
 import ViewToolbar from './components/ViewToolbar.vue';
 
@@ -8,6 +9,7 @@ const canvas = ref(null);
 const stage = ref(null);
 const editor = ref(null);
 const snapshot = shallowRef(getSnapshot());
+const projectInfo = ref({ ...PRESETS[snapshot.value.preset].projectInfo });
 const ready = ref(false);
 const rendered = ref(false);
 const failed = ref(false);
@@ -98,7 +100,7 @@ async function toggleSheet() {
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </main>
-    <ParameterPanel :snapshot="snapshot" :ready="ready" :open="sheetOpen"
+    <ParameterPanel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
       @parameter="changeParameter" @section="changeSection" @preset="preset => designer.applyPreset(preset)"
       @post-mode="(...args) => designer.changePostTieMode(...args)" @post-bay="(...args) => designer.changePostTieBay(...args)"
       @purlin-bay="(...args) => designer.changePurlinTieBay(...args)" @display="(...args) => designer.changeDisplay(...args)"

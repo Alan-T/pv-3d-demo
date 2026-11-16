@@ -1,4 +1,5 @@
 import { getPurlinConnectorSpec } from './purlin-connector-spec.js';
+import { getPurlinClipSpec } from './purlin-clip-spec.js';
 import { BraceConnectorPart } from './parts/brace-connector.js';
 import { PostPart } from './parts/post.js';
 import { PurlinTiePart } from './parts/purlin-tie.js';
@@ -53,16 +54,19 @@ function liftFrames(obj, layout) {
  */
 export function createBracket(parameters, { sections, partOptions, solvers, sectionRange }) {
   const P = { ...parameters };
+  const clipSpec = getPurlinClipSpec(P.purlinClip);
+  if (!clipSpec) throw new Error(`檩托规格不存在：${P.purlinClip}`);
 
   const beam = new BeamPart(partOptions.beam);
 
   const purlin = new PurlinPart({
     ...partOptions.purlin,
     purlinConnector: { ...partOptions.purlin.purlinConnector, connectorSpec: getPurlinConnectorSpec(P.purlinConnector) },
+    purlinClip: { ...partOptions.purlin.purlinClip, CLIP: clipSpec },
   });
   const module = new ModulePart(partOptions.module);
   const clamp = new ClampPart(partOptions.clamp);
-  const boltPart = new BoltsPart(partOptions.bolts);
+  const boltPart = new BoltsPart({ ...partOptions.bolts, CLIP: clipSpec });
   const { solve, layoutEW } = solvers;
   const viewSectionRange = sectionRange;
   const S = solve(P), layout = layoutEW(P);
@@ -120,6 +124,7 @@ export function createBracket(parameters, { sections, partOptions, solvers, sect
   for (const z of layout.zs) for (const joint of layout.joints) connector.build(c, joint, z);
   layout.purlinTies = calculatePurlinTies({ mode: P.purlinTies, selected: P.purlinTieSpans, purlins: S.purlins, framePositions: layout.zs });
   layout.purlinConnector = purlin.splice;
+  layout.purlinClip = clipSpec;
   if (!purlin.splice && layout.cuts.positions.length) layout.warn.push('请选择有效的檩条连接件规格，接头暂不生成连接件。');
   const clip = purlin.build(c);
   g.purlinTies = new THREE.Group();

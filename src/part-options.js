@@ -2,7 +2,7 @@ import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledC
 
 /** Page-independent translation from section/material configuration to part options. */
 export function createPartOptions({ sections, materials, connections, geometry, track }) {
-  const { JOINT, DBL, CLIP, CLAMP } = connections;
+  const { JOINT, DBL, CLAMP } = connections;
   const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
     purlinTie: { section: sections.purlinTie, purlinSection: sections.purlin, material: materials.purlinTie, createSectionGeometry, createDrilledAngleGeometry, createDrilledChannelWebGeometry, track },
@@ -46,7 +46,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       purlinCapMaterial: materials.purlinCap,
       createSectionGeometry,
       createSectionCapGeometry,
-      CLIP,
       purlinConnector: { purlinSection: sections.purlin,
 
       purlinConnectorMaterial: materials.purlinConnector,
@@ -54,7 +53,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       purlinClip: { beamSection: sections.beam,
       purlinSection: sections.purlin,
       clipMaterial: materials.clip,
-      CLIP,
       track },
       track },
     module: { purlinSection: sections.purlin,
@@ -75,7 +73,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       springMaterial: materials.boltSpring,
       slotMaterial: materials.slot,
       CLAMP,
-      CLIP,
       JOINT,
       track },
   };

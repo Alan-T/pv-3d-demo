@@ -1,5 +1,5 @@
 import { mats, DimSet } from './dims.js';
-import { CLAMP, CLIP, JOINT, FIX, P, section } from './config.js';
+import { CLAMP, JOINT, FIX, P, section } from './config.js';
 import { V, V3, MM, DEG, ewPlace, track } from './core.js';
 
 import * as THREE from 'three';
@@ -32,6 +32,7 @@ function keepAnnotationsUnclipped(group) {
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
 function build(S, layout) {
   const P = params, clamp = P.fix === 'clamp';
+  const CLIP = layout.purlinClip;
   const zLast = layout.zs[layout.zs.length - 1];
   const zj = zLast + FIX.postF.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
   const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
@@ -119,7 +120,7 @@ function build(S, layout) {
         [mv(P0, 160, S.hModBot + P.modT / 2), `组件 ${P.modL}×${P.modW}×${P.modT}`],
         ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']]),
         [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
-        [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 L 形 t=${CLIP.t}`],
+        [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 ${CLIP.name}`],
         [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), 'M12×35 螺栓 ×2（平垫 + 弹垫）'],
         ...(layout.ew.i === 0 ? [[mv(P0, 0, S.hBeamTop), 'M12×35：檩条下翼缘—斜梁上翼缘']] : []),
         [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],

@@ -145,7 +145,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
 
   function applyPreset(preset) {
     state.preset = preset;
-    const { sections, ...parameters } = PRESETS[preset];
+    const { projectInfo, sections, ...parameters } = PRESETS[preset];
     for (const [key, value] of Object.entries(parameters)) P[key] = Array.isArray(value) ? [...value] : value;
     applyPresetSections(preset);
     rebuild();

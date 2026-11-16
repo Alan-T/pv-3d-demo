@@ -1,5 +1,5 @@
 import { createPartOptions } from './part-options.js';
-import { JOINT, DBL, CLIP, CLAMP } from './config.js';
+import { JOINT, DBL, CLAMP } from './config.js';
 import { modMats } from './materials.js';
 import { createSectionGeometry, createSectionCapGeometry } from './section-geometry.js';
 import { createBracket } from './bracket.js';
@@ -62,7 +62,7 @@ export function build() {
   const partOptions = createPartOptions({
     sections: FIX,
     materials: M,
-    connections: { JOINT, DBL, CLIP, CLAMP },
+    connections: { JOINT, DBL, CLAMP },
     geometry: { createSectionGeometry, createSectionCapGeometry, modMats },
     track,
   });

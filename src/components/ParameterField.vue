@@ -45,7 +45,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
           @change="$emit('change', definition.key, $event.target.value, $event.target)">
         <i>{{ definition.unit }}</i>
       </span>
-      <input type="range" :min="definition.min" :max="definition.max" :step="definition.step"
+      <input v-if="definition.type !== 'number'" type="range" :min="definition.min" :max="definition.max" :step="definition.step"
         :value="parameters[definition.key]" :aria-label="definition.label"
         @input="$emit('change', definition.key, $event.target.value, $event.target)">
     </template>

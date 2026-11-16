@@ -1,5 +1,3 @@
-import { CLIP } from './config.js';
-
 function kgPerM(sec) {
   const area = sec.type === 'L' ? sec.t * (sec.d + sec.f - sec.t) : sec.t * (sec.d + 2 * sec.f + 2 * sec.l) - 4 * sec.t * sec.t;
   return area * 7.85 / 1000;
@@ -7,6 +5,7 @@ function kgPerM(sec) {
 
 export function createReport(P, FIX, S, L, preset) {
   const r = Math.round, h1 = (x) => Math.round(x * 10) / 10, n = L.frames, O = S.outer, np = S.purlins.length;
+  const moduleCount = P.rows * L.cols;
   const title =
     `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
   const warnings = [...S.warn, ...L.warn];
@@ -35,7 +34,7 @@ export function createReport(P, FIX, S, L, preset) {
     }),
     ...(O ? [['前 / 后外斜撑', `${r(O.braceOF)} / ${r(O.braceOR)} × ${n}`]] : []),
     ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
-    ['檩托', `${L.counts.clip} 个（L 形 t=${CLIP.t}）`],
+    ['檩托', `${L.counts.clip} 个（${L.purlinClip.name}）`],
     ['M16×40 立柱连接螺栓', `${L.counts.m16} 套`],
     ['M12 螺栓', `${L.counts.m12} 套`],
     ['其中立柱拉杆 M12×35', `${L.counts.postTieBolts} 套（两面平垫，螺母侧弹垫）`],
@@ -48,7 +47,9 @@ export function createReport(P, FIX, S, L, preset) {
     ['檩条连接件', L.purlinConnector ? L.purlinConnector.name + '，' + L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套' : '未选择有效规格'],
     ['檩条', `${r(L.purlinLen)} × ${np}`],
     ['檩条拉杆', L.purlinTies.count ? `${L.purlinTies.length} mm × ${L.purlinTies.count} 套` : '无'],
-    ['组件', `${P.rows * L.cols} 块（${P.rows} × ${L.cols}）`],
+    ['组件', `${moduleCount} 块（${P.rows} × ${L.cols}）`],
+    ['组件总功率', `${moduleCount * P.modPower / 1000} kWp`],
+    ['组件总重', `${h1(moduleCount * P.modWeight)} kg`],
     ['钢材估重', `${r(steelKg)} kg`],
     ['前沿实际离地', `${r(S.clearEdge)}`],
     ['后柱处地面（相对 ±0）', `${S.gR > 0 ? '+' : ''}${r(S.gR)}`],

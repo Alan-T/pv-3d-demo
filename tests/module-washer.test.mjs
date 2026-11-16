@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { BoltsPart } from '../src/parts/bolts.js';
-import { FIX, CLAMP, CLIP, JOINT, PARAMS, PRESETS } from '../src/config.js';
+import { FIX, CLAMP, JOINT, PARAMS, PRESETS } from '../src/config.js';
+import { getPurlinClipSpec } from '../src/purlin-clip-spec.js';
 
 test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保持不变', () => {
   const geometries = [];
@@ -10,7 +11,7 @@ test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保�
   const part = new BoltsPart({
     beamSection: FIX.beam,
     purlinSection: FIX.purlin, boltSteelMaterial: material, slotMaterial: material,
-    CLAMP, CLIP, JOINT, track: g => (geometries.push(g), g),
+    CLAMP, CLIP: getPurlinClipSpec(PRESETS.A.purlinClip), JOINT, track: g => (geometries.push(g), g),
   });
   function build(enabled, kind = 'module') {
     const collector = part.collector(33, { moduleSerratedWasher: enabled });
