@@ -99,11 +99,11 @@ function contoursFromSegments(segments, origin, u, v) {
   return contours;
 }
 
-function sliceMesh(geometry, matrix, plane, materials) {
+function sliceMesh(geometry, matrix, plane, materials, range) {
   const position = geometry.attributes.position, index = geometry.index;
   const count = index ? index.count : position.count;
-  const start = Math.max(0, geometry.drawRange.start);
-  const end = Math.min(count, start + geometry.drawRange.count);
+  const start = Math.max(0, geometry.drawRange.start, range.start);
+  const end = Math.min(count, geometry.drawRange.start + geometry.drawRange.count, range.start + range.count);
   const points = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   const segments = [];
   for (let i = start; i + 2 < end; i += 3) {
@@ -147,8 +147,10 @@ export function createClippingCaps(root, planes, { track = value => value, mater
       const origin = plane.coplanarPoint(new THREE.Vector3());
       const reference = Math.abs(plane.normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
       const u = reference.cross(plane.normal).normalize(), v = new THREE.Vector3().crossVectors(plane.normal, u);
-      const contours = contoursFromSegments(sliceMesh(geometry, matrix, plane, mesh.material), origin, u, v);
-      for (const contour of contours.filter(item => item.depth % 2 === 0)) {
+      // 开孔型材由相接的闭合钢板合并而成；逐实体封口，避免共边分叉导致缺翼缘或跨槽三角面。
+      const contourSets = (geometry.userData.solidRanges ?? [geometry.drawRange]).map(range =>
+        contoursFromSegments(sliceMesh(geometry, matrix, plane, mesh.material, range), origin, u, v));
+      for (const contours of contourSets) for (const contour of contours.filter(item => item.depth % 2 === 0)) {
         const material = materialFor(contour.material, mesh);
         if (!material) continue;
         const holes = contours.filter(item => item.parent === contour).map(item => item.points);

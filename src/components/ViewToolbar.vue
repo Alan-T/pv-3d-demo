@@ -13,14 +13,14 @@ const joints = [
   ['clip', '檩条-斜梁', 'L 形檩托 + 2 颗 M12×35；组件 M8×22 安装螺栓'],
   ['mod', '檩条-组件', '相邻两块组件之间（最东一跨中部的一道组件缝）：螺栓固定时缝两侧各 1 颗 M8×22；压块固定时 1 个中压块 + M8×35 内六角螺栓'],
   ['splice', '檩条-檩条', '预览实际檩条切割接头'],
-  ['postTie', '立柱拉杆', '实际布置的立柱拉杆与立柱翼缘连接：M12×35 螺栓、垫圈及端距'],
+  ['postTie', '立柱拉杆', '后排立柱拉杆与立柱前后翼缘连接：M12×35 螺栓、垫圈及端距'],
   ['purlinTie', '檩条拉杆', '实际布置的檩条拉杆与檩条下翼缘连接：M12×35 螺栓、Ø14 通孔及端距'],
 ];
 
 function unavailableReason(type) {
   if (type === 'splice' && !props.snapshot.spliceAvailable) return '当前檩条没有切割接头或未选择有效连接件';
   if (['postTie', 'purlinTie'].includes(type) && !props.snapshot.tieJointAvailable?.[type]?.some(Boolean)) {
-    return type === 'postTie' ? '当前未布置有效的立柱拉杆' : '当前未布置檩条拉杆';
+    return type === 'postTie' ? '当前后排未布置有效的立柱拉杆' : '当前未布置檩条拉杆';
   }
   return '';
 }
@@ -32,7 +32,7 @@ function sideAvailable(side) {
 
 function sideTitle(side) {
   if (props.snapshot.jointType === 'postTie') {
-    return `${side ? '后排' : '前排'}立柱拉杆${sideAvailable(side) ? '与立柱连接' : '：当前未生成有效拉杆'}`;
+    return `后排立柱拉杆${side ? '后侧' : '前侧'}连接${sideAvailable(side) ? '' : '：当前后排未生成有效拉杆'}`;
   }
   if (props.snapshot.jointType === 'purlinTie') {
     return `檩条拉杆与${side ? '最高' : '最低'}一根檩条连接${sideAvailable(side) ? '' : '：当前未布置拉杆'}`;

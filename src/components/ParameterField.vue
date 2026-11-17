@@ -1,5 +1,6 @@
 <script setup>
 import { limits } from '../config.js';
+import HelpHint from './HelpHint.vue';
 
 defineProps({
   definition: { type: Object, required: true },
@@ -12,8 +13,17 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
 <template>
   <div v-show="!definition.when || definition.when(parameters)" class="prow"
     :class="{ pbool: definition.type === 'bool', psize: definition.type === 'size' }">
+    <div class="pl field-label">
+      <label v-if="definition.type === 'bool'" :for="`param-${definition.key}`">
+        <input :id="`param-${definition.key}`" type="checkbox" :checked="!!parameters[definition.key]"
+          @change="$emit('change', definition.key, $event.target.checked, $event.target)">
+        {{ definition.label }}
+      </label>
+      <span v-else-if="definition.type === 'size'">{{ definition.label }}</span>
+      <label v-else :for="`param-${definition.key}`">{{ definition.label }}</label>
+      <HelpHint v-if="definition.hint" :text="definition.hint" :label="definition.label" />
+    </div>
     <template v-if="definition.type === 'select'">
-      <label class="pl" :for="`param-${definition.key}`">{{ definition.label }}</label>
       <select :id="`param-${definition.key}`" :value="String(parameters[definition.key])"
         :aria-label="definition.label"
         @change="$emit('change', definition.key, $event.target.value, $event.target)">
@@ -21,7 +31,6 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
       </select>
     </template>
     <template v-else-if="definition.type === 'size'">
-      <span class="pl">{{ definition.label }}</span>
       <span class="pv">
         <template v-for="(key, index) in definition.keys" :key="key">
           <b v-if="index">×</b>
@@ -32,13 +41,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
         <i>{{ definition.unit }}</i>
       </span>
     </template>
-    <label v-else-if="definition.type === 'bool'" class="pl">
-      <input :id="`param-${definition.key}`" type="checkbox" :checked="!!parameters[definition.key]"
-        @change="$emit('change', definition.key, $event.target.checked, $event.target)">
-      {{ definition.label }}
-    </label>
-    <template v-else>
-      <label class="pl" :for="`param-${definition.key}`">{{ definition.label }}</label>
+    <template v-else-if="definition.type !== 'bool'">
       <span class="pv">
         <input :id="`param-${definition.key}`" type="number" :min="definition.min" :max="definition.max"
           :step="definition.step" :value="parameters[definition.key]"
@@ -49,6 +52,5 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
         :value="parameters[definition.key]" :aria-label="definition.label"
         @input="$emit('change', definition.key, $event.target.value, $event.target)">
     </template>
-    <small v-if="definition.hint">{{ definition.hint }}</small>
   </div>
 </template>

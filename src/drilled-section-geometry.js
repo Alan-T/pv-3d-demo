@@ -20,6 +20,14 @@ function flange({ x, y0, y1, length, thickness, holes, radius }) {
 // 合并后仍沿局部 z 保持单位长度，以兼容现有 addMember 放置矩阵。
 function unitLength(parts,length) {
   const geometry=new THREE.BufferGeometry();
+  // 各部分是独立闭合实体。保留范围，裁切封口时不能将共面的内部接缝焊成一个轮廓。
+  let start = 0;
+  geometry.userData.solidRanges = parts.map(part => {
+    const count = part.getAttribute('position').count;
+    const range = { start, count };
+    start += count;
+    return range;
+  });
   for (const name of ['position','normal','uv']) {
     const arrays=parts.map(part=>part.getAttribute(name));
     const values=new Float32Array(arrays.reduce((sum,a)=>sum+a.array.length,0));

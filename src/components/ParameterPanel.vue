@@ -2,6 +2,7 @@
 import { nextTick, ref } from 'vue';
 import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
 import ParameterField from './ParameterField.vue';
+import HelpHint from './HelpHint.vue';
 import ProjectInfo from './ProjectInfo.vue';
 import DesignNotes from './DesignNotes.vue';
 
@@ -94,12 +95,14 @@ const displays = [
             <div id="post-tie-controls">
               <template v-for="row in snapshot.postTies" :key="row.key">
                 <div class="prow">
-                  <label class="pl" :for="`post-tie-${row.key}`">{{ row.label }}立柱拉杆</label>
+                  <div class="pl field-label">
+                    <label :for="`post-tie-${row.key}`">{{ row.label }}立柱拉杆</label>
+                    <HelpHint :label="`${row.label}立柱拉杆`" :text="`上孔距柱顶 ${row.topOffset}，上下孔高差 ${row.holeRise} mm`" />
+                  </div>
                   <select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters['postTie' + row.key]"
                     @change="$emit('post-mode', row.key, $event.target.value)">
                     <option v-for="[value, label] in postTieModes" :key="value" :value="value">{{ label }}</option>
                   </select>
-                  <small>上孔距柱顶 {{ row.topOffset }}，上下孔高差 {{ row.holeRise }} mm</small>
                 </div>
                 <div v-if="snapshot.parameters['postTie' + row.key] === 'custom'" class="tie-spans">
                   <label v-for="(enabled, index) in row.enabled" :key="index">

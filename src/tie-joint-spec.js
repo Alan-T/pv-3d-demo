@@ -9,9 +9,9 @@ const sectionName = section => {
     : `C${section.d}*${section.f}*${section.l}*${thickness}`;
 };
 
-function postTieSpec(row, sections) {
+function postTieSpec(row, sections, rearSide) {
   if (!row?.rods.length) return null;
-  const desiredSide = row.rear ? 1 : -1;
+  const desiredSide = rearSide ? 1 : -1;
   const bay = Math.max(...row.rods.map(rod => rod.bay));
   const rods = row.rods.filter(rod => rod.bay === bay);
   const rod = rods.find(item => item.direction === desiredSide) ?? rods[0];
@@ -86,8 +86,10 @@ function purlinTieSpec(solution, layout, sections, rear) {
  * 前后侧固定占据 0/1；未安装构件时保留 null，不凭参数生成不存在的连接。
  */
 export function createTieJointSpecs(solution, layout, sections) {
+  const rearPostTies = layout.postTies?.find(row => row.rear);
   return {
-    postTie: [false, true].map(rear => postTieSpec(layout.postTies?.find(row => row.rear === rear), sections)),
+    // 立柱拉杆两侧统一查看后排：前侧为前翼缘的拉杆，后侧为后翼缘的拉杆。
+    postTie: [false, true].map(rearSide => postTieSpec(rearPostTies, sections, rearSide)),
     purlinTie: [false, true].map(rear => purlinTieSpec(solution, layout, sections, rear)),
   };
 }
