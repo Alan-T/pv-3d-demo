@@ -1,9 +1,11 @@
 import { sun, controls, ortho, persp, renderer, canvas, root } from './scene.js';
 import { M, ghostModules, ghostMat, applyPalette } from './materials.js';
 import { FIX, show, P } from './config.js';
-import { EY, V, V3, MM, DEG, ewMatrix, shared } from './core.js';
+import { EY, V, V3, MM, DEG, ewMatrix, shared, track } from './core.js';
 import * as THREE from 'three';
 import { setFlatFrameDisplay } from './frame-projection.js';
+import { createClippingCaps } from './clipping-caps.js';
+import { createTieJointFocus } from './tie-joint-focus.js';
 
 const params = P;
 
@@ -18,6 +20,7 @@ let tween = null;
 // 檩条-组件 / 中压块（mod）取 layout.gapZ 那道组件缝两侧各 100；边压块（side）取阵列东边往西 100，往东到檩条端头外（不切）。
 // 剖切面上的封口在 model.js 里画
 const SECTION = { below: 400, above: 300, gap: 100, end: 100 };
+const isTieJoint = type => type === 'postTie' || type === 'purlinTie';
 const sectionKey = (type) => (type === 'mod' || type === 'side' || type === 'splice' || type === 'clip' ? type : 'frame');
 function sectionRange(layout, key) {
   if (key === 'clip') { const z = layout.zs.at(-1); return [z - 150, z + 150]; }
@@ -36,6 +39,8 @@ function applyVisibility() {
   root.matrix.copy(view === 'normal' ? ewMatrix(st.layout.ew).invert() : new THREE.Matrix4());
   root.matrixWorldNeedsUpdate = true;
   if (!g) return;
+  // 先还原材质引用，再应用当前视图的配色和透明度，避免局部弱化影响其它视图。
+  g.tieFocus?.restore();
   if (renderer.shadowMap.enabled !== show.shadows) {
     renderer.shadowMap.enabled = show.shadows;
     sun.castShadow = show.shadows;
@@ -58,10 +63,11 @@ function applyVisibility() {
   d.deep.visible = show.buried;
   g.buried.visible = show.buried;
   g.modules.visible = show.modules;
-  const inJoint = view.startsWith('joint'), key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
-  g.postTies.visible = show.postTies && !inJoint && view !== 'side';
+  const inJoint = view.startsWith('joint'), tieJoint = inJoint && isTieJoint(st.jointType);
+  const key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
+  g.postTies.visible = inJoint ? st.jointType === 'postTie' : show.postTies && view !== 'side';
   g.postTieHardware.visible = show.bolts;
-  g.purlinTies.visible = show.purlinTies && !inJoint && view !== 'side';
+  g.purlinTies.visible = inJoint ? st.jointType === 'purlinTie' : show.purlinTies && view !== 'side';
   g.purlinTieHardware.visible = show.bolts;
   // 轴测节点图只看节点前后一段（剖切），相邻榀、通长檩条的其余部分都不画，像 CAD 节点详图。
   // 支架节点的正视不剖切：相邻榀正好重合在后面，本来也不乱（有东西坡度时相邻榀高低错开，也剖切）。
@@ -82,8 +88,12 @@ function applyVisibility() {
   g.ground.matrix.copy(g.ground.userData.levelMatrix);
   if (!sideView) g.ground.matrix.premultiply(ewMatrix(ew));
   g.ground.matrixWorldNeedsUpdate = true;
-  const sectioned = view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
-  if (sectioned) {
+  const sectioned = tieJoint || view === 'joint-iso' || (view === 'joint-elev' && (mod || st.jointType === 'clip' || !!ew.i));
+  if (tieJoint) {
+    const sp = st.layout.jointSpecs[st.jointType][st.jointSel];
+    // 以真实连接点的局部包围盒裁切，立柱拉杆和檩条拉杆使用各自安装方向。
+    renderer.clippingPlanes = jointClipPlanes(sp);
+  } else if (sectioned) {
     const [lo, hi] = sectionRange(st.layout, key);
     clipLo.constant = -lo * ca * MM;
     clipHi.constant = hi * ca * MM;
@@ -96,11 +106,11 @@ function applyVisibility() {
     renderer.clippingPlanes = [];
   }
   // 侧视地面已去掉东西坡度，保留南北坡度及原有显示。
-  g.ground.visible = true;
-  for (const cg of g.caps) cg.visible = sectioned && cg.userData.section === key;
+  g.ground.visible = !tieJoint;
+  for (const cg of g.caps) cg.visible = sectioned && !tieJoint && cg.userData.section === key;
   // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
   const moduleOpacity = sectioned && !mod ? 0.2 : 0.32;
-  ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
+  ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod) || tieJoint, moduleOpacity);
   ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
   // 檩条-檩条接头：连接件略透明，透出槽里的檩条接缝和螺栓
   ghostMat(M.purlinConnector, inJoint && st.jointType === 'splice', 0.6);
@@ -114,6 +124,64 @@ function applyVisibility() {
     gm.needsUpdate = true;
   }
   applyPalette();
+  updateTieJointContext(g, tieJoint ? st.jointType : null);
+}
+
+function updateTieJointContext(groups, type) {
+  for (const caps of groups.tieCapCache?.values() ?? []) caps.visible = false;
+  if (type) {
+    groups.tieFocus ??= createTieJointFocus(groups, {
+      track,
+      supportMaterials: { postTie: [M.post, M.buried], purlinTie: [M.purlin] },
+    });
+    groups.tieCapCache ??= new Map();
+    // 显示开关影响哪些实体会被裁切；尺寸/坡度/截面变化随模型重建清空缓存。
+    const key = `${type}:${st.jointSel}:${show.modules}:${show.bolts}:${show.buried}`;
+    if (!groups.tieCapCache.has(key)) {
+      const caps = createClippingCaps(groups.model, renderer.clippingPlanes, { track, materialFor: groups.tieFocus.materialFor });
+      caps.name = `tie-joint-caps-${key}`;
+      caps.userData.noBox = true;
+      root.add(caps);
+      groups.tieCapCache.set(key, caps);
+    }
+    groups.tieCapCache.get(key).visible = true;
+  }
+  groups.tieFocus?.apply(type);
+}
+
+function jointClipPlanes(sp) {
+  const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
+  return [
+    [new V3(1, 0, 0), -x0], [new V3(-1, 0, 0), x1],
+    [new V3(0, 1, 0), -y0], [new V3(0, -1, 0), y1],
+    [new V3(0, 0, 1), -z0], [new V3(0, 0, -1), z1],
+  ].map(([normal, offset]) => new THREE.Plane(normal, offset * MM).applyMatrix4(sp.matrix));
+}
+
+function tieJointPose(sp, name) {
+  const localDirection = new V3(...(name === 'joint-elev' ? [0, 0, 1] : sp.isoDirection ?? [0.5, 0.35, 1]));
+  const dir = localDirection.applyMatrix3(new THREE.Matrix3().getNormalMatrix(sp.matrix)).normalize();
+  const [right, up] = screenAxes(dir), points = [];
+  const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
+  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) points.push(V(x, y, z).applyMatrix4(sp.matrix));
+  for (const [x, y, ly, , pz] of sp.leaders) {
+    points.push(V(x, y, pz ?? sp.zl).applyMatrix4(sp.matrix));
+    points.push(V(sp.anchorX, ly, sp.zl).applyMatrix4(sp.matrix));
+  }
+  for (const x of sp.box.slice(0, 2)) for (const y of sp.box.slice(2)) points.push(V(x, y, sp.zl).applyMatrix4(sp.matrix));
+  const xs = points.map(p => p.dot(right)), ys = points.map(p => p.dot(up));
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1;
+  // 按实际文字宽度和工具栏高度留白，手机折行后仍保留节点的可见区域。
+  const labels = st.dims.joint.children.find(g => g.userData.joint === st.jointType + st.jointSel);
+  let labelPx = 0;
+  labels?.traverse(o => { if (o.isSprite) labelPx = Math.max(labelPx, o.userData.px * o.userData.aspect * (cw < 520 ? 1 : 1.25)); });
+  const top = (canvas.parentElement.querySelector('#bar')?.offsetHeight ?? 160) + 16;
+  const bottom = (canvas.parentElement.querySelector('#legend')?.offsetHeight ?? 30) + 24;
+  const scale = Math.max(0.025, Math.min(2, (cw - labelPx - 64) / ((maxX - minX) / MM), (ch - top - bottom - 32) / ((maxY - minY) / MM)));
+  const center = points[0].clone().addScaledVector(right, (minX + maxX) / 2 - xs[0] + sp.labelSide * labelPx / 2 / scale * MM)
+    .addScaledVector(up, (minY + maxY) / 2 - ys[0] + (top - bottom) / 2 / scale * MM);
+  return { target: center, dir, zoom: 1 / (ch / 2 / scale * MM) };
 }
 
 // pre：先把世界坐标再变换一次（侧视在东西坡度下按最东一榀取景用）
@@ -185,6 +253,7 @@ function framePose(name) {
   // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
   // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
   const sp = layout.jointSpecs[st.jointType][st.jointSel];
+  if (sp.matrix) return tieJointPose(sp, name);
   const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
   const z = sp.z === undefined ? zLast + FIX.postF.f / 2 : sp.z;
   const W = ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
@@ -242,6 +311,9 @@ function follow(oldPose) {
   const off = controls.target.clone().sub(oldPose.target);
   // 垂直组件锁定了方向，跟着新的组件法向转；节点视图保留用户自己转过的方向
   const dir = st.view === 'normal' ? np.dir : cam.position.clone().sub(controls.target).normalize();
+  if (st.view.startsWith('joint') && isTieJoint(st.jointType)) {
+    dir.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(oldPose.dir, np.dir));
+  }
   controls.target.copy(np.target).addScaledVector(r1, off.dot(r0)).addScaledVector(u1, off.dot(u0));
   cam.position.copy(controls.target).addScaledVector(dir, 60);
   cam.zoom *= np.zoom / oldPose.zoom;

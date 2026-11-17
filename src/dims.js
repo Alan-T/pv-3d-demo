@@ -229,6 +229,7 @@ function build() {
 
 // 标注文字保持固定的屏幕像素高度（每帧调用）
 const tmpV = new V3(), camDir = new V3();
+const labelRight = new V3(), labelParentInverse = new THREE.Matrix3();
 function updateLabels(cam) {
   const hpx = canvas.clientHeight || 1;
   const k = (shared.state.labelK = canvas.clientWidth < 520 ? 1.0 : 1.25);
@@ -246,7 +247,15 @@ function updateLabels(cam) {
     const ud = sp.userData, hgt = ud.px * k * wpp, w = hgt * ud.aspect;
     sp.scale.set(w, hgt, 1);
     // 端部短尺寸：文字放到尺寸线外侧；连续等跨：放不下就收起，改显示合并文字
-    if (ud.outside) sp.position.copy(ud.outside.at).addScaledVector(ud.outside.dir, w / 2 + 6 * wpp);
+    if (ud.outside) {
+      let direction = ud.outside.dir;
+      if (ud.outside.screenSide) {
+        // 拉杆详图的标注平面可转向任意安装面，文字仍沿屏幕水平接在引线末端。
+        labelParentInverse.setFromMatrix4(sp.parent.matrixWorld).invert();
+        direction = labelRight.setFromMatrixColumn(cam.matrixWorld, 0).multiplyScalar(ud.outside.screenSide).applyMatrix3(labelParentInverse);
+      }
+      sp.position.copy(ud.outside.at).addScaledVector(direction, w / 2 + 6 * wpp);
+    }
     if (ud.fit) {
       sp.visible = w < ud.fit.span * 0.92;
       if (!sp.visible) collapsed[ud.fit.key] = true;

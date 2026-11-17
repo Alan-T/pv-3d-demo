@@ -34,6 +34,14 @@ export function getSnapshot() {
     jointSel: state.jointSel,
     viewLocked: controls?.enableRotate === false,
     spliceAvailable: !!(layout?.cuts.positions.length && layout.purlinConnector),
+    tieJointAvailable: Object.fromEntries(['postTie', 'purlinTie'].map(type =>
+      [type, [0, 1].map(side => !!layout?.jointSpecs?.[type]?.[side])])),
+    braceConnectors: layout?.joints.map(joint => ({
+      key: joint.side < 0 ? 'R' : 'F',
+      label: joint.side < 0 ? '后柱' : '前柱',
+      type: joint.o && !joint.split ? '双面' : '单面',
+      spec: joint.spec,
+    })) ?? [],
     bayCount: layout ? layout.zs.length - 1 : 0,
     postTies: layout?.postTies.map(row => ({
       key: row.rear ? 'R' : 'F',
@@ -105,10 +113,22 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   function selectJoint(kind, value) {
-    if (kind === 'side') state.jointSel = Number(value);
-    else state.jointType = value;
+    if (buildFrame) rebuild();
+    if (!['side', 'type'].includes(kind)) return;
+    const type = kind === 'side' ? state.jointType : value;
+    const specs = state.layout?.jointSpecs?.[type];
+    if (!Array.isArray(specs) || !specs.some(Boolean) || (type === 'side' && P.fix !== 'clamp')
+      || (type === 'splice' && !state.layout.cuts.positions.length)) return;
+    let side = kind === 'side' ? Number(value) : state.jointSel;
+    if (![0, 1].includes(side)) return;
+    if (!specs[side]) {
+      if (kind === 'side') return;
+      side = specs.findIndex(Boolean);
+    }
+    state.jointType = type;
+    state.jointSel = side;
     const next = state.view.startsWith('joint') ? state.view
-      : ['mod', 'side', 'splice'].includes(state.jointType) ? 'joint-iso' : 'joint-elev';
+      : ['mod', 'side', 'splice', 'postTie', 'purlinTie'].includes(state.jointType) ? 'joint-iso' : 'joint-elev';
     selectView(next);
   }
 

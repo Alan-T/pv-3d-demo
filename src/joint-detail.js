@@ -3,6 +3,7 @@ import { CLAMP, JOINT, FIX, P, section } from './config.js';
 import { V, V3, MM, DEG, ewPlace, track } from './core.js';
 
 import * as THREE from 'three';
+import { createTieJointSpecs } from './tie-joint-spec.js';
 
 const params = P;
 
@@ -25,8 +26,8 @@ function keepAnnotationsUnclipped(group) {
   });
 }
 
-/* 连接节点详图（最东一榀的 4 种节点 + 最东一跨里一道组件缝处的檩条-组件 + 阵列东边的边压块，各前/后一组）：引线标注 + 红色点划中心线。
- * 每组的 box（框架平面 mm）、labelSide（文字在节点哪一侧）和 z（节点东西向位置，不给就是最东一榀）也给 view.js 取景用 */
+/* 连接节点详图：支架、组件、檩条接头和实际拉杆安装点，各前/后一组；引线标注 + 红色点划中心线。
+ * box（标注平面 mm）、labelSide 和 z 给 view.js 取景用；拉杆另用 matrix 定义自身安装平面。 */
 
 
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
@@ -40,7 +41,7 @@ function build(S, layout) {
   const beamY = (p, x, h) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
   const sec = (s) => s.l ? `C${s.d}*${s.f}*${s.l}*${s.t.toFixed(1)}` : `U${s.d}*${s.f}*${s.t.toFixed(1)}`;
   const seg2 = (a, b) => [a.x, a.y, b.x, b.y];
-  const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [] };
+  const specs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [], ...createTieJointSpecs(S, layout, FIX) };
   for (const fr of [0, 1]) {
     const J = layout.joints[fr];
     if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
@@ -201,6 +202,7 @@ function build(S, layout) {
   const group = new THREE.Group();
   for (const type in specs) {
     specs[type].forEach((sp, fr) => {
+      if (!sp) return;
       const lead = new DimSet(), cl = new DimSet(), zl = sp.zl === undefined ? zj : sp.zl;
       for (const [px, py, ly, text, pz] of sp.leaders) {   // pz：引线端点不在标注平面里时单独给
         const a = V(px, py, pz === undefined ? zl : pz), b = V(sp.anchorX, ly, zl);
@@ -208,7 +210,7 @@ function build(S, layout) {
         const d = b.clone().sub(a).normalize().multiplyScalar(0.012), w = new V3(-d.y, d.x, 0).multiplyScalar(0.4);
         lead.seg(a, a.clone().add(d).add(w));
         lead.seg(a, a.clone().add(d).sub(w));
-        lead.label(text, b, 'out', 13).userData.outside = { at: b, dir: new V3(sp.labelSide, 0, 0) };
+        lead.label(text, b, 'out', 13).userData.outside = { at: b, dir: new V3(sp.labelSide, 0, 0), screenSide: sp.matrix ? sp.labelSide : undefined };
       }
       for (const [x1, y1, x2, y2, lineZ = zl] of sp.lines) cl.seg(V(x1, y1, lineZ), V(x2, y2, lineZ), true);
       // 尺寸：被测两点、尺寸线偏移（mm）、文字，文字放在尺寸线外侧
@@ -218,10 +220,14 @@ function build(S, layout) {
       }
       const g = lead.finish(mats.line);
       g.add(cl.finish(mats.line, mats.center));
-      if (type === 'splice') keepAnnotationsUnclipped(g);
+      if (type === 'splice' || sp.matrix) keepAnnotationsUnclipped(g);
       g.userData.joint = type + fr;
       // 东西坡度：支架节点跟着最东一榀平移，檩条-组件、边压块顺坡
-      ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
+      if (sp.matrix) {
+        // 拉杆节点使用自身安装平面；立柱拉杆的坐标已包含东西坡度。
+        g.matrixAutoUpdate = false;
+        g.matrix.copy(sp.matrix);
+      } else ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
       group.add(g);
     });
   }

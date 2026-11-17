@@ -53,6 +53,7 @@ html, body {
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 .views button:hover { border-color: #b9c3cd; }
+.views button:disabled { opacity: .45; cursor: not-allowed; }
 .views button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
 .vgroup {
   align-items: center; padding: 4px 6px 4px 10px; border-radius: 10px;

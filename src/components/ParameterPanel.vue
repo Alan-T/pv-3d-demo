@@ -163,6 +163,14 @@ const displays = [
             <ParameterField :definition="purlinConnectorField" :parameters="snapshot.parameters"
               @change="(...args) => $emit('parameter', ...args)" />
           </section>
+
+          <section id="brace-connector-specs">
+            <h3>斜撑连接件 <small>（宽 × 高 × 厚，mm）</small></h3>
+            <div v-for="connector in snapshot.braceConnectors" :key="connector.key" class="prow">
+              <label class="pl" :for="`brace-connector-${connector.key}`">{{ connector.label }}</label>
+              <output :id="`brace-connector-${connector.key}`" class="brace-connector-spec">{{ connector.type }} {{ connector.spec }}</output>
+            </div>
+          </section>
         </fieldset>
       </div>
 
@@ -202,3 +210,7 @@ const displays = [
     </div>
   </aside>
 </template>
+
+<style scoped>
+.brace-connector-spec { font-size: 13px; color: var(--blue); text-align: right; }
+</style>
