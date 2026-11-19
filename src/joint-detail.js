@@ -30,6 +30,14 @@ function keepAnnotationsUnclipped(group) {
  * box（标注平面 mm）、labelSide 和 z 给 view.js 取景用；拉杆另用 matrix 定义自身安装平面。 */
 
 
+function addLeader(segments, tip, anchor) {
+  const axis = anchor.clone().sub(tip).normalize().multiplyScalar(0.012);
+  const wing = new V3(-axis.y, axis.x, 0).multiplyScalar(0.4);
+  segments.seg(tip, anchor);
+  segments.seg(tip, tip.clone().add(axis).add(wing));
+  segments.seg(tip, tip.clone().add(axis).sub(wing));
+}
+
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
 function build(S, layout) {
   const P = params, clamp = P.fix === 'clamp';
@@ -204,18 +212,26 @@ function build(S, layout) {
     specs[type].forEach((sp, fr) => {
       if (!sp) return;
       const lead = new DimSet(), cl = new DimSet(), zl = sp.zl === undefined ? zj : sp.zl;
-      for (const [px, py, ly, text, pz] of sp.leaders) {   // pz：引线端点不在标注平面里时单独给
+      for (const [px, py, ly, text, pz, elevPoint] of sp.leaders) {   // pz：引线端点不在标注平面里时单独给
         const a = V(px, py, pz === undefined ? zl : pz), b = V(sp.anchorX, ly, zl);
-        lead.seg(a, b);
-        const d = b.clone().sub(a).normalize().multiplyScalar(0.012), w = new V3(-d.y, d.x, 0).multiplyScalar(0.4);
-        lead.seg(a, a.clone().add(d).add(w));
-        lead.seg(a, a.clone().add(d).sub(w));
+        if (elevPoint) {
+          // 檩条拉杆在两种视角下分别露出螺栓头、螺母，共用一条文字说明。
+          for (const [view, tip] of [['joint-elev', V(...elevPoint)], ['joint-iso', a]]) {
+            const arrow = new DimSet();
+            addLeader(arrow, tip, b);
+            const group = arrow.finish(mats.line);
+            group.userData.jointView = view;
+            lead.group.add(group);
+          }
+        } else addLeader(lead, a, b);
         lead.label(text, b, 'out', 13).userData.outside = { at: b, dir: new V3(sp.labelSide, 0, 0), screenSide: sp.matrix ? sp.labelSide : undefined };
       }
       for (const [x1, y1, x2, y2, lineZ = zl] of sp.lines) cl.seg(V(x1, y1, lineZ), V(x2, y2, lineZ), true);
       // 尺寸：被测两点、尺寸线偏移（mm）、文字，文字放在尺寸线外侧
       for (const [x1, y1, x2, y2, ox, oy, text] of sp.dims || []) {
-        const d = lead.dim(V(x1, y1, zl), V(x2, y2, zl), new V3(ox * MM, oy * MM, 0), text, 'out', 13, 0.2);
+        // 拉杆局部 z=0 是安装面；尺寸界线应从真实孔心和杆端起算。
+        const dimZ = sp.matrix ? 0 : zl;
+        const d = lead.dim(V(x1, y1, dimZ), V(x2, y2, dimZ), new V3(ox * MM, oy * MM, 0), text, 'out', 13, 0.2);
         d.label.userData.outside = { at: d.A.clone().add(d.B).multiplyScalar(0.5), dir: new V3(Math.sign(ox), 0, 0) };
       }
       const g = lead.finish(mats.line);

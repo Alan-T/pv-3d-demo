@@ -5,7 +5,7 @@ import { initMaterials, disposeMaterials } from './materials.js';
 import { build, clearDynamic } from './model.js';
 import { initEditing, disposeEditing, closeEdit, setParam, pickLabel, update as updateEditor } from './edit.js';
 import { updateLabels, disposeDimensions } from './dims.js';
-import { initView, disposeView, setView, applyVisibility, getCamera, tick } from './view.js';
+import { initView, disposeView, setView, applyVisibility, getCamera, resizeTieJointView, tick } from './view.js';
 import { solve } from './solve.js';
 import { createReport } from './report.js';
 
@@ -86,7 +86,10 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   function fitCanvas() {
-    if (!disposed && resize()) draw();
+    if (!disposed && resize()) {
+      resizeTieJointView();
+      draw();
+    }
   }
 
   function frame(now) {

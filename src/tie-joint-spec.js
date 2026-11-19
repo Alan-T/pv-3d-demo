@@ -2,6 +2,7 @@ import { Matrix4, Vector3 } from 'three';
 import { MM, ewMatrix } from './core.js';
 
 const number = value => String(Math.round(value * 10) / 10);
+const tieBolt = 'M12×35 外六角（双平垫＋弹垫）';
 const sectionName = section => {
   const thickness = Number.isInteger(section.t) ? section.t.toFixed(1) : String(section.t);
   return section.type === 'L'
@@ -26,24 +27,24 @@ function postTieSpec(row, sections, rearSide) {
   const ax = -side * (rod.end.z - rod.start.z) / holeLength;
   const ay = (rod.end.y - rod.start.y) / holeLength;
   const endX = ax * allowance, endY = ay * allowance;
-  const labelSide = -side, anchorX = labelSide * (Math.max(180, Math.abs(endX) + 45));
-  const halfWidth = Math.max(260, Math.abs(endX) + 45);
-  const halfHeight = Math.max(230, Math.abs(endY) + 80);
+  const halfWidth = Math.max(185, Math.abs(endX) + tie.d / 2 + 12);
+  const halfHeight = Math.max(155, Math.abs(endY) + tie.d / 2 + 18);
+  const labelSide = -side, anchorX = labelSide * (halfWidth + 15);
+  // 标注杆端这一小段的腹板，按杆端在螺栓上方或下方安排引线，避免两条线交叉。
+  const rodAboveBolt = endY > 0;
+  const dimensionOffset = -Math.sign(ax) * (tie.d / 2 + 26);
   // +z 看向选中拉杆贴柱的一面；深度保留整个柱截面及拉杆翼缘、螺栓。
   return {
-    matrix, labelSide, anchorX, z: 0, zl: tie.f + 20,
+    matrix, labelSide, anchorX, z: 0, zl: tie.f,
     isoDirection: [labelSide * 0.45, 0.3, 1],
     bay, endAllowance: allowance,
     leaders: [
-      [0, 170, 180, `立柱 ${sectionName(post)}`, -post.t / 2],
-      [-ax * 170, -ay * 170, 120, `立柱拉杆 ${sectionName(tie)}`, tie.t],
-      [0, 0, 60, 'M12×35 外六角螺栓', tie.t + 6],
-      [0, 0, 0, '两面平垫，螺母侧弹垫', -post.t - 3],
-      [endX, endY, -60, `第 ${bay + 1} 跨东端，端距 ${number(allowance)} mm`, tie.t],
+      [0, halfHeight - 35, halfHeight + (rodAboveBolt ? 10 : -15), `后立柱 ${sectionName(post)} · 第${bay + 1}跨东端`, 0],
+      [endX * .65, endY * .65, rodAboveBolt ? 107 : -48, `立柱拉杆 ${sectionName(tie)}`, tie.t],
+      [0, 0, rodAboveBolt ? 52 : 22, tieBolt, tie.t + 10],
     ],
-    lines: [[0, -halfHeight, 0, halfHeight, 0], [-ax * 240, -ay * 240, ax * (allowance + 30), ay * (allowance + 30), 0]],
-    dims: [[0, 0, endX, endY, -ay * 65, ax * 65, number(allowance)]],
-    box: [-halfWidth, halfWidth, -halfHeight, halfHeight],
+    lines: [[0, -halfHeight, 0, halfHeight, 0], [-ax * 160, -ay * 160, ax * (allowance + 12), ay * (allowance + 12), 0]],
+    dims: [[0, 0, endX, endY, -ay * dimensionOffset, ax * dimensionOffset, number(allowance)]],
     clipBox: [-halfWidth, halfWidth, -halfHeight, halfHeight, -post.d - 25, tie.f + 30],
   };
 }
@@ -61,23 +62,20 @@ function purlinTieSpec(solution, layout, sections, rear) {
   const endX = rear ? ties.start + ties.length - t : ties.start - t;
   const allowance = Math.abs(endX), depth = tie.type === 'L' ? tie.d : tie.f;
   const flangeZ = (tie.type === 'L' ? tie.f : tie.d) / 2 - tie.t / 2;
-  const labelSide = rear ? 1 : -1, anchorX = labelSide * Math.max(210, allowance + 80);
-  const yTop = purlin.d + 55, yBottom = Math.min(-depth - 100, purlin.d - 240);
+  const labelSide = rear ? 1 : -1, anchorX = labelSide * (allowance + 65);
   return {
-    matrix, labelSide, anchorX, z: 0, zl: Math.max(60, flangeZ + 25),
-    isoDirection: [0.6, -0.85, 1],
+    matrix, labelSide, anchorX, z: 0, zl: flangeZ,
+    isoDirection: [labelSide * 0.7, -1.5, 0.7],
     bay: rod.bay, endAllowance: allowance,
     leaders: [
-      [-purlin.f / 2, purlin.d / 2, purlin.d + 30, `檩条 ${sectionName(purlin)}`, 0],
-      [-labelSide * 110, -depth / 2, purlin.d - 20, `檩条拉杆 ${sectionName(tie)}`, flangeZ],
-      [0, purlin.t + 6, purlin.d - 70, 'M12×35，两面平垫、弹垫', 0],
-      [0, 0, purlin.d - 120, 'Ø14 通孔，螺母位于拉杆下方', 0],
-      [endX, -tie.t / 2, purlin.d - 170, `第 ${rod.bay + 1} 跨，端距 ${number(allowance)} mm`, 0],
+      [-purlin.f / 2, purlin.d * .65, purlin.d + 32, `檩条 ${sectionName(purlin)} · 第${rod.bay + 1}跨`, 55],
+      // 正视时螺母被槽边挡住，引线指向檩条上方的头部；从下方轴测时则指向螺母。
+      [0, -tie.t - 12, purlin.d * .35, tieBolt, 8, [0, purlin.t + 6, 0]],
+      [endX * .45, -depth + tie.t, -depth - 18, `檩条拉杆 ${sectionName(tie)}，Ø14 通孔`, flangeZ],
     ],
-    lines: [[0, -depth - 25, 0, purlin.d + 25, 0], [Math.min(endX, -140), 0, Math.max(endX, 140), 0, 0]],
-    dims: [[0, 0, endX, 0, 0, -depth - 55, number(allowance)]],
-    box: [Math.min(-240, anchorX - 20), Math.max(240, anchorX + 20), yBottom, yTop],
-    clipBox: [rear ? -230 : endX - 35, rear ? endX + 35 : 230, -depth - 35, purlin.d + 40, -110, 110],
+    lines: [[0, -depth - 12, 0, purlin.d + 8, 0], [rear ? -145 : endX - 10, 0, rear ? endX + 10 : 145, 0, 0]],
+    dims: [[0, 0, endX, 0, 0, -depth - 32, number(allowance)]],
+    clipBox: [rear ? -150 : endX - 18, rear ? endX + 18 : 150, -depth - 18, purlin.d + 5, -72, 72],
   };
 }
 

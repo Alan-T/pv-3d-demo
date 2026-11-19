@@ -14,6 +14,7 @@ const st = shared.state;
 
 let cam = null;
 let tween = null;
+let lastTiePose = null;
 
 // ---------- 显示开关 ----------
 // 轴测节点图的剖切范围（mm），按节点种类分三套：支架节点（frame）取最东一榀往西 400、往东 300；
@@ -59,11 +60,17 @@ function applyVisibility() {
   d.normal.visible = view === 'normal';
   d.topCuts.visible = view === 'top';
   d.joint.visible = view.startsWith('joint');
-  d.joint.children.forEach((j) => { j.visible = j.userData.joint === st.jointType + st.jointSel; });
+  for (const joint of d.joint.children) {
+    joint.visible = joint.userData.joint === st.jointType + st.jointSel;
+    if (joint.visible) for (const child of joint.children) {
+      if (child.userData.jointView) child.visible = child.userData.jointView === view;
+    }
+  }
   d.deep.visible = show.buried;
   g.buried.visible = show.buried;
-  g.modules.visible = show.modules;
   const inJoint = view.startsWith('joint'), tieJoint = inJoint && isTieJoint(st.jointType);
+  // 拉杆详图展示钢构连接，组件面板在檩条上方会遮住螺栓和槽口。
+  g.modules.visible = show.modules && !tieJoint;
   const key = sectionKey(st.jointType), mod = key !== 'frame' && key !== 'clip';
   g.postTies.visible = inJoint ? st.jointType === 'postTie' : show.postTies && view !== 'side';
   g.postTieHardware.visible = show.bolts;
@@ -110,7 +117,7 @@ function applyVisibility() {
   for (const cg of g.caps) cg.visible = sectioned && !tieJoint && cg.userData.section === key;
   // 檩条-组件、边压块的螺栓头在组件边框里或旁边，正视、轴测都让组件半透明（轴测透明度低一点，组件缝看得清）
   const moduleOpacity = sectioned && !mod ? 0.2 : 0.32;
-  ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod) || tieJoint, moduleOpacity);
+  ghostModules(view === 'normal' || (sectioned && st.jointType === 'clip') || (inJoint && mod), moduleOpacity);
   ghostMat(M.beam, inJoint && (st.jointType === 'top' || st.jointType === 'btop'), 0.42);
   // 檩条-檩条接头：连接件略透明，透出槽里的檩条接缝和螺栓
   ghostMat(M.purlinConnector, inJoint && st.jointType === 'splice', 0.6);
@@ -136,7 +143,7 @@ function updateTieJointContext(groups, type) {
     });
     groups.tieCapCache ??= new Map();
     // 显示开关影响哪些实体会被裁切；尺寸/坡度/截面变化随模型重建清空缓存。
-    const key = `${type}:${st.jointSel}:${show.modules}:${show.bolts}:${show.buried}`;
+    const key = `${type}:${st.jointSel}:${show.bolts}:${show.buried}`;
     if (!groups.tieCapCache.has(key)) {
       const caps = createClippingCaps(groups.model, renderer.clippingPlanes, { track, materialFor: groups.tieFocus.materialFor });
       caps.name = `tie-joint-caps-${key}`;
@@ -161,27 +168,59 @@ function jointClipPlanes(sp) {
 function tieJointPose(sp, name) {
   const localDirection = new V3(...(name === 'joint-elev' ? [0, 0, 1] : sp.isoDirection ?? [0.5, 0.35, 1]));
   const dir = localDirection.applyMatrix3(new THREE.Matrix3().getNormalMatrix(sp.matrix)).normalize();
-  const [right, up] = screenAxes(dir), points = [];
-  const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
-  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) points.push(V(x, y, z).applyMatrix4(sp.matrix));
-  for (const [x, y, ly, , pz] of sp.leaders) {
-    points.push(V(x, y, pz ?? sp.zl).applyMatrix4(sp.matrix));
-    points.push(V(sp.anchorX, ly, sp.zl).applyMatrix4(sp.matrix));
+  const [right, up] = screenAxes(dir);
+  const origin = new V3().setFromMatrixPosition(sp.matrix);
+  const points = [];
+  function project(local, left = 0, rightEdge = 0, bottom = 0, top = 0) {
+    const offset = local.clone().applyMatrix4(sp.matrix).sub(origin);
+    points.push({ x: offset.dot(right), y: offset.dot(up), left, right: rightEdge, bottom, top });
   }
-  for (const x of sp.box.slice(0, 2)) for (const y of sp.box.slice(2)) points.push(V(x, y, sp.zl).applyMatrix4(sp.matrix));
-  const xs = points.map(p => p.dot(right)), ys = points.map(p => p.dot(up));
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
+  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) project(V(x, y, z));
   const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1;
-  // 按实际文字宽度和工具栏高度留白，手机折行后仍保留节点的可见区域。
-  const labels = st.dims.joint.children.find(g => g.userData.joint === st.jointType + st.jointSel);
-  let labelPx = 0;
-  labels?.traverse(o => { if (o.isSprite) labelPx = Math.max(labelPx, o.userData.px * o.userData.aspect * (cw < 520 ? 1 : 1.25)); });
-  const top = (canvas.parentElement.querySelector('#bar')?.offsetHeight ?? 160) + 16;
-  const bottom = (canvas.parentElement.querySelector('#legend')?.offsetHeight ?? 30) + 24;
-  const scale = Math.max(0.025, Math.min(2, (cw - labelPx - 64) / ((maxX - minX) / MM), (ch - top - bottom - 32) / ((maxY - minY) / MM)));
-  const center = points[0].clone().addScaledVector(right, (minX + maxX) / 2 - xs[0] + sp.labelSide * labelPx / 2 / scale * MM)
-    .addScaledVector(up, (minY + maxY) / 2 - ys[0] + (top - bottom) / 2 / scale * MM);
-  return { target: center, dir, zoom: 1 / (ch / 2 / scale * MM) };
+  if (show.dims) {
+    const annotations = st.dims.joint.children.find(group => group.userData.joint === st.jointType + st.jointSel);
+    annotations.traverseVisible(object => {
+      if (object.isLineSegments) {
+        const vertices = object.geometry.attributes.position;
+        for (let i = 0; i < vertices.count; i++) project(new V3().fromBufferAttribute(vertices, i));
+      }
+      if (!object.isSprite) return;
+      const { outside, px, aspect } = object.userData;
+      const height = px * (cw < 520 ? 1 : 1.25), width = height * aspect;
+      // 与 updateLabels 一致：引线文字沿屏幕水平外移，尺寸文字沿本地尺寸轴外移。
+      const shift = outside.screenSide ? right.clone().multiplyScalar(outside.screenSide)
+        : outside.dir.clone().applyMatrix3(new THREE.Matrix3().setFromMatrix4(sp.matrix));
+      shift.multiplyScalar(width / 2 + 6);
+      const dx = shift.dot(right), dy = shift.dot(up);
+      project(outside.at, dx - width / 2, dx + width / 2, dy - height / 2, dy + height / 2);
+    });
+  }
+  const top = canvas.parentElement.querySelector('#bar').offsetHeight + 12;
+  const bottom = canvas.parentElement.querySelector('#legend').offsetHeight + 24;
+  const width = cw - (cw < 520 ? 24 : 64), height = Math.max(24, ch - top - bottom);
+  // 模型随相机缩放，文字保持像素大小。用二者的实际投影求能完整显示的最大比例。
+  function bounds(scale) {
+    const box = new THREE.Box2();
+    for (const p of points) {
+      box.min.x = Math.min(box.min.x, p.x * scale + p.left);
+      box.max.x = Math.max(box.max.x, p.x * scale + p.right);
+      box.min.y = Math.min(box.min.y, p.y * scale + p.bottom);
+      box.max.y = Math.max(box.max.y, p.y * scale + p.top);
+    }
+    return box;
+  }
+  let scale = 1, limit = Math.min(3000, controls.maxZoom * ch / 2); // px/m，至多 3 px/mm
+  for (let i = 0; i < 14; i++) {
+    const mid = (scale + limit) / 2;
+    const size = bounds(mid).getSize(new THREE.Vector2());
+    if (size.x <= width && size.y <= height) scale = mid;
+    else limit = mid;
+  }
+  const center = bounds(scale).getCenter(new THREE.Vector2());
+  const target = origin.addScaledVector(right, center.x / scale)
+    .addScaledVector(up, (center.y + (top - bottom) / 2) / scale);
+  return { target, dir, zoom: 2 * scale / ch };
 }
 
 // pre：先把世界坐标再变换一次（侧视在东西坡度下按最东一榀取景用）
@@ -253,7 +292,10 @@ function framePose(name) {
   // 都用正交相机：后面各榀与本榀重合或整体平移出画面，不会在节点背后挤成一团。
   // 取景按屏幕像素算：节点区域（mm）+ 文字（最长约 230px，手机 170px），比例最大 3 px/mm
   const sp = layout.jointSpecs[st.jointType][st.jointSel];
-  if (sp.matrix) return tieJointPose(sp, name);
+  if (sp.matrix) {
+    lastTiePose = tieJointPose(sp, name);
+    return lastTiePose;
+  }
   const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
   const z = sp.z === undefined ? zLast + FIX.postF.f / 2 : sp.z;
   const W = ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
@@ -322,21 +364,26 @@ function follow(oldPose) {
   controls.update();
 }
 
+// 面板收放或屏幕旋转后按新画布取景，保留用户已经做过的旋转、平移和缩放。
+export function resizeTieJointView() {
+  if (st.view.startsWith('joint') && isTieJoint(st.jointType)) follow(lastTiePose);
+}
+
 function setView(name, instant) {
   st.view = name;
   lockView(LOCKED_VIEWS.has(name));
   applyVisibility();
+  if (FOLLOW_VIEWS.has(name)) {
+    const p = framePose(name);
+    goTo(ortho, p.target.clone().addScaledVector(p.dir, 60), p.target, p.zoom, instant);
+    return;
+  }
   const { model } = st.groups, d = st.dims;
   const objs = name === 'side' && show.dims ? [model, d.key, d.side] : [model];
   // 侧视模型及尺寸已恢复单榀原始高度，取景无需再施加东西坡度变换。
   const box = visibleBox(objs);
   const ctr = box.getCenter(new V3()), size = box.getSize(new V3());
   const aspect = persp.aspect;
-  if (FOLLOW_VIEWS.has(name)) {
-    const p = framePose(name);
-    goTo(ortho, p.target.clone().addScaledVector(p.dir, 60), p.target, p.zoom, instant);
-    return;
-  }
   if (name === '3d') {
     const dir = new V3(-1, 0.68, 1.25).normalize();
     const vf = persp.fov * DEG, hf = 2 * Math.atan(Math.tan(vf / 2) * aspect);
@@ -408,6 +455,7 @@ export function initView() {
 export function disposeView() {
   controls?.removeEventListener('start', cancelTween);
   cam = null;
+  lastTiePose = null;
   tween = null;
 }
 
