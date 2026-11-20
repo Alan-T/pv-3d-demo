@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections } from '../src/config.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';
 import { calculatePostTies } from '../src/post-tie-layout.js';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
@@ -15,7 +15,7 @@ const mm = (x, y, z = 0) => new THREE.Vector3(x, y, z).multiplyScalar(.001);
 const near = (a, b, message) => assert.ok(a.distanceTo(b) < 1e-8, message);
 
 function fixture(overrides = {}) {
-  const parameters = { ...PRESETS.A, ...overrides };
+  const parameters = { ...getPresetParameters(PRESETS.A), ...overrides };
   const solution = solve(parameters), layout = layoutEW(parameters);
   layout.postTies = calculatePostTies(parameters, solution, layout);
   layout.purlinTies = calculatePurlinTies({ mode: parameters.purlinTies, selected: parameters.purlinTieSpans,

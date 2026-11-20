@@ -4,6 +4,7 @@ import { createDesigner, getSnapshot } from './designer.js';
 import { PRESETS } from './config.js';
 import ParameterPanel from './components/ParameterPanel.vue';
 import ViewToolbar from './components/ViewToolbar.vue';
+import TabList from './components/TabList.vue';
 
 const canvas = ref(null);
 const stage = ref(null);
@@ -61,6 +62,17 @@ function changeSection(key, value, input) {
   input.value = designer.changeSection(key, value);
 }
 
+function changeLayoutQuantity(input) {
+  input.value = designer.changeLayoutQuantity(input.value);
+}
+
+function scrollLayouts(event) {
+  const list = event.currentTarget;
+  if (event.ctrlKey || event.shiftKey || event.deltaX || list.scrollWidth <= list.clientWidth) return;
+  event.preventDefault();
+  list.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : 1);
+}
+
 function togglePanel() {
   animatePanel.value = true;
   panelCollapsed.value = !panelCollapsed.value;
@@ -80,14 +92,14 @@ async function toggleSheet() {
 </script>
 
 <template>
-  <div id="app" :class="{ pcollapsed: panelCollapsed, anim: animatePanel }">
-    <main id="stage" ref="stage">
+  <main id="app" :class="{ pcollapsed: panelCollapsed, anim: animatePanel }">
+    <div id="stage" ref="stage" role="tabpanel" :aria-labelledby="`layout-tab-${snapshot.activeLayoutId}`" tabindex="0">
       <canvas id="c" ref="canvas"></canvas>
       <div id="loading" role="status" :class="{ done: rendered && !failed, fail: failed }">
         <i></i><span>{{ failed ? '3D 模型加载失败，请用最新版 Chrome / Edge 打开后刷新' : '正在加载 3D 模型…' }}</span>
       </div>
       <ViewToolbar :snapshot="snapshot" :ready="ready" @view="name => designer.selectView(name)"
-        @joint="(...args) => designer.selectJoint(...args)" />
+        @joint="(...args) => designer.selectJoint(...args)" @preset="preset => designer.applyPreset(preset)" />
       <input id="dimEdit" ref="editor" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
         aria-label="修改尺寸" hidden>
       <div id="legend">
@@ -99,11 +111,26 @@ async function toggleSheet() {
         :title="panelTitle" :aria-label="panelTitle" @click="togglePanel">
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
-    </main>
+    </div>
     <ParameterPanel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
-      @parameter="changeParameter" @section="changeSection" @preset="preset => designer.applyPreset(preset)"
+      @parameter="changeParameter" @section="changeSection" @reset-preset="designer.resetPreset()"
+      @layout-quantity="changeLayoutQuantity"
       @post-mode="(...args) => designer.changePostTieMode(...args)" @post-bay="(...args) => designer.changePostTieBay(...args)"
       @purlin-bay="(...args) => designer.changePurlinTieBay(...args)" @display="(...args) => designer.changeDisplay(...args)"
       @toggle-sheet="toggleSheet" />
-  </div>
+    <div class="layout-bar">
+      <span class="drawing-label" aria-hidden="true">排布方案</span>
+      <TabList class="drawing-tabs" prefix="layout" label="排布方案" controls="stage" closable
+        :model-value="snapshot.activeLayoutId" :tabs="snapshot.layouts" :disabled="!ready"
+        @update:model-value="id => designer.selectLayout(id)" @remove="id => designer.removeLayout(id)" @wheel="scrollLayouts" />
+      <div class="layout-actions">
+        <button id="add-layout" type="button" aria-label="新增排布" title="复制当前排布并新增" :disabled="!ready"
+          @click="designer.addLayout()">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </main>
 </template>

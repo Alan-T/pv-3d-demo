@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.js';
 import { PurlinClipPart } from '../src/parts/purlin-clip.js';
 import { BoltsPart } from '../src/parts/bolts.js';
-import { FIX, CLAMP, JOINT, PRESETS, PURLIN_CLIP_SPECS } from '../src/config.js';
+import { FIX, CLAMP, JOINT, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';
 
 // 实例矩阵使用 Float32，米制坐标允许 0.002 mm 的数值误差。
@@ -18,12 +18,15 @@ test('檩托规格保留四个尺寸，预设可用，未知名称不回退', ()
     spec.t = 999;
     assert.equal(getPurlinClipSpec(name).t, expected[index][2], '修改实例不能污染规格库');
   });
-  for (const preset of Object.values(PRESETS)) assert.ok(getPurlinClipSpec(preset.purlinClip));
+  for (const preset of Object.values(PRESETS)) {
+    for (const { parameters } of preset.layouts) assert.ok(getPurlinClipSpec(parameters.purlinClip));
+  }
   assert.equal(getPurlinClipSpec('L80*64*4*50'), null);
 });
 
 test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴紧檩托', () => {
-  const S = solve(PRESETS.A), layout = layoutEW(PRESETS.A);
+  const parameters = getPresetParameters(PRESETS.A);
+  const S = solve(parameters), layout = layoutEW(parameters);
   const u = new THREE.Vector3(S.c, S.s, 0), n = new THREE.Vector3(-S.s, S.c, 0);
   const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   const washerMaterial = new THREE.MeshBasicMaterial();
@@ -59,7 +62,7 @@ test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴�
           assert.ok(hits.length >= 2, `${name} ${kind}: ${JSON.stringify({ point: point.toArray(), hits: hits.map(hit => hit.distance) })}`);
           close(hits[0].distance, matingThickness * .001, '檩托贴合面');
           close(hits.at(-1).distance, (matingThickness + CLIP.t) * .001, '檩托外表面');
-          const bolts = boltPart.collector(PRESETS.A.modT), group = new THREE.Group();
+          const bolts = boltPart.collector(parameters.modT), group = new THREE.Group();
           bolts.add(kind, new THREE.Vector3(), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0));
           assert.equal(bolts.flush(group, group).m12, 1);
           const headWasher = group.children.find(child => {

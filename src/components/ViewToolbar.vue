@@ -1,6 +1,6 @@
 <script setup>
 const props = defineProps({ snapshot: { type: Object, required: true }, ready: Boolean });
-defineEmits(['view', 'joint']);
+defineEmits(['view', 'joint', 'preset']);
 
 const views = [
   ['3d', '3D 视图'], ['side', '侧视图'], ['front', '正视图'], ['top', '俯视图'],
@@ -44,7 +44,14 @@ function sideTitle(side) {
 <template>
   <header id="bar">
     <div class="title">
-      <b>光伏固定支架 3D 设计</b>
+      <div class="title-row">
+        <b>光伏固定支架 3D 设计</b>
+        <select id="drawing-preset" aria-label="切换图纸" title="切换图纸" :value="snapshot.preset"
+          :disabled="!ready" @change="$emit('preset', $event.target.value)">
+          <option value="A" title="2 排组件 · 螺栓固定">图纸一</option>
+          <option value="B" title="3 排组件 · 压块固定 · 带外斜撑">图纸二</option>
+        </select>
+      </div>
       <small>{{ snapshot.report?.title ?? `固定倾角 · 双立柱 · 组件竖排 ${snapshot.parameters.rows} 块（单位 mm）` }}</small>
     </div>
     <nav class="views" aria-label="视角">

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.js';
-import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections } from '../src/config.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections, getPresetParameters } from '../src/config.js';
 import { solve, layoutEW } from '../src/solve.js';
 import { PostTiePart } from '../src/parts/post-tie.js';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';
@@ -35,7 +35,8 @@ test('±100mm含边界，整对选用平地长度；超出时使用两根实际�
 test('两方案及正负东西坡度：选用下料长度、真实安装孔、实体长度一致', () => {
   for (const preset of ['A','B']) for (const slopeEW of [-10,0,10]) for (const slopeNS of [-5,0,5]) {
     applyPresetSections(preset);
-    const p={...PRESETS[preset],slopeEW,slopeNS}, s=solve(p), layout=layoutEW(p);
+    const p = { ...getPresetParameters(PRESETS[preset]), slopeEW, slopeNS };
+    const s = solve(p), layout = layoutEW(p);
     const rows=calculatePostTies(p,s,layout);
     for (const row of rows) {
       assert.equal(row.rods.length,4);
@@ -92,13 +93,15 @@ test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留
         assert.ok(Math.abs(area() - areas[name]) < 1e-6, name);
         if (name.startsWith('L')) assert.equal('l' in FIX[key], false);
       }
-      for (const preset of ['A', 'B']) {
-        applySection(key, TIE_SECTION_LIB[key === 'postTie' ? 0 : 1]);
-        applyPresetSections(preset);
-        assert.equal(FIX[key], reference);
-        const defaultName = PRESETS[preset].sections[key];
-        assert.equal(FIX[key].type, defaultName[0]);
-        assert.ok(Math.abs(area() - areas[defaultName]) < 1e-6);
+      for (const [preset, drawing] of Object.entries(PRESETS)) {
+        for (const { sections } of drawing.layouts) {
+          applySection(key, TIE_SECTION_LIB[key === 'postTie' ? 0 : 1]);
+          applyPresetSections(preset, sections);
+          assert.equal(FIX[key], reference);
+          const defaultName = sections[key];
+          assert.equal(FIX[key].type, defaultName[0]);
+          assert.ok(Math.abs(area() - areas[defaultName]) < 1e-6);
+        }
       }
     }
     assert.deepEqual(TIE_SECTION_LIB, libraryBefore);
@@ -110,7 +113,7 @@ test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留
 test('三种立柱拉杆截面：安装肢居中，前后排及正负坡度下螺栓轴线穿过实际板厚', () => {
   applyPresetSections('A');
   for (const section of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
-    const parameters = { ...PRESETS.A, slopeEW };
+    const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
     const solution = solve(parameters), layout = layoutEW(parameters);
     for (const row of calculatePostTies(parameters, solution, layout)) {
       const parent = new THREE.Group();

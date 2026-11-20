@@ -93,6 +93,7 @@ const PURLIN_CONNECTOR_SPECS = [
 // ---------- 图纸预设参数 ----------
 // 两套预设使用相同字段和分组顺序；长度单位 mm，角度单位 °，坡度单位 %。
 // F / R 表示前 / 后；保留未启用构件的参数，便于切换固定方式或启用外斜撑。
+// layouts 中的每一项对应一个排布标签，按数组顺序编号；其余设计参数由同图纸的排布共用。
 const PRESETS = {
   // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
@@ -118,20 +119,6 @@ const PRESETS = {
       designLife: 25, // 年
     },
 
-    // 构件截面名称：对应 C 型钢 / L 型角钢截面库
-    sections: {
-      postF: 'C90*55*20*3.0', // 前立柱
-      postR: 'C90*55*20*3.0', // 后立柱
-      beam: 'C90*50*15*2.0', // 斜梁
-      braceF: 'C59*39*8*1.8', // 前斜撑
-      braceR: 'C59*39*8*1.8', // 后斜撑
-      braceOF: 'C80*40*15*2.0', // 前外斜撑
-      braceOR: 'C80*40*15*2.0', // 后外斜撑
-      purlin: 'C100*55*20*1.8', // 檩条
-      postTie: 'C59*39*8*1.6', // 立柱拉杆
-      purlinTie: 'L35*35*1.6', // 檩条拉杆
-    },
-
     // 组件尺寸与阵列
     modL: 2384, // 组件长度（沿坡）
     modW: 1303, // 组件宽度（东西向）
@@ -140,7 +127,6 @@ const PRESETS = {
     modWeight: 33.1, // 单块组件重量（kg）
     hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
     rows: 2, // 沿坡组件排数
-    cols: 26, // 东西向组件列数，榀数由此计算
 
     // 组件固定
     fix: 'bolt', // bolt：安装孔螺栓；clamp：中压块 + 边压块
@@ -155,12 +141,7 @@ const PRESETS = {
     slopeNS: 0, // 南北坡度（%），正值北高南低
     slopeEW: 0, // 东西坡度（%），正值东高西低
 
-    // 榀距与檩条
-    pitch: 2800, // 中间跨榀距（沿檩条）
-    pitchEnd: 2500, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
-    purlinConnector: 'U108*55*3.0*240', // 手动选择连接件规格
-    purlinClip: 'L100*63*6.0*50', // 檩托规格，独立选择
 
     // 斜撑布置
     outer: 0, // 是否带外斜撑：0 无，1 有
@@ -171,15 +152,50 @@ const PRESETS = {
     braceOutF: 400, // 前外斜撑上节点距斜梁下端（沿梁）
     braceOutR: 400, // 后外斜撑上节点距斜梁上端（沿梁）
 
-    // 立柱拉杆布置
-    postTieF: 'ends', // 前排：none 无 / ends 首末跨 / all 全部跨 / custom 自定义
-    postTieR: 'ends', // 后排：同前排布置选项
-    postTieSpansF: [], // 前排自定义逐跨开关，0 不安装、1 安装
-    postTieSpansR: [], // 后排自定义逐跨开关，0 不安装、1 安装
-
-    // 檩条拉杆布置
-    purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
-    purlinTieSpans: [], // 自定义逐跨开关，0 不安装、1 安装
+    layouts: [
+      {
+        quantity: 1,
+        parameters: {
+          cols: 26, // 东西向组件列数，榀数由此计算
+          pitchEnd: 2500, // 首末跨榀距
+          pitch: 2800, // 中间跨榀距
+          purlinClip: 'L100*63*6.0*50', // 檩托
+          purlinConnector: 'U108*55*3.0*240', // 檩条连接件
+          postTieF: 'ends', postTieR: 'ends', // none 无 / ends 首末跨 / all 全部跨 / custom 自定义
+          postTieSpansF: [], postTieSpansR: [], // 自定义时逐跨设置，0 不安装、1 安装
+          purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
+          purlinTieSpans: [],
+        },
+        sections: {
+          postF: 'C90*55*20*3.0', postR: 'C90*55*20*3.0',
+          beam: 'C90*50*15*2.0', purlin: 'C100*55*20*1.8',
+          braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
+          braceOF: 'C80*40*15*2.0', braceOR: 'C80*40*15*2.0',
+          postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+        },
+      },
+      {
+        quantity: 1,
+        parameters: {
+          cols: 13,
+          pitchEnd: 2500,
+          pitch: 2800,
+          purlinClip: 'L100*63*6.0*50',
+          purlinConnector: 'U108*55*3.0*240',
+          postTieF: 'ends', postTieR: 'ends',
+          postTieSpansF: [], postTieSpansR: [],
+          purlinTies: 'all',
+          purlinTieSpans: [],
+        },
+        sections: {
+          postF: 'C90*55*20*3.0', postR: 'C90*55*20*3.0',
+          beam: 'C90*50*15*2.0', purlin: 'C100*55*20*1.8',
+          braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
+          braceOF: 'C80*40*15*2.0', braceOR: 'C80*40*15*2.0',
+          postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+        },
+      },
+    ],
   },
   // 图纸二：3 排组件、压块固定、带外斜撑。
   B: {
@@ -205,20 +221,6 @@ const PRESETS = {
       designLife: 25, // 年
     },
 
-    // 构件截面名称：对应 C 型钢 / L 型角钢截面库
-    sections: {
-      postF: 'C80*40*15*3.0', // 前立柱
-      postR: 'C80*40*15*3.0', // 后立柱
-      beam: 'C80*40*10*2.0', // 斜梁
-      braceF: 'C59*39*8*1.8', // 前斜撑
-      braceR: 'C59*39*8*1.8', // 后斜撑
-      braceOF: 'C59*39*8*1.8', // 前外斜撑
-      braceOR: 'C59*39*8*1.8', // 后外斜撑
-      purlin: 'C90*50*15*1.8', // 檩条
-      postTie: 'C59*39*8*1.6', // 立柱拉杆
-      purlinTie: 'L35*35*1.6', // 檩条拉杆
-    },
-
     // 组件尺寸与阵列
     modL: 2382, // 组件长度（沿坡）
     modW: 1134, // 组件宽度（东西向）
@@ -227,7 +229,6 @@ const PRESETS = {
     modWeight: 33.1, // 单块组件重量（kg）
     hole: 1400, // 组件安装孔距（同一组件下两根檩条的间距）
     rows: 3, // 沿坡组件排数
-    cols: 27, // 东西向组件列数，榀数由此计算
 
     // 组件固定
     fix: 'clamp', // bolt：安装孔螺栓；clamp：中压块 + 边压块
@@ -242,12 +243,7 @@ const PRESETS = {
     slopeNS: 0, // 南北坡度（%），正值北高南低
     slopeEW: 0, // 东西坡度（%），正值东高西低
 
-    // 榀距与檩条
-    pitch: 3300, // 中间跨榀距（沿檩条）
-    pitchEnd: 3000, // 首末跨榀距（沿檩条）
     maxPurlin: 9000, // 檩条切割最大长度
-    purlinConnector: 'U98*55*3.0*220', // 手动选择连接件规格
-    purlinClip: 'L90*56*5.0*50', // 檩托规格，独立选择
 
     // 斜撑布置
     outer: 1, // 是否带外斜撑：0 无，1 有
@@ -258,20 +254,55 @@ const PRESETS = {
     braceOutF: 400, // 前外斜撑上节点距斜梁下端（沿梁）
     braceOutR: 400, // 后外斜撑上节点距斜梁上端（沿梁）
 
-    // 立柱拉杆布置
-    postTieF: 'ends', // 前排：none 无 / ends 首末跨 / all 全部跨 / custom 自定义
-    postTieR: 'ends', // 后排：同前排布置选项
-    postTieSpansF: [], // 前排自定义逐跨开关，0 不安装、1 安装
-    postTieSpansR: [], // 后排自定义逐跨开关，0 不安装、1 安装
-
-    // 檩条拉杆布置
-    purlinTies: 'none', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
-    purlinTieSpans: [], // 自定义逐跨开关，0 不安装、1 安装
+    layouts: [
+      {
+        quantity: 1,
+        parameters: {
+          cols: 27,
+          pitchEnd: 3000,
+          pitch: 3300,
+          purlinClip: 'L90*56*5.0*50',
+          purlinConnector: 'U98*55*3.0*220',
+          postTieF: 'ends', postTieR: 'ends',
+          postTieSpansF: [], postTieSpansR: [],
+          purlinTies: 'none',
+          purlinTieSpans: [],
+        },
+        sections: {
+          postF: 'C80*40*15*3.0', postR: 'C80*40*15*3.0',
+          beam: 'C80*40*10*2.0', purlin: 'C90*50*15*1.8',
+          braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
+          braceOF: 'C59*39*8*1.8', braceOR: 'C59*39*8*1.8',
+          postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+        },
+      },
+      {
+        quantity: 1,
+        parameters: {
+          cols: 14,
+          pitchEnd: 3000,
+          pitch: 3300,
+          purlinClip: 'L90*56*5.0*50',
+          purlinConnector: 'U98*55*3.0*220',
+          postTieF: 'ends', postTieR: 'ends',
+          postTieSpansF: [], postTieSpansR: [],
+          purlinTies: 'none',
+          purlinTieSpans: [],
+        },
+        sections: {
+          postF: 'C80*40*15*3.0', postR: 'C80*40*15*3.0',
+          beam: 'C80*40*10*2.0', purlin: 'C90*50*15*1.8',
+          braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
+          braceOF: 'C59*39*8*1.8', braceOR: 'C59*39*8*1.8',
+          postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+        },
+      },
+    ],
   },
 };
 // 应用截面时复制尺寸，保留运行时 FIX 引用，避免修改预设。
-function applyPresetSections(preset) {
-  const sections = Object.entries(PRESETS[preset].sections).map(([key, name]) => {
+function applyPresetSections(preset, sectionNames = PRESETS[preset].layouts[0].sections) {
+  const sections = Object.entries(sectionNames).map(([key, name]) => {
     const library = getSectionLibrary(key);
     const value = library.find(item => item.name === name);
     if (!value) throw new Error(`图纸 ${preset} 的 ${SECTION_LABEL[key] || key} 截面不存在：${name}`);
@@ -363,9 +394,11 @@ function limits(key) {
   return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
 }
 
-// 项目资料由页面单独管理，截面由 FIX 管理；可调参数与数组复制后使用。
-const { projectInfo: defaultProjectInfo, sections: defaultSections, ...defaultParameters } = DEFAULTS;
-const P = Object.fromEntries(Object.entries(defaultParameters).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value]));
+// 三维模型使用图纸共用参数和当前排布参数的独立副本。
+function getPresetParameters({ projectInfo, layouts, ...sharedParameters }, layout = layouts[0]) {
+  return structuredClone({ ...sharedParameters, ...layout.parameters });
+}
+const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
 export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, PURLIN_CONNECTOR_SPECS, getSectionLibrary, applySection };
-export { applyPresetSections, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };
+export { applyPresetSections, getPresetParameters, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

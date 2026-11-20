@@ -4,14 +4,15 @@ import * as THREE from 'three';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
 import { PurlinTiePart } from '../src/parts/purlin-tie.js';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections } from '../src/config.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.js';
 import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.js';
 import { solve, layoutEW } from '../src/solve.js';
 import { ewMatrix } from '../src/core.js';
 
 test('图纸一：3974mm、12套，去掉首末跨为10套', () => {
   applyPresetSections('A');
-  const s=solve(PRESETS.A), l=layoutEW(PRESETS.A);
+  const parameters = getPresetParameters(PRESETS.A);
+  const s = solve(parameters), l = layoutEW(parameters);
   const input={purlins:s.purlins,framePositions:l.zs};
   const all=calculatePurlinTies({...input,mode:'all'});
   assert.equal(all.length,3974); assert.equal(all.count,12);
@@ -30,7 +31,8 @@ test('角钢实体：截面积、右手坐标、长度、正负东西坡度位�
   const section=FIX.purlinTie;
   assert.ok(Math.abs(Math.abs(THREE.ShapeUtils.area(createSectionShape(section).getPoints()))*1e6-1.6*(35+35-1.6))<1e-6);
   for (const slopeEW of [-10,0,10]) {
-    const p={...PRESETS.A,slopeEW}, s=solve(p), l=layoutEW(p);
+    const p = { ...getPresetParameters(PRESETS.A), slopeEW };
+    const s = solve(p), l = layoutEW(p);
     const ties=calculatePurlinTies({mode:'all',purlins:s.purlins,framePositions:l.zs});
     const parent=new THREE.Group(), material=new THREE.MeshBasicMaterial();
     const part=new PurlinTiePart({section,material,createSectionGeometry,track:g=>g});
@@ -53,7 +55,7 @@ test('角钢实体：截面积、右手坐标、长度、正负东西坡度位�
 test('三种檩条拉杆：安装面贴檩条，螺栓对应真实通孔，孔旁板厚正确', () => {
   applyPresetSections('A');
   for (const section of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
-    const parameters = { ...PRESETS.A, slopeEW };
+    const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
     const solution = solve(parameters), layout = layoutEW(parameters);
     const ties = calculatePurlinTies({ mode: 'all', purlins: solution.purlins, framePositions: layout.zs });
     const parent = new THREE.Group(), resources = [];

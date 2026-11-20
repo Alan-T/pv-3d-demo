@@ -1,4 +1,4 @@
-import { applyPresetSections, applySection, getSectionLibrary, FIX, P, PARAMS, PRESETS, SECTION_LABEL, show } from './config.js';
+import { applyPresetSections, applySection, getSectionLibrary, FIX, P, PARAMS, PRESETS, show } from './config.js';
 import { shared } from './core.js';
 import { initScene, disposeScene, scene, renderer, controls, resize } from './scene.js';
 import { initMaterials, disposeMaterials } from './materials.js';
@@ -8,25 +8,22 @@ import { updateLabels, disposeDimensions } from './dims.js';
 import { initView, disposeView, setView, applyVisibility, getCamera, resizeTieJointView, tick } from './view.js';
 import { solve } from './solve.js';
 import { createReport } from './report.js';
+import { DrawingLayouts } from './layout-variants.js';
 
 const state = shared.state;
+const drawings = Object.fromEntries(Object.entries(PRESETS).map(([id, preset]) => [id, new DrawingLayouts(preset)]));
+const currentDrawing = () => drawings[state.preset];
 const normalizeSection = name => String(name).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
-
-function sectionName(key) {
-  const section = FIX[key];
-  const match = getSectionLibrary(key).find(item => (item.type ?? 'C') === (section.type ?? 'C')
-    && item.d === section.d && item.f === section.f && item.l === section.l && item.t === section.t);
-  return match?.name ?? (section.type === 'L'
-    ? `L${section.d}*${section.f}*${section.t}`
-    : `C${section.d}*${section.f}*${section.l}*${section.t}`);
-}
 
 // Vue receives plain snapshots. Three.js objects stay inside the scene runtime.
 export function getSnapshot() {
   const layout = state.layout;
+  const drawing = currentDrawing();
   return {
     parameters: Object.fromEntries(Object.entries(P).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])),
-    sections: Object.fromEntries(Object.keys(SECTION_LABEL).map(key => [key, sectionName(key)])),
+    sections: { ...drawing.active.sections },
+    activeLayoutId: drawing.activeId,
+    layouts: structuredClone(drawing.layouts),
     display: { ...show },
     preset: state.preset,
     view: state.view,
@@ -43,6 +40,8 @@ export function getSnapshot() {
       spec: joint.spec,
     })) ?? [],
     bayCount: layout ? layout.zs.length - 1 : 0,
+    frameCount: layout?.frames ?? 0,
+    purlinTieCount: layout?.purlinTies.count ?? 0,
     postTies: layout?.postTies.map(row => ({
       key: row.rear ? 'R' : 'F',
       label: row.rear ? '后排' : '前排',
@@ -66,17 +65,20 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     onUpdate(getSnapshot());
   }
 
-  function rebuild() {
+  function rebuild(refit = false) {
     if (disposed) return;
     cancelAnimationFrame(buildFrame);
     buildFrame = 0;
     closeEdit(false);
+    currentDrawing().captureParameters(P);
     build();
+    if (refit) setView(state.view);
     publish();
   }
 
   function scheduleBuild() {
-    if (!buildFrame && !disposed) buildFrame = requestAnimationFrame(rebuild);
+    currentDrawing().captureParameters(P);
+    if (!buildFrame && !disposed) buildFrame = requestAnimationFrame(() => rebuild());
   }
 
   function draw() {
@@ -161,18 +163,56 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
       ?? library.find(item => normalizeSection(item.name).includes(query)));
     if (section) {
       applySection(key, section);
+      currentDrawing().active.sections[key] = section.name;
       scheduleBuild();
     }
-    return sectionName(key);
+    return currentDrawing().active.sections[key];
+  }
+
+  function loadActiveLayout() {
+    const drawing = currentDrawing();
+    Object.assign(P, drawing.getModelParameters());
+    applyPresetSections(state.preset, drawing.active.sections);
+    rebuild(true);
   }
 
   function applyPreset(preset) {
+    if (!Object.hasOwn(drawings, preset) || preset === state.preset) return;
+    closeEdit(true);
     state.preset = preset;
-    const { projectInfo, sections, ...parameters } = PRESETS[preset];
-    for (const [key, value] of Object.entries(parameters)) P[key] = Array.isArray(value) ? [...value] : value;
-    applyPresetSections(preset);
-    rebuild();
-    selectView(state.view);
+    loadActiveLayout();
+  }
+
+  function resetPreset() {
+    closeEdit(false);
+    currentDrawing().reset();
+    loadActiveLayout();
+  }
+
+  function selectLayout(id) {
+    closeEdit(true);
+    if (currentDrawing().select(id)) loadActiveLayout();
+  }
+
+  function addLayout() {
+    closeEdit(true);
+    currentDrawing().add();
+    loadActiveLayout();
+  }
+
+  function removeLayout(id = currentDrawing().activeId) {
+    const drawing = currentDrawing();
+    closeEdit(true);
+    const previous = drawing.activeId;
+    if (!drawing.remove(id)) return;
+    if (previous !== drawing.activeId) loadActiveLayout();
+    else publish();
+  }
+
+  function changeLayoutQuantity(value) {
+    const quantity = currentDrawing().setQuantity(value);
+    publish();
+    return quantity;
   }
 
   function changePostTieMode(key, mode) {
@@ -239,6 +279,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     debug = window.pvDemo = {
       P, show, solve, setView: selectView, rebuild, controls,
       labels: shared.labels, pickLabel,
+      get layouts() { return structuredClone(currentDrawing().layouts); },
       get camera() { return getCamera(); },
       get state() { return { S: state.S, layout: state.layout, view: state.view, cam: getCamera().type }; },
     };
@@ -249,7 +290,8 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   return {
-    changeParameter, changeSection, applyPreset, changePostTieMode, changePostTieBay,
+    changeParameter, changeSection, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
+    changePostTieMode, changePostTieBay,
     changePurlinTieBay, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
   };
 }
