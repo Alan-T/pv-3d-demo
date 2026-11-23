@@ -92,9 +92,6 @@ function changeField(field, event) {
 <style scoped>
 .project-info .prow { grid-template-columns: 72px minmax(0, 1fr); }
 .project-value { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.project-value input, .project-value select {
-  width: 100%; min-width: 0; padding: 4px 6px; font: inherit; font-size: 13px;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--blue);
-}
+.project-value input, .project-value select { width: 100%; min-width: 0; }
 .project-unit { flex: none; min-width: 12px; white-space: nowrap; color: var(--muted); font-size: 12px; }
 </style>

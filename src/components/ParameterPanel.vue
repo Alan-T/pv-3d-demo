@@ -245,7 +245,7 @@ const displays = [
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.28fr) clamp(96px, 31%, 112px);
   align-items: center; column-gap: 4px;
 }
-.spec-row > :deep(select), .spec-row > input.psec { width: 100%; min-width: 0; padding-inline: 3px; font-size: 12px; text-align: left; }
+.spec-row > :deep(select), .spec-row > input.psec { width: 100%; min-width: 0; padding-inline: 3px; text-align: left; }
 .spec-row :deep(.field-label) { gap: 3px; }
 .spec-heading { margin: 12px 0 8px; font-size: 12px; color: var(--muted); }
 .spec-heading > :first-child { grid-column: 1 / 3; }

@@ -33,7 +33,7 @@ defineEmits(['change']);
 .grade-field:focus-within { outline: 2px solid var(--blue); outline-offset: 1px; }
 .grade-field input {
   flex: 1; min-width: 0; width: 0; padding: 3px 0 3px 5px; border: 0; outline: 0;
-  font: inherit; font-size: 12px; line-height: 18px; color: var(--blue); background: transparent;
+  font: inherit; font-size: var(--field-value-size); line-height: 1.5; color: var(--blue); background: transparent;
 }
 .grade-field input::placeholder { color: var(--muted); }
 .grade-picker { position: relative; display: grid; place-items: center; width: 22px; flex: none; }

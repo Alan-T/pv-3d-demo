@@ -72,14 +72,14 @@ function reset() {
 </template>
 
 <style scoped>
-.cut-editor { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: 13px; }
+.cut-editor { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: var(--field-label-size); }
 .cut-heading, .cut-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
 #purlin-cut-order { font-size: 12px; color: var(--muted); }
 .cut-lengths { display: grid; grid-template-columns: minmax(0, 1fr); }
 /* 镜像文本参与排版，让编辑框随换行增高，也能在面板宽度变化时自动收缩。 */
 .cut-lengths::after, .cut-lengths textarea {
   grid-area: 1 / 1; min-width: 0; padding: 6px 9px; border: 1px solid transparent;
-  font: inherit; font-variant-numeric: tabular-nums; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: inherit; font-size: var(--field-value-size); font-variant-numeric: tabular-nums; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .cut-lengths::after { content: attr(data-draft) ' '; visibility: hidden; }
 .cut-lengths textarea { width: 100%; resize: none; overflow: hidden; border-color: var(--line); border-radius: 6px; color: var(--blue); }

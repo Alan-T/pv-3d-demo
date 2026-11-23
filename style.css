@@ -175,7 +175,12 @@ html, body {
 #app.pcollapsed #panelToggle svg { transform: rotate(180deg); }
 #sheetHandle { display: none; }
 .pbody { padding: 6px 16px 24px; }
-.panel-fields { border: 0; margin: 0; min-width: 0; }
+.panel-fields {
+  --field-label-size: 13px;
+  --field-value-size: 12px;
+  --field-height: 26px;
+  border: 0; margin: 0; min-width: 0;
+}
 .report-body { padding-top: 0; }
 section { padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
 section:last-child { border-bottom: 0; }
@@ -190,10 +195,16 @@ section:last-child { border-bottom: 0; }
 button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: normal; color: var(--blue); background: none; border: 0; cursor: pointer; padding: 0; }
 
 .prow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; margin-bottom: 10px; }
-.prow .pl { font-size: 13px; }
+.prow .pl { font-size: var(--field-label-size); }
 .field-label { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .prow .pv { display: flex; align-items: center; gap: 4px; justify-self: end; }
-.prow .pv input { width: 76px; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; text-align: right; color: var(--blue); }
+.prow :where(.pv input, .project-value input, .project-value select, input.psec), .prow > select {
+  min-height: var(--field-height); padding: 3px 6px;
+  font: inherit; font-size: var(--field-value-size); line-height: 1.5;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--blue);
+}
+.prow .pv input, .design-parameters .prow > select { width: 124px; max-width: 100%; }
+.prow .pv input { text-align: right; }
 .prow .pv i { font-style: normal; color: var(--muted); font-size: 12px; min-width: 22px; }
 .prow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--blue); margin: 0; }
 .prow small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -2px; }
@@ -204,15 +215,14 @@ button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: no
 .prow.psize .pl { white-space: nowrap; }
 .prow.psize { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; }
 .prow.psize .pv { width: 100%; min-width: 0; gap: 3px; }
-.prow.psize .pv input { flex: 1; width: 0; min-width: 0; padding: 2px 4px; appearance: textfield; }
+.prow.psize .pv input { flex: 1; width: 0; min-width: 0; padding-inline: 4px; appearance: textfield; }
 .prow.psize input::-webkit-inner-spin-button, .prow.psize input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .prow.psize .pv b { font-weight: normal; color: var(--muted); font-size: 12px; }
-.prow select { justify-self: end; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--blue); }
-.prow input.psec { justify-self: end; width: 150px; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--blue); text-align: right; }
+.prow > select { justify-self: end; }
 .toggles label.off { opacity: .45; cursor: not-allowed; }
 
 .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-.toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+.toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: var(--field-label-size); }
 .toggles input { accent-color: var(--blue); }
 
 #warnings { list-style: none; margin: 0 0 8px; padding: 0; }
@@ -261,4 +271,4 @@ button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: no
 }
 .tie-spans { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 4px 0 16px; }
 .tie-spans[hidden] { display: none; }
-.tie-spans label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.tie-spans label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--field-label-size); cursor: pointer; }
