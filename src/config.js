@@ -1,5 +1,3 @@
-import { getLayoutParameters } from './layout-variants.js';
-
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
 // ---------- 图纸尺寸与假设 ----------
@@ -156,6 +154,8 @@ const PRESETS = {
       {
         quantity: 1,
         cols: 26, // 东西向组件列数，榀数由此计算
+        purlinCutMode: 'auto',
+        purlinCutLengths: [], // 自定义时从西向东列出各段净长（mm）
         pitchEnd: 2500, // 首末跨榀距
         pitch: 2800, // 中间跨榀距
         purlinClip: 'L100*63*6.0*50', // 檩托
@@ -175,6 +175,8 @@ const PRESETS = {
       {
         quantity: 1,
         cols: 13,
+        purlinCutMode: 'auto',
+        purlinCutLengths: [],
         pitchEnd: 2500,
         pitch: 2800,
         purlinClip: 'L100*63*6.0*50',
@@ -254,6 +256,8 @@ const PRESETS = {
       {
         quantity: 1,
         cols: 27,
+        purlinCutMode: 'auto',
+        purlinCutLengths: [],
         pitchEnd: 3000,
         pitch: 3300,
         purlinClip: 'L90*56*5.0*50',
@@ -273,6 +277,8 @@ const PRESETS = {
       {
         quantity: 1,
         cols: 14,
+        purlinCutMode: 'auto',
+        purlinCutLengths: [],
         pitchEnd: 3000,
         pitch: 3300,
         purlinClip: 'L90*56*5.0*50',
@@ -358,6 +364,7 @@ const PARAMS = [
     hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
   { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
   { key: 'maxPurlin', label: '檩条最大长度', type: 'select', options: [['5700', '5700 mm'], ['7200', '7200 mm'], ['9000', '9000 mm']] },
+  { key: 'purlinCutMode', label: '分段方式', type: 'select', options: [['auto', '自动'], ['custom', '自定义']] },
   { key: 'purlinConnector', label: '檩条连接件', type: 'select',
     options: PURLIN_CONNECTOR_SPECS.map(name => [name, name]),
     hint: '手动选择 U 型连接件规格（高度*翼缘宽*板厚*长度），不随檩条截面自动切换' },
@@ -384,6 +391,10 @@ function limits(key) {
   if (d) return [d.min ?? -Infinity, d.max ?? Infinity, key === 'tilt' || d.unit === '%' ? 0.1 : Math.min(d.step ?? 1, 1)];
   const [lo, hi] = EXTRA_LIMITS[key];
   return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
+}
+
+export function getLayoutParameters({ id, label, quantity, sections, ...parameters }) {
+  return parameters;
 }
 
 // 三维模型使用图纸共用参数和当前排布参数的独立副本。

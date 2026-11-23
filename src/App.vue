@@ -115,6 +115,8 @@ async function toggleSheet() {
     <ParameterPanel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
       @parameter="changeParameter" @section="changeSection" @reset-preset="designer.resetPreset()"
       @layout-quantity="changeLayoutQuantity"
+      @purlin-cut-lengths="(lengths, done) => done(designer.changePurlinCutLengths(lengths))"
+      @reset-purlin-cut="done => done(designer.resetPurlinCutLengths())"
       @post-mode="(...args) => designer.changePostTieMode(...args)" @post-bay="(...args) => designer.changePostTieBay(...args)"
       @purlin-bay="(...args) => designer.changePurlinTieBay(...args)" @display="(...args) => designer.changeDisplay(...args)"
       @toggle-sheet="toggleSheet" />

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
 import ParameterField from './ParameterField.vue';
+import PurlinCutEditor from './PurlinCutEditor.vue';
 import HelpHint from './HelpHint.vue';
 import ProjectInfo from './ProjectInfo.vue';
 import DesignNotes from './DesignNotes.vue';
@@ -13,7 +14,7 @@ const props = defineProps({
   ready: Boolean,
   open: Boolean,
 });
-defineEmits(['update:projectInfo', 'parameter', 'section', 'reset-preset', 'layout-quantity', 'post-mode', 'post-bay', 'purlin-bay', 'display', 'toggle-sheet']);
+defineEmits(['update:projectInfo', 'parameter', 'section', 'reset-preset', 'layout-quantity', 'purlin-cut-lengths', 'reset-purlin-cut', 'post-mode', 'post-bay', 'purlin-bay', 'display', 'toggle-sheet']);
 
 const tabs = [
   { id: 'project', label: '项目信息' },
@@ -26,8 +27,9 @@ const currentLayout = computed(() => props.snapshot.layouts.find(layout => layou
 
 const layoutKeys = ['cols', 'pitchEnd', 'pitch'];
 const layoutFields = layoutKeys.map(key => PARAMS.find(item => item.key === key));
-const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'slopeEW', 'slopeNS', ...layoutKeys];
+const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'purlinCutMode', 'slopeEW', 'slopeNS', ...layoutKeys];
 const commonFields = PARAMS.filter(item => !otherFields.includes(item.key));
+const purlinCutModeField = PARAMS.find(item => item.key === 'purlinCutMode');
 const purlinTieField = { ...PARAMS.find(item => item.key === 'purlinTies'), label: '檩条拉杆' };
 const purlinClipField = PARAMS.find(item => item.key === 'purlinClip');
 const purlinConnectorField = PARAMS.find(item => item.key === 'purlinConnector');
@@ -93,6 +95,13 @@ const displays = [
               <div><dt>每套檩条拉杆</dt><dd id="layout-purlin-tie-count">{{ ready ? snapshot.purlinTieCount + ' 套' : '—' }}</dd></div>
             </dl>
 
+            <h5>檩条分段</h5>
+            <ParameterField :definition="purlinCutModeField" :parameters="snapshot.parameters"
+              @change="(...args) => $emit('parameter', ...args)" />
+            <PurlinCutEditor v-if="snapshot.parameters.purlinCutMode === 'custom'" :key="`${snapshot.preset}-${currentLayout.id}`"
+              :lengths="snapshot.parameters.purlinCutLengths" :total="snapshot.purlinLength" :error="snapshot.purlinCutError"
+              @apply="(...args) => $emit('purlin-cut-lengths', ...args)" @reset="done => $emit('reset-purlin-cut', done)" />
+
             <h5>立柱拉杆布置</h5>
             <div id="post-tie-controls">
               <template v-for="row in snapshot.postTies" :key="row.key">
@@ -102,9 +111,11 @@ const displays = [
                     <HelpHint :label="`${row.label}立柱拉杆`" :text="`上孔距柱顶 ${row.topOffset}，上下孔高差 ${row.holeRise} mm`" />
                   </div>
                   <select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters['postTie' + row.key]"
+                    :aria-describedby="row.lengthDescription ? `post-tie-${row.key}-length` : undefined"
                     @change="$emit('post-mode', row.key, $event.target.value)">
                     <option v-for="[value, label] in postTieModes" :key="value" :value="value">{{ label }}</option>
                   </select>
+                  <small v-if="row.lengthDescription" :id="`post-tie-${row.key}-length`" class="field-description">{{ row.lengthDescription }}</small>
                 </div>
                 <div v-if="snapshot.parameters['postTie' + row.key] === 'custom'" class="tie-spans">
                   <label v-for="(enabled, index) in row.enabled" :key="index">
@@ -118,6 +129,7 @@ const displays = [
             <h5>檩条拉杆布置</h5>
             <div id="purlin-tie-controls">
               <ParameterField :definition="purlinTieField" :parameters="snapshot.parameters"
+                :select-description="snapshot.purlinTieLength != null ? `长度 ${snapshot.purlinTieLength} mm` : undefined"
                 @change="(...args) => $emit('parameter', ...args)" />
               <div id="purlin-tie-spans" class="tie-spans" :hidden="snapshot.parameters.purlinTies !== 'custom'">
                 <template v-if="snapshot.parameters.purlinTies === 'custom'">

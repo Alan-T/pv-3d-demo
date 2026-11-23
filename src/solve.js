@@ -87,13 +87,19 @@ export function solve(p) {
   };
 }
 
+export function getPurlinDimensions({ cols, modW, fix }) {
+  const pitchEW = modW + FIX.modGapEW;
+  const arrW = cols * pitchEW - FIX.modGapEW;
+  const purlinExt = FIX.purlinExt[fix];
+  return { pitchEW, arrW, purlinExt, purlinLen: arrW + 2 * purlinExt };
+}
+
 // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
 // 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
 // 榀距比阵列还宽时少放一榀
 export function layoutEW(p) {
-  const cols = p.cols, pitchEW = p.modW + FIX.modGapEW;
-  const arrW = cols * pitchEW - FIX.modGapEW;
-  const purlinExt = FIX.purlinExt[p.fix], purlinLen = arrW + 2 * purlinExt;
+  const { cols } = p;
+  const { pitchEW, arrW, purlinExt, purlinLen } = getPurlinDimensions(p);
   const bayAt = (i, n) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
   const spanOf = (n) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
   const warn = [];
@@ -120,6 +126,8 @@ export function layoutEW(p) {
   const i = (p.slopeEW || 0) / 100, ca = 1 / Math.hypot(1, i);
   const ew = { i, ca, sa: i * ca };
   const cuts = cutPurlin(p, purlinLen, zs, arrW);
-  if (!cuts.valid) warn.push('檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
+  if (!cuts.valid) {
+    warn.push(cuts.error ? `檩条自定义分段无效，暂显示通长檩条。${cuts.error}` : '檩条切割无可行解，请调整榀距或最大长度；暂显示通长檩条');
+  }
   return { cuts, frames, zs, bays, spanEW, pitchEW, cols, arrW, purlinExt, purlinLen, gapZ, ew, warn };
 }

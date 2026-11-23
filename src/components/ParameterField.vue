@@ -5,6 +5,7 @@ import HelpHint from './HelpHint.vue';
 defineProps({
   definition: { type: Object, required: true },
   parameters: { type: Object, required: true },
+  selectDescription: String,
 });
 defineEmits(['change']);
 const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东西向）', modT: '组件厚度' };
@@ -26,9 +27,11 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
     <template v-if="definition.type === 'select'">
       <select :id="`param-${definition.key}`" :value="String(parameters[definition.key])"
         :aria-label="definition.label"
+        :aria-describedby="selectDescription ? `param-${definition.key}-description` : undefined"
         @change="$emit('change', definition.key, $event.target.value, $event.target)">
         <option v-for="[value, label] in definition.options" :key="value" :value="value">{{ label }}</option>
       </select>
+      <small v-if="selectDescription" :id="`param-${definition.key}-description`" class="field-description">{{ selectDescription }}</small>
     </template>
     <template v-else-if="definition.type === 'size'">
       <span class="pv">

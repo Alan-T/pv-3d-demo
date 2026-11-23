@@ -6,7 +6,7 @@ import { build, clearDynamic } from './model.js';
 import { initEditing, disposeEditing, closeEdit, setParam, pickLabel, update as updateEditor } from './edit.js';
 import { updateLabels, disposeDimensions } from './dims.js';
 import { initView, disposeView, setView, applyVisibility, getCamera, resizeTieJointView, tick } from './view.js';
-import { solve } from './solve.js';
+import { layoutEW, solve } from './solve.js';
 import { createReport } from './report.js';
 import { DrawingLayouts } from './layout-variants.js';
 
@@ -14,6 +14,19 @@ const state = shared.state;
 const drawings = Object.fromEntries(Object.entries(PRESETS).map(([id, preset]) => [id, new DrawingLayouts(preset)]));
 const currentDrawing = () => drawings[state.preset];
 const normalizeSection = name => String(name).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
+
+function describePostTieLengths({ rods, enabled }) {
+  const endSpans = new Set();
+  const middleSpans = new Set();
+  for (const { bay, length } of rods) {
+    const group = bay === 0 || bay === enabled.length - 1 ? endSpans : middleSpans;
+    group.add(length);
+  }
+  return [['首末跨', endSpans], ['中间跨', middleSpans]]
+    .filter(([, lengths]) => lengths.size)
+    .map(([label, lengths]) => `${label} ${[...lengths].sort((a, b) => a - b).join(' / ')} mm`)
+    .join(' · ');
+}
 
 // Vue receives plain snapshots. Three.js objects stay inside the scene runtime.
 export function getSnapshot() {
@@ -42,12 +55,16 @@ export function getSnapshot() {
     bayCount: layout ? layout.zs.length - 1 : 0,
     frameCount: layout?.frames ?? 0,
     purlinTieCount: layout?.purlinTies.count ?? 0,
+    purlinTieLength: layout?.purlinTies.count ? layout.purlinTies.length : null,
+    purlinLength: layout?.purlinLen ?? 0,
+    purlinCutError: layout?.cuts.error ?? '',
     postTies: layout?.postTies.map(row => ({
       key: row.rear ? 'R' : 'F',
       label: row.rear ? '后排' : '前排',
       topOffset: Math.round(row.topOffset),
       holeRise: row.holeRise,
       enabled: [...row.enabled],
+      lengthDescription: describePostTieLengths(row),
     })) ?? [],
     report: state.S && layout ? createReport(P, FIX, state.S, layout, state.preset) : null,
   };
@@ -65,19 +82,28 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     onUpdate(getSnapshot());
   }
 
+  function syncParameters() {
+    const drawing = currentDrawing();
+    drawing.captureParameters(P);
+    // 总长或最大料长变化后，在下一次重建或编辑前同步分段方式。
+    const { purlinCutMode = 'auto', purlinCutLengths = [] } = drawing.active;
+    P.purlinCutMode = purlinCutMode;
+    P.purlinCutLengths = [...purlinCutLengths];
+  }
+
   function rebuild(refit = false) {
     if (disposed) return;
     cancelAnimationFrame(buildFrame);
     buildFrame = 0;
     closeEdit(false);
-    currentDrawing().captureParameters(P);
+    syncParameters();
     build();
     if (refit) setView(state.view);
     publish();
   }
 
   function scheduleBuild() {
-    currentDrawing().captureParameters(P);
+    syncParameters();
     if (!buildFrame && !disposed) buildFrame = requestAnimationFrame(() => rebuild());
   }
 
@@ -137,10 +163,18 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     selectView(next);
   }
 
+  function getAutomaticPurlinCutLengths() {
+    const { cuts } = layoutEW({ ...P, purlinCutMode: 'auto' });
+    return cuts.valid ? cuts.segments.map(segment => segment.length) : null;
+  }
+
   function changeParameter(key, value) {
     const definition = PARAMS.find(item => item.key === key);
     if (definition?.type === 'select') {
       if (!definition.options.some(([option]) => option === value)) return P[key];
+      if (key === 'purlinCutMode' && value === 'custom' && !P.purlinCutLengths?.length) {
+        P.purlinCutLengths = getAutomaticPurlinCutLengths() ?? [];
+      }
       if (key === 'purlinTies' && value === 'custom') {
         const installed = new Set(state.layout.purlinTies.rods.map(rod => rod.bay));
         P.purlinTieSpans = Array.from({ length: state.layout.zs.length - 1 }, (_, index) => Number(installed.has(index)));
@@ -213,6 +247,21 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     const quantity = currentDrawing().setQuantity(value);
     publish();
     return quantity;
+  }
+
+  function changePurlinCutLengths(lengths) {
+    if (P.purlinCutMode !== 'custom') return '请先选择自定义分段。';
+    const { cuts } = layoutEW({ ...P, purlinCutLengths: lengths });
+    if (!cuts.valid) return cuts.error;
+    P.purlinCutLengths = [...lengths];
+    scheduleBuild();
+    return '';
+  }
+
+  function resetPurlinCutLengths() {
+    const lengths = getAutomaticPurlinCutLengths();
+    if (!lengths) return { error: '当前参数无法自动分段，请调整榀距或檩条最大长度。' };
+    return { lengths, error: changePurlinCutLengths(lengths) };
   }
 
   function changePostTieMode(key, mode) {
@@ -292,6 +341,6 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   return {
     changeParameter, changeSection, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
     changePostTieMode, changePostTieBay,
-    changePurlinTieBay, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
+    changePurlinTieBay, changePurlinCutLengths, resetPurlinCutLengths, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
   };
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PRESETS, getPresetParameters } from '../src/config.js';
 import { DrawingLayouts } from '../src/layout-variants.js';
+import { layoutEW } from '../src/solve.js';
 
 test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向布置与构件截面独立', () => {
   const a = new DrawingLayouts(PRESETS.A), b = new DrawingLayouts(PRESETS.B);
@@ -24,6 +25,117 @@ test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向�
   assert.equal(a.active.sections.purlinTie, 'C60*40*10*1.6');
   assert.deepEqual(a.getModelParameters().purlinTieSpans, [1, 0]);
   assert.equal(PRESETS.A.layouts[0].cols, 26);
+});
+
+test('自定义檩条分段只属于当前排布，复制和恢复后各自保留独立段长', () => {
+  for (const preset of Object.values(PRESETS)) {
+    const drawing = new DrawingLayouts(preset);
+    const [first, second] = drawing.layouts;
+    const lengths = [5650, 3950, 4000];
+    drawing.captureParameters({ purlinCutMode: 'custom', purlinCutLengths: lengths });
+    assert.deepEqual(first.purlinCutLengths, lengths);
+    drawing.select(second.id);
+    assert.equal(drawing.getModelParameters().purlinCutMode, 'auto');
+    assert.deepEqual(drawing.getModelParameters().purlinCutLengths, []);
+    drawing.select(first.id);
+    drawing.add();
+    assert.equal(drawing.active.purlinCutMode, 'custom');
+    assert.deepEqual(drawing.active.purlinCutLengths, lengths);
+    assert.notEqual(drawing.active.purlinCutLengths, first.purlinCutLengths);
+    drawing.reset();
+    assert.equal(drawing.active.purlinCutMode, 'auto');
+    assert.deepEqual(drawing.active.purlinCutLengths, []);
+    assert.deepEqual(first.purlinCutLengths, lengths);
+  }
+});
+
+function applyCustomCuts(drawing, id) {
+  drawing.select(id);
+  const { cuts } = layoutEW(drawing.getModelParameters());
+  assert.equal(cuts.valid, true);
+  const lengths = cuts.segments.map(segment => segment.length);
+  drawing.captureParameters({ purlinCutMode: 'custom', purlinCutLengths: lengths });
+  return lengths;
+}
+
+function assertAutomaticCuts(layout) {
+  assert.equal(layout.purlinCutMode, 'auto');
+  assert.deepEqual(layout.purlinCutLengths, []);
+}
+
+test('修改最大料长会让整张图纸按新上限重切，选择相同上限则保留自定义', () => {
+  const drawing = new DrawingLayouts(PRESETS.A);
+  drawing.captureParameters({ maxPurlin: 5700 });
+  const first = applyCustomCuts(drawing, '1');
+  applyCustomCuts(drawing, '2');
+  drawing.captureParameters({ maxPurlin: '5700' });
+  assert.equal(drawing.active.purlinCutMode, 'custom');
+  assert.deepEqual(drawing.layouts[0].purlinCutLengths, first);
+
+  // 旧段长均短于新上限，已经切回自动的排布也需要清除上次的自定义段长。
+  drawing.captureParameters({ purlinCutMode: 'auto' });
+  drawing.captureParameters({ maxPurlin: '7200' });
+  for (const layout of drawing.layouts) assertAutomaticCuts(layout);
+  assert.deepEqual(layoutEW(drawing.getModelParameters()).cuts.segments.map(s => s.length), [6150, 6100, 5021]);
+
+  applyCustomCuts(drawing, '2');
+  drawing.select('1');
+  drawing.reset();
+  assert.equal(drawing.sharedParameters.maxPurlin, 9000);
+  assertAutomaticCuts(drawing.layouts[1]);
+});
+
+test('切换排布或调整倾角和榀距保留自定义段长，调整列数仅清空当前排布', () => {
+  const drawing = new DrawingLayouts(PRESETS.A);
+  const first = applyCustomCuts(drawing, '1');
+  const second = applyCustomCuts(drawing, '2');
+  drawing.select('1');
+  drawing.captureParameters({ ...drawing.getModelParameters(), tilt: 25, pitch: 2850 });
+  assert.equal(drawing.active.purlinCutMode, 'custom');
+  assert.deepEqual(drawing.active.purlinCutLengths, first);
+  drawing.captureParameters({ ...drawing.getModelParameters(), cols: 25 });
+  assertAutomaticCuts(drawing.active);
+  drawing.select('2');
+  assert.equal(drawing.active.purlinCutMode, 'custom');
+  assert.deepEqual(drawing.active.purlinCutLengths, second);
+});
+
+test('组件宽度或固定方式改变总长时，清空同图纸所有受影响排布的段长', () => {
+  for (const changed of [{ modW: 1304 }, { fix: 'clamp' }]) {
+    const drawing = new DrawingLayouts(PRESETS.A);
+    applyCustomCuts(drawing, '1');
+    applyCustomCuts(drawing, '2');
+    // 切回自动时旧净长可供再次自定义使用，总长变化后这份缓存也应清掉。
+    drawing.captureParameters({ purlinCutMode: 'auto' });
+    drawing.captureParameters({ ...drawing.getModelParameters(), ...changed });
+    for (const layout of drawing.layouts) assertAutomaticCuts(layout);
+  }
+});
+
+test('同时更新共享宽度和当前列数，按各排布实际总长分别判断', () => {
+  const drawing = new DrawingLayouts(PRESETS.A);
+  const first = applyCustomCuts(drawing, '1');
+  applyCustomCuts(drawing, '2');
+  drawing.select('1');
+  // 26 × (1303 + 20) = 27 × (1254 + 20)，排布1总长相同，排布2仍为13列。
+  drawing.captureParameters({ ...drawing.getModelParameters(), modW: 1254, cols: 27 });
+  assert.equal(drawing.active.purlinCutMode, 'custom');
+  assert.deepEqual(drawing.active.purlinCutLengths, first);
+  drawing.select('2');
+  assertAutomaticCuts(drawing.active);
+});
+
+test('恢复图纸共用参数使其他排布总长改变时也清除其自定义段长', () => {
+  const drawing = new DrawingLayouts(PRESETS.A);
+  drawing.captureParameters({ modW: 1304 });
+  applyCustomCuts(drawing, '2');
+  drawing.setQuantity(8);
+  drawing.select('1');
+  drawing.reset();
+  drawing.select('2');
+  assert.equal(drawing.getModelParameters().modW, PRESETS.A.modW);
+  assert.equal(drawing.active.quantity, 8);
+  assertAutomaticCuts(drawing.active);
 });
 
 test('从预设逐项读取排布套数、参数和截面，恢复时取稳定标识对应的预设', () => {
