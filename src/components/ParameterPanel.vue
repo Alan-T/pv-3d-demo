@@ -78,7 +78,7 @@ const displays = [
             </div>
           </section>
 
-          <section aria-labelledby="layout-parameters-heading">
+          <section class="layout-parameters" aria-labelledby="layout-parameters-heading">
             <h4 id="layout-parameters-heading">排布参数 <small>{{ currentLayout.label }}</small></h4>
             <div class="prow">
               <label class="pl" for="layout-quantity">排布套数</label>
@@ -146,9 +146,10 @@ const displays = [
 
       <div v-show="activeTab === 'members'" id="panel-page-members" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-members" tabindex="0">
-        <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="构件设置">
-          <section>
-            <h3>构件截面 <small>{{ currentLayout.label }}</small></h3>
+        <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="构件规格">
+          <section class="layout-parameters layout-member-specs" aria-labelledby="layout-member-heading">
+            <h3 id="layout-member-heading">排布规格 <small>{{ currentLayout.label }}</small></h3>
+            <h4>构件截面</h4>
             <div id="sections">
               <datalist id="sectionLib"><option v-for="section in SECTION_LIB" :key="section.name" :value="section.name" /></datalist>
               <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow">
@@ -164,22 +165,15 @@ const displays = [
                   @change="$emit('section', key, $event.target.value, $event.target)">
               </div>
             </div>
-          </section>
-
-          <section>
-            <h3>檩托</h3>
+            <h4>檩托与连接件</h4>
             <ParameterField :definition="purlinClipField" :parameters="snapshot.parameters"
               @change="(...args) => $emit('parameter', ...args)" />
-          </section>
-
-          <section>
-            <h3>檩条连接件</h3>
             <ParameterField :definition="purlinConnectorField" :parameters="snapshot.parameters"
               @change="(...args) => $emit('parameter', ...args)" />
           </section>
 
           <section id="brace-connector-specs">
-            <h3>斜撑连接件 <small>（宽 × 高 × 厚，mm）</small></h3>
+            <h3>斜撑连接件 <small>自动匹配 · 宽 × 高 × 厚（mm）</small></h3>
             <div v-for="connector in snapshot.braceConnectors" :key="connector.key" class="prow">
               <label class="pl" :for="`brace-connector-${connector.key}`">{{ connector.label }}</label>
               <output :id="`brace-connector-${connector.key}`" class="brace-connector-spec">{{ connector.type }} {{ connector.spec }}</output>
@@ -222,6 +216,17 @@ const displays = [
 
 <style scoped>
 .design-parameters > h3 { margin: 14px 0 0; }
+.design-parameters > section:first-of-type { border-bottom: 0; }
+.layout-parameters {
+  margin-inline: -10px;
+  padding: 12px 9px;
+  border: 1px solid #d4e1f1;
+  border-radius: 8px;
+  background: #f1f6fd;
+}
+.layout-parameters :deep(.field-description) { color: #636f7d; }
+.layout-member-specs { margin-block: 10px 4px; }
+.layout-member-specs h4 { margin: 12px 0 8px; font-size: 14px; }
 .design-parameters h4 { margin: 0 0 10px; font-size: 14px; }
 .design-parameters h4 small { margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: normal; }
 .design-parameters h5 { margin: 16px 0 8px; font-size: 14px; }
