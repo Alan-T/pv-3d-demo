@@ -62,6 +62,10 @@ function changeSection(key, value, input) {
   input.value = designer.changeSection(key, value);
 }
 
+function changeMaterialGrade(key, value, input) {
+  input.value = designer.changeMaterialGrade(key, value);
+}
+
 function changeLayoutQuantity(input) {
   input.value = designer.changeLayoutQuantity(input.value);
 }
@@ -113,7 +117,7 @@ async function toggleSheet() {
       </button>
     </div>
     <ParameterPanel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
-      @parameter="changeParameter" @section="changeSection" @reset-preset="designer.resetPreset()"
+      @parameter="changeParameter" @section="changeSection" @material-grade="changeMaterialGrade" @reset-preset="designer.resetPreset()"
       @layout-quantity="changeLayoutQuantity"
       @purlin-cut-lengths="(lengths, done) => done(designer.changePurlinCutLengths(lengths))"
       @reset-purlin-cut="done => done(designer.resetPurlinCutLengths())"

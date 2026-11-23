@@ -1,4 +1,4 @@
-import { braceMember } from '../brace-layout.js';
+import { braceConnectorSpec, braceMember } from '../brace-layout.js';
 import { NZ, EY, V, MM } from '../core.js';
 import * as THREE from 'three';
 
@@ -48,10 +48,11 @@ export class BraceConnectorPart {
     bolts.push([Q.x, Q.y]); boltRoles.push('inner');
     if (o) { bolts.push([Qo.x, Qo.y]); boltRoles.push('outer'); }
     const plateGeo = track(new THREE.ExtrudeGeometry(shapes, { depth: JOINT.plateT * MM, bevelEnabled: false }));
-    const width = dbl && !split ? DBL.half * 2 : JOINT.singleW;
-    const spec = width + '×' + JOINT.plateH + '×' + JOINT.plateT + (split ? '（两块）' : '');
+    const dimensions = braceConnectorSpec(dbl, split, JOINT, DBL).replaceAll('*', '×');
+    const spec = dimensions + (split ? '（两块）' : '');
+    const specLabel = (dbl && !split ? '双面 ' : '单面 ') + dimensions + (split ? '（每柱两块）' : '');
     const extent = dbl ? Math.abs(plateShift) + DBL.half : JOINT.singleW - JOINT.singleBack;
-    return { ...inner, B: Q, side, postSection, xc, yc, hh, yTop, plateGeo, bolts, boltRoles, o, spec, split, extent };
+    return { ...inner, B: Q, side, postSection, xc, yc, hh, yTop, plateGeo, plateCount: shapes.length, bolts, boltRoles, o, spec, specLabel, split, extent };
   }
   function build(c, J, z0) {
     const { zw } = c;

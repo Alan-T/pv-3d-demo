@@ -21,7 +21,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
         {{ definition.label }}
       </label>
       <span v-else-if="definition.type === 'size'">{{ definition.label }}</span>
-      <label v-else :for="`param-${definition.key}`">{{ definition.label }}</label>
+      <label v-else :for="`param-${definition.key}`"><slot name="label">{{ definition.label }}</slot></label>
       <HelpHint v-if="definition.hint" :text="definition.hint" :label="definition.label" />
     </div>
     <template v-if="definition.type === 'select'">
@@ -31,6 +31,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
         @change="$emit('change', definition.key, $event.target.value, $event.target)">
         <option v-for="[value, label] in definition.options" :key="value" :value="value">{{ label }}</option>
       </select>
+      <slot name="after-select" />
       <small v-if="selectDescription" :id="`param-${definition.key}-description`" class="field-description">{{ selectDescription }}</small>
     </template>
     <template v-else-if="definition.type === 'size'">

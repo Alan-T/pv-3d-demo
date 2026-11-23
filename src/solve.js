@@ -1,4 +1,4 @@
-import { braceConnection, braceMember } from './brace-layout.js';
+import { braceConnection, braceMember, needsSplitBraceConnector } from './brace-layout.js';
 import { cutPurlin } from './purlin-cut.js';
 import { JOINT, FIX } from './config.js';
 import { DEG, ewMatrix } from './core.js';
@@ -45,11 +45,19 @@ export function solve(p) {
     tF = beamLen / 2 - 75; tR = beamLen / 2 + 75;
     warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
   }
-  // 连接件中心高度仍相对 ±0；斜撑下孔在中心上方 rise，水平偏移随各自柱截面计算。
+  // 板型按同一榀的前、后柱共同选定；安装孔的横向位置按各自柱宽计算。
+  const connector = { outer: p.outer, split: needsSplitBraceConnector(p.outer, FIX.postF.d, FIX.postR.d),
+    boltOffset: JOINT.boltU, singleBack: JOINT.singleBack, rise: JOINT.rise };
   const connections = [
-    braceConnection({ x: xf, y: p.braceHF, side: 1, postWidth: FIX.postF.d, outer: p.outer, boltOffset: JOINT.boltU, rise: JOINT.rise }),
-    braceConnection({ x: xr, y: p.braceHR, side: -1, postWidth: FIX.postR.d, outer: p.outer, boltOffset: JOINT.boltU, rise: JOINT.rise }),
+    braceConnection({ ...connector, x: xf, y: p.braceHF, side: 1, postWidth: FIX.postF.d }),
+    braceConnection({ ...connector, x: xr, y: p.braceHR, side: -1, postWidth: FIX.postR.d }),
   ];
+  for (const joint of connections) {
+    const front = joint.side > 0, width = front ? FIX.postF.d : FIX.postR.d;
+    if (joint.split && joint.plateShift + JOINT.slotW / 2 > width / 2) {
+      warn.push(`${front ? '前' : '后'}立柱截面宽 ${width} mm，共用斜撑连接板分装时 Ø${JOINT.slotW} 安装孔超出柱边，请调整立柱截面`);
+    }
+  }
   const bF = connections[0].Q, bR = connections[1].Q;
   const tFp = along(tF), tRp = along(tR);
   const braceMembers = [braceMember(bF, tFp, JOINT.braceEdge), braceMember(bR, tRp, JOINT.braceEdge)];

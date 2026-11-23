@@ -33,7 +33,7 @@ export function createReport(P, FIX, S, L, preset) {
         counts.size ? [...counts].map(([length, count]) => `${length} mm × ${count}`).join('；') : '无'];
     }),
     ...(O ? [['前 / 后外斜撑', `${r(O.braceOF)} / ${r(O.braceOR)} × ${n}`]] : []),
-    ['斜撑连接板', `${2 * n} 块（${O ? '双面 ' : '单面 '}${L.joints[0].spec}）`],
+    ['斜撑连接板', `${L.joints.reduce((sum, joint) => sum + joint.plateCount, 0) * n} 块 · ${L.joints[0].specLabel}`],
     ['檩托', `${L.counts.clip} 个（${L.purlinClip.name}）`],
     ['M16×40 立柱连接螺栓', `${L.counts.m16} 套`],
     ['M12 螺栓', `${L.counts.m12} 套`],

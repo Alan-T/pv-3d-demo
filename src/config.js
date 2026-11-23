@@ -49,7 +49,7 @@ const SECTION_LIB = `
 });
 for (const key of ['postF', 'postR', 'braceF', 'braceR', 'braceOF', 'braceOR']) FIX[key] = {};
 const section = (kind, rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-// 立柱拉杆和檩条拉杆共用规格，仅按截面尺寸选型，暂不区分 S420GD 等材质牌号。
+// 立柱拉杆和檩条拉杆共用截面规格，材质牌号按排布中的构件分别设置。
 const TIE_SECTION_LIB = [
   { type: 'L', name: 'L35*35*1.6', d: 35, f: 35, t: 1.6 },
   { type: 'C', name: 'C59*39*8*1.6', d: 59, f: 39, l: 8, t: 1.6 },
@@ -68,6 +68,11 @@ function applySection(key, { name, ...dimensions }) {
 }
 
 const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
+
+export const MATERIAL_GRADE_OPTIONS = ['S350GD', 'S420GD', 'S450GD', 'S550GD', 'Q235B'];
+
+export const PURLIN_ACCESSORY_KEYS = ['purlinClip', 'purlinConnector'];
+const ACCESSORY_SECTION_KEYS = [...PURLIN_ACCESSORY_KEYS, 'braceConnector', 'braceConnectorF', 'braceConnectorR'];
 // 檩托：立边高*底边宽*厚度*长度（mm）。
 const PURLIN_CLIP_SPECS = ['L100*63*6.0*50', 'L90*56*5.0*50', 'L75*50*5.0*50'];
 // 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
@@ -92,6 +97,7 @@ const PURLIN_CONNECTOR_SPECS = [
 // 两套预设使用相同字段和分组顺序；长度单位 mm，角度单位 °，坡度单位 %。
 // F / R 表示前 / 后；保留未启用构件的参数，便于切换固定方式或启用外斜撑。
 // layouts 中的每一项对应一个排布标签，按数组顺序编号；其余设计参数由同图纸的排布共用。
+// 每项的 sections 与 materials 分别配置截面和材质。材质空字符串表示未指定。
 const PRESETS = {
   // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
@@ -158,8 +164,6 @@ const PRESETS = {
         purlinCutLengths: [], // 自定义时从西向东列出各段净长（mm）
         pitchEnd: 2500, // 首末跨榀距
         pitch: 2800, // 中间跨榀距
-        purlinClip: 'L100*63*6.0*50', // 檩托
-        purlinConnector: 'U108*55*3.0*240', // 檩条连接件
         postTieF: 'ends', postTieR: 'ends', // none 无 / ends 首末跨 / all 全部跨 / custom 自定义
         postTieSpansF: [], postTieSpansR: [], // 自定义时逐跨设置，0 不安装、1 安装
         purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
@@ -170,6 +174,17 @@ const PRESETS = {
           braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
           braceOF: 'C80*40*15*2.0', braceOR: 'C80*40*15*2.0',
           postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+          purlinClip: 'L100*63*6.0*50', purlinConnector: 'U108*55*3.0*240',
+          braceConnector: '160*120*5.75', // 前后柱共用，自动选型后保存单块板的宽*高*厚
+        },
+        materials: {
+          postF: 'S420GD', postR: 'S420GD',
+          beam: 'S420GD', purlin: 'S420GD',
+          braceF: 'S420GD', braceR: 'S420GD',
+          braceOF: 'S420GD', braceOR: 'S420GD',
+          postTie: 'S420GD', purlinTie: 'S420GD',
+          purlinClip: 'Q235B', purlinConnector: 'Q235B',
+          braceConnector: 'Q235B',
         },
       },
       {
@@ -179,8 +194,6 @@ const PRESETS = {
         purlinCutLengths: [],
         pitchEnd: 2500,
         pitch: 2800,
-        purlinClip: 'L100*63*6.0*50',
-        purlinConnector: 'U108*55*3.0*240',
         postTieF: 'ends', postTieR: 'ends',
         postTieSpansF: [], postTieSpansR: [],
         purlinTies: 'all',
@@ -191,6 +204,17 @@ const PRESETS = {
           braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
           braceOF: 'C80*40*15*2.0', braceOR: 'C80*40*15*2.0',
           postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+          purlinClip: 'L100*63*6.0*50', purlinConnector: 'U108*55*3.0*240',
+          braceConnector: '160*120*5.75',
+        },
+        materials: {
+          postF: 'S420GD', postR: 'S420GD',
+          beam: 'S420GD', purlin: 'S420GD',
+          braceF: 'S420GD', braceR: 'S420GD',
+          braceOF: 'S420GD', braceOR: 'S420GD',
+          postTie: 'S420GD', purlinTie: 'S420GD',
+          purlinClip: 'Q235B', purlinConnector: 'Q235B',
+          braceConnector: 'Q235B',
         },
       },
     ],
@@ -260,8 +284,6 @@ const PRESETS = {
         purlinCutLengths: [],
         pitchEnd: 3000,
         pitch: 3300,
-        purlinClip: 'L90*56*5.0*50',
-        purlinConnector: 'U98*55*3.0*220',
         postTieF: 'ends', postTieR: 'ends',
         postTieSpansF: [], postTieSpansR: [],
         purlinTies: 'none',
@@ -272,6 +294,17 @@ const PRESETS = {
           braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
           braceOF: 'C59*39*8*1.8', braceOR: 'C59*39*8*1.8',
           postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+          purlinClip: 'L90*56*5.0*50', purlinConnector: 'U98*55*3.0*220',
+          braceConnector: '280*120*5.75',
+        },
+        materials: {
+          postF: 'S420GD', postR: 'S420GD',
+          beam: 'S420GD', purlin: 'S420GD',
+          braceF: 'S420GD', braceR: 'S420GD',
+          braceOF: 'S420GD', braceOR: 'S420GD',
+          postTie: 'S420GD', purlinTie: 'S420GD',
+          purlinClip: 'Q235B', purlinConnector: 'Q235B',
+          braceConnector: 'Q235B',
         },
       },
       {
@@ -281,8 +314,6 @@ const PRESETS = {
         purlinCutLengths: [],
         pitchEnd: 3000,
         pitch: 3300,
-        purlinClip: 'L90*56*5.0*50',
-        purlinConnector: 'U98*55*3.0*220',
         postTieF: 'ends', postTieR: 'ends',
         postTieSpansF: [], postTieSpansR: [],
         purlinTies: 'none',
@@ -293,6 +324,17 @@ const PRESETS = {
           braceF: 'C59*39*8*1.8', braceR: 'C59*39*8*1.8',
           braceOF: 'C59*39*8*1.8', braceOR: 'C59*39*8*1.8',
           postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
+          purlinClip: 'L90*56*5.0*50', purlinConnector: 'U98*55*3.0*220',
+          braceConnector: '280*120*5.75',
+        },
+        materials: {
+          postF: 'S420GD', postR: 'S420GD',
+          beam: 'S420GD', purlin: 'S420GD',
+          braceF: 'S420GD', braceR: 'S420GD',
+          braceOF: 'S420GD', braceOR: 'S420GD',
+          postTie: 'S420GD', purlinTie: 'S420GD',
+          purlinClip: 'Q235B', purlinConnector: 'Q235B',
+          braceConnector: 'Q235B',
         },
       },
     ],
@@ -300,10 +342,11 @@ const PRESETS = {
 };
 // 应用截面时复制尺寸，保留运行时 FIX 引用，避免修改预设。
 function applyPresetSections(preset, sectionNames = PRESETS[preset].layouts[0].sections) {
-  const sections = Object.entries(sectionNames).map(([key, name]) => {
+  const members = Object.entries(sectionNames).filter(([key]) => !ACCESSORY_SECTION_KEYS.includes(key));
+  const sections = members.map(([key, name]) => {
     const library = getSectionLibrary(key);
     const value = library.find(item => item.name === name);
-    if (!value) throw new Error(`图纸 ${preset} 的 ${SECTION_LABEL[key] || key} 截面不存在：${name}`);
+    if (!value || !Object.hasOwn(SECTION_LABEL, key)) throw new Error(`图纸 ${preset} 的 ${SECTION_LABEL[key] || key} 截面不存在：${name}`);
     return [key, value];
   });
   // 全部名称校验通过后再应用，复制尺寸，避免修改截面库或预设。
@@ -393,7 +436,10 @@ function limits(key) {
   return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
 }
 
-export function getLayoutParameters({ id, label, quantity, sections, ...parameters }) {
+export function getLayoutParameters({ id, label, quantity, sections = {}, materials, ...parameters }) {
+  for (const key of PURLIN_ACCESSORY_KEYS) {
+    if (Object.hasOwn(sections, key)) parameters[key] = sections[key];
+  }
   return parameters;
 }
 

@@ -46,12 +46,7 @@ export function getSnapshot() {
     spliceAvailable: !!(layout?.cuts.positions.length && layout.purlinConnector),
     tieJointAvailable: Object.fromEntries(['postTie', 'purlinTie'].map(type =>
       [type, [0, 1].map(side => !!layout?.jointSpecs?.[type]?.[side])])),
-    braceConnectors: layout?.joints.map(joint => ({
-      key: joint.side < 0 ? 'R' : 'F',
-      label: joint.side < 0 ? '后柱' : '前柱',
-      type: joint.o && !joint.split ? '双面' : '单面',
-      spec: joint.spec,
-    })) ?? [],
+    braceConnectorSpec: layout?.joints[0]?.specLabel ?? '',
     bayCount: layout ? layout.zs.length - 1 : 0,
     frameCount: layout?.frames ?? 0,
     purlinTieCount: layout?.purlinTies.count ?? 0,
@@ -197,10 +192,16 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
       ?? library.find(item => normalizeSection(item.name).includes(query)));
     if (section) {
       applySection(key, section);
-      currentDrawing().active.sections[key] = section.name;
+      currentDrawing().setSection(key, section.name);
       scheduleBuild();
     }
     return currentDrawing().active.sections[key];
+  }
+
+  function changeMaterialGrade(key, value) {
+    const grade = currentDrawing().setMaterialGrade(key, value);
+    publish();
+    return grade;
   }
 
   function loadActiveLayout() {
@@ -339,7 +340,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   return {
-    changeParameter, changeSection, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
+    changeParameter, changeSection, changeMaterialGrade, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
     changePostTieMode, changePostTieBay,
     changePurlinTieBay, changePurlinCutLengths, resetPurlinCutLengths, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
   };

@@ -54,6 +54,7 @@ function build(S, layout) {
     const J = layout.joints[fr];
     if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
       const o = J.o, yBot = J.yc - J.hh, ax = J.xc - J.side * (J.extent + 60);   // 文字挂在板外侧 60
+      const outerPlateX = o.Q.x + J.side * JOINT.boltU;
       const ly = (k) => yBot - 50 - 48 * k;
       specs.foot.push({
         labelSide: -J.side, anchorX: ax,
@@ -61,8 +62,8 @@ function build(S, layout) {
           [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(section('brace', !!fr, true))}`],
           [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(section('brace', !!fr))}`],
           [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
-          [J.xc, J.yc + JOINT.boltPitch / 2, ly(3), 'M12×35 外六角螺栓及螺母 ×' + J.bolts.length],
-          [J.xc - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
+          [J.bolts[1][0], J.bolts[1][1], ly(3), 'M12×35 外六角螺栓及螺母 ×' + J.bolts.length],
+          [outerPlateX - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
           [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
           [J.xc, J.yc - JOINT.boltPitch / 2, ly(6), '两面平垫，螺母侧弹垫；长圆孔'],
         ],

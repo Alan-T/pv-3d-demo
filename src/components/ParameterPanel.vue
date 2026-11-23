@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
 import ParameterField from './ParameterField.vue';
+import MaterialGradeField from './MaterialGradeField.vue';
 import PurlinCutEditor from './PurlinCutEditor.vue';
 import HelpHint from './HelpHint.vue';
 import ProjectInfo from './ProjectInfo.vue';
@@ -14,7 +15,7 @@ const props = defineProps({
   ready: Boolean,
   open: Boolean,
 });
-defineEmits(['update:projectInfo', 'parameter', 'section', 'reset-preset', 'layout-quantity', 'purlin-cut-lengths', 'reset-purlin-cut', 'post-mode', 'post-bay', 'purlin-bay', 'display', 'toggle-sheet']);
+defineEmits(['update:projectInfo', 'parameter', 'section', 'material-grade', 'reset-preset', 'layout-quantity', 'purlin-cut-lengths', 'reset-purlin-cut', 'post-mode', 'post-bay', 'purlin-bay', 'display', 'toggle-sheet']);
 
 const tabs = [
   { id: 'project', label: '项目信息' },
@@ -149,10 +150,12 @@ const displays = [
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="构件规格">
           <section class="layout-parameters layout-member-specs" aria-labelledby="layout-member-heading">
             <h3 id="layout-member-heading">排布规格 <small>{{ currentLayout.label }}</small></h3>
-            <h4>构件截面</h4>
+            <div class="spec-row spec-heading">
+              <h4>构件截面</h4><span title="可选择或直接输入材质牌号">材质</span>
+            </div>
             <div id="sections">
               <datalist id="sectionLib"><option v-for="section in SECTION_LIB" :key="section.name" :value="section.name" /></datalist>
-              <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow">
+              <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow spec-row">
                 <label class="pl" :for="`section-${key}`">{{ label }}</label>
                 <select v-if="key === 'postTie' || key === 'purlinTie'" :id="`section-${key}`" :value="snapshot.sections[key]" :aria-label="`${label}截面`"
                   @change="$emit('section', key, $event.target.value, $event.target)">
@@ -163,20 +166,32 @@ const displays = [
                   autocomplete="off" spellcheck="false" :aria-label="`${label}截面`"
                   title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以" @focus="$event.target.select()"
                   @change="$emit('section', key, $event.target.value, $event.target)">
+                <MaterialGradeField :member="key" :label="label" :value="currentLayout.materials[key]"
+                  @change="(...args) => $emit('material-grade', ...args)" />
               </div>
             </div>
-            <h4>檩托与连接件</h4>
-            <ParameterField :definition="purlinClipField" :parameters="snapshot.parameters"
-              @change="(...args) => $emit('parameter', ...args)" />
-            <ParameterField :definition="purlinConnectorField" :parameters="snapshot.parameters"
-              @change="(...args) => $emit('parameter', ...args)" />
-          </section>
-
-          <section id="brace-connector-specs">
-            <h3>斜撑连接件 <small>自动匹配 · 宽 × 高 × 厚（mm）</small></h3>
-            <div v-for="connector in snapshot.braceConnectors" :key="connector.key" class="prow">
-              <label class="pl" :for="`brace-connector-${connector.key}`">{{ connector.label }}</label>
-              <output :id="`brace-connector-${connector.key}`" class="brace-connector-spec">{{ connector.type }} {{ connector.spec }}</output>
+            <div class="spec-row spec-heading spec-divider">
+              <h4>檩条附件</h4><span>材质</span>
+            </div>
+            <ParameterField v-for="field in [purlinClipField, purlinConnectorField]" :key="field.key"
+              class="spec-row" :definition="field" :parameters="snapshot.parameters" @change="(...args) => $emit('parameter', ...args)">
+              <template #label>{{ field.key === 'purlinClip' ? '檩托' : '连接件' }}</template>
+              <template #after-select>
+                <MaterialGradeField :member="field.key" :label="field.label" :value="currentLayout.materials[field.key]"
+                  @change="(...args) => $emit('material-grade', ...args)" />
+              </template>
+            </ParameterField>
+            <div id="brace-connector-specs">
+              <div class="spec-row spec-heading spec-divider">
+                <h4>斜撑连接件</h4><span>材质</span>
+              </div>
+              <div class="prow spec-row">
+                <label class="pl" for="brace-connector">前后共用</label>
+                <output id="brace-connector" class="brace-connector-spec" aria-describedby="brace-connector-note">{{ snapshot.braceConnectorSpec || '—' }}</output>
+                <MaterialGradeField member="braceConnector" label="斜撑连接件"
+                  :value="currentLayout.materials.braceConnector" @change="(...args) => $emit('material-grade', ...args)" />
+                <small id="brace-connector-note" class="field-description">自动匹配 · 宽 × 高 × 厚（mm）</small>
+              </div>
             </div>
           </section>
         </fieldset>
@@ -226,11 +241,26 @@ const displays = [
 }
 .layout-parameters :deep(.field-description) { color: #636f7d; }
 .layout-member-specs { margin-block: 10px 4px; }
-.layout-member-specs h4 { margin: 12px 0 8px; font-size: 14px; }
+.spec-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.28fr) clamp(96px, 31%, 112px);
+  align-items: center; column-gap: 4px;
+}
+.spec-row > :deep(select), .spec-row > input.psec { width: 100%; min-width: 0; padding-inline: 3px; font-size: 12px; text-align: left; }
+.spec-row :deep(.field-label) { gap: 3px; }
+.spec-heading { margin: 12px 0 8px; font-size: 12px; color: var(--muted); }
+.spec-heading > :first-child { grid-column: 1 / 3; }
+.spec-heading h4 { margin: 0; font-size: 14px; color: var(--ink); }
+.spec-divider { padding-top: 10px; border-top: 1px solid var(--line); }
+#brace-connector-specs .prow { margin-bottom: 0; }
+@media (max-width: 340px) {
+  .spec-row { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .spec-row > :deep(.pl) { grid-column: 1 / -1; }
+  .spec-heading > :first-child { grid-column: 1; }
+}
 .design-parameters h4 { margin: 0 0 10px; font-size: 14px; }
 .design-parameters h4 small { margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: normal; }
 .design-parameters h5 { margin: 16px 0 8px; font-size: 14px; }
-.brace-connector-spec { font-size: 13px; color: var(--blue); text-align: right; }
+.brace-connector-spec { font-size: 12px; color: var(--ink); }
 .layout-counts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; font-size: 12px; }
 .layout-counts > div { display: flex; align-items: baseline; gap: 5px; }
 .layout-counts dt { color: var(--muted); }

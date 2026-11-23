@@ -11,7 +11,7 @@ test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保�
   const part = new BoltsPart({
     beamSection: FIX.beam,
     purlinSection: FIX.purlin, boltSteelMaterial: material, slotMaterial: material,
-    CLAMP, CLIP: getPurlinClipSpec(PRESETS.A.layouts[0].purlinClip), JOINT, track: g => (geometries.push(g), g),
+    CLAMP, CLIP: getPurlinClipSpec(PRESETS.A.layouts[0].sections.purlinClip), JOINT, track: g => (geometries.push(g), g),
   });
   function build(enabled, kind = 'module') {
     const collector = part.collector(33, { moduleSerratedWasher: enabled });

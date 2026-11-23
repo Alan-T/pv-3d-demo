@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRESETS, getPresetParameters } from '../src/config.js';
+import { DBL, FIX, JOINT, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.js';
 import { DrawingLayouts } from '../src/layout-variants.js';
-import { layoutEW } from '../src/solve.js';
+import { BraceConnectorPart } from '../src/parts/brace-connector.js';
+import { layoutEW, solve } from '../src/solve.js';
 
 test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向布置与构件截面独立', () => {
   const a = new DrawingLayouts(PRESETS.A), b = new DrawingLayouts(PRESETS.B);
@@ -47,6 +48,183 @@ test('自定义檩条分段只属于当前排布，复制和恢复后各自保�
     assert.deepEqual(drawing.active.purlinCutLengths, []);
     assert.deepEqual(first.purlinCutLengths, lengths);
   }
+});
+
+const singlePlate = '160*120*5.75', doublePlate = '280*120*5.75';
+const accessoryKeys = ['purlinClip', 'purlinConnector', 'braceConnector'];
+
+test('所有预设排布的规格、材质按相同构件顺序对应，斜撑连接件保存单块板尺寸', () => {
+  for (const [preset, spec] of [[PRESETS.A, singlePlate], [PRESETS.B, doublePlate]]) {
+    for (const layout of [...preset.layouts, ...new DrawingLayouts(preset).layouts]) {
+      assert.deepEqual(Object.keys(layout.sections), Object.keys(layout.materials));
+      assert.equal(Object.keys(layout.sections).length, 13);
+      assert.ok(layout.sections.purlinClip);
+      assert.ok(layout.sections.purlinConnector);
+      assert.equal(layout.sections.braceConnector, spec);
+      for (const key of accessoryKeys) assert.equal(layout.materials[key], 'Q235B');
+      for (const key of Object.keys(SECTION_LABEL)) assert.equal(layout.materials[key], 'S420GD');
+      assert.ok(!Object.hasOwn(layout, 'purlinClip'));
+      assert.ok(!Object.hasOwn(layout, 'purlinConnector'));
+    }
+  }
+});
+
+test('修改柱截面与共用外斜撑时同步各排布连接板尺寸，材质独立保留', () => {
+  const preset = structuredClone(PRESETS.B);
+  preset.layouts[0].sections.braceConnector = 'auto';
+  preset.layouts[1].sections.braceConnector = singlePlate;
+  const drawing = new DrawingLayouts(preset);
+  const specs = () => drawing.layouts.map(layout => layout.sections.braceConnector);
+  assert.deepEqual(specs(), [doublePlate, doublePlate]);
+  drawing.setMaterialGrade('braceConnector', 'Q355B');
+  drawing.setSection('postR', 'C140*60*20*3.0');
+  assert.deepEqual(specs(), [singlePlate, doublePlate]);
+
+  drawing.add();
+  assert.equal(drawing.active.materials.braceConnector, 'Q355B');
+  assert.equal(drawing.active.sections.braceConnector, singlePlate);
+  drawing.setMaterialGrade('braceConnector', 'S350GD');
+  drawing.setSection('postR', preset.layouts[0].sections.postR);
+  assert.deepEqual(specs(), [singlePlate, doublePlate, doublePlate]);
+  drawing.captureParameters({ outer: 0 });
+  assert.deepEqual(specs(), [singlePlate, singlePlate, singlePlate]);
+
+  drawing.select('2');
+  drawing.reset();
+  assert.deepEqual(specs(), [singlePlate, doublePlate, doublePlate]);
+  assert.deepEqual(drawing.layouts.map(layout => layout.materials.braceConnector), ['Q355B', 'Q235B', 'S350GD']);
+  drawing.select('1');
+  drawing.reset();
+  assert.equal(drawing.active.sections.braceConnector, doublePlate);
+  assert.equal(drawing.active.materials.braceConnector, 'Q235B');
+});
+
+test('旧排布连接规格迁入 sections，修改、复制、切换和恢复后按当前排布生成扁平参数', () => {
+  const preset = structuredClone(PRESETS.A);
+  const [legacy, mixed] = preset.layouts;
+  const oldSpecs = { purlinClip: 'L90*56*5.0*50', purlinConnector: 'U98*55*3.0*220' };
+  const newSpecs = { purlinClip: 'L100*63*6.0*50', purlinConnector: 'U108*55*3.0*240' };
+  for (const layout of [legacy, mixed]) Object.assign(layout, oldSpecs);
+  for (const key of Object.keys(oldSpecs)) delete legacy.sections[key];
+  Object.assign(mixed.sections, newSpecs);
+  const drawing = new DrawingLayouts(preset);
+
+  function check(expected) {
+    const parameters = drawing.getModelParameters();
+    for (const [key, spec] of Object.entries(expected)) {
+      assert.equal(drawing.active.sections[key], spec);
+      assert.equal(parameters[key], spec);
+      assert.ok(!Object.hasOwn(drawing.active, key));
+    }
+    assert.ok(!Object.hasOwn(parameters, 'sections'));
+  }
+  for (const key of Object.keys(oldSpecs)) {
+    assert.equal(getPresetParameters(preset, legacy)[key], oldSpecs[key]);
+    assert.equal(getPresetParameters(preset, mixed)[key], newSpecs[key]);
+  }
+  check(oldSpecs);
+  drawing.select('2');
+  check(newSpecs);
+  drawing.captureParameters(oldSpecs);
+  check(oldSpecs);
+  drawing.add();
+  check(oldSpecs);
+  drawing.captureParameters(newSpecs);
+  check(newSpecs);
+  drawing.select('2');
+  check(oldSpecs);
+  drawing.reset();
+  check(newSpecs);
+  drawing.select('1');
+  check(oldSpecs);
+});
+
+test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整', t => {
+  t.after(() => applyPresetSections('A'));
+  const parameters = getPresetParameters(PRESETS.B);
+  const narrow = 'C80*40*15*3.0', wide = 'C200*80*30*3.0';
+  const connector = new BraceConnectorPart({
+    DBL, JOINT, postFSection: FIX.postF, postRSection: FIX.postR,
+    track(geometry) { t.after(() => geometry.dispose()); return geometry; },
+  });
+  for (const [postF, postR, outer, split, offsets, expectedLabel] of [
+    [narrow, narrow, 1, false, [120, 120], '双面 280×120×5.75'],
+    [wide, narrow, 0, false, [160, 120], '单面 160×120×5.75'],
+    [wide, narrow, 1, true, [170, 140], '单面 160×120×5.75（每柱两块）'],
+    [narrow, wide, 1, true, [140, 170], '单面 160×120×5.75（每柱两块）'],
+  ]) {
+    applyPresetSections('B', { postF, postR });
+    const s = solve({ ...parameters, outer });
+    assert.deepEqual(s.connections.map(c => c.offset), offsets);
+    for (const [i, c] of s.connections.entries()) {
+      const joint = connector.braceJoint(c, i ? s.tRp : s.tFp, i ? s.outer?.toRp : s.outer?.toFp);
+      assert.equal(joint.specLabel, expectedLabel);
+      assert.equal(joint.split, split);
+      assert.equal(joint.plateCount, split ? 2 : 1);
+      assert.equal(joint.boltRoles.filter(role => role === 'post').length, 2 * joint.plateCount);
+      if (split) {
+        assert.ok(c.plateShift >= JOINT.singleBack);
+        for (const x of [joint.bolts[0][0], joint.bolts[2][0]]) {
+          assert.ok(Math.abs(x - c.xc) + JOINT.slotW / 2 <= joint.postSection.d / 2);
+        }
+        assert.equal(joint.Q.x, joint.bolts[0][0] + c.side * JOINT.boltU);
+        assert.equal(joint.o.Q.x, joint.bolts[2][0] - c.side * JOINT.boltU);
+      }
+    }
+  }
+  applyPresetSections('B', { postF: 'C50*30*10*2.0', postR: wide });
+  const s = solve({ ...parameters, outer: 1 });
+  assert.ok(s.connections.every(c => c.split));
+  assert.ok(s.warn.some(w => w.includes('前立柱截面宽 50 mm') && w.includes('安装孔超出柱边')));
+});
+
+test('构件材质与截面独立，复制、切换和恢复排布均保留正确牌号', () => {
+  const preset = structuredClone(PRESETS.A);
+  preset.layouts[1].materials = { beam: 'S350GD', purlinClip: '', purlinConnector: 'Q355B' };
+  const drawing = new DrawingLayouts(preset);
+  const first = drawing.active;
+  assert.deepEqual(first.materials, preset.layouts[0].materials);
+  assert.equal(drawing.setMaterialGrade('postF', '  S390GD+ZM  '), 'S390GD+ZM');
+  assert.equal(drawing.setMaterialGrade('postR', '  '), '');
+  assert.equal(drawing.setMaterialGrade('unknown', 'grade'), undefined);
+  assert.ok(!Object.hasOwn(first.materials, 'unknown'));
+  assert.deepEqual(first.sections, preset.layouts[0].sections);
+  assert.ok(!Object.hasOwn(drawing.getModelParameters(), 'materials'));
+  assert.ok(!Object.hasOwn(getPresetParameters(preset, first), 'materials'));
+  drawing.captureParameters({ materials: { postF: 'S450GD' } });
+  assert.equal(first.materials.postF, 'S390GD+ZM');
+
+  drawing.add();
+  assert.deepEqual(drawing.active.materials, first.materials);
+  drawing.setMaterialGrade('postF', 'S550GD');
+  assert.equal(first.materials.postF, 'S390GD+ZM');
+  drawing.select('2');
+  assert.deepEqual(drawing.active.materials, preset.layouts[1].materials);
+  drawing.setMaterialGrade('purlinConnector', 'S450GD');
+  drawing.setMaterialGrade('purlinClip', 'Q235B');
+  drawing.reset();
+  assert.deepEqual(drawing.active.materials, { beam: 'S350GD', purlinClip: '', purlinConnector: 'Q355B' });
+  drawing.select('1');
+  assert.equal(drawing.active.materials.postF, 'S390GD+ZM');
+  assert.equal(drawing.active.materials.postR, '');
+  for (const key of accessoryKeys) assert.equal(drawing.setMaterialGrade(key, ''), '');
+  drawing.reset();
+  for (const key of accessoryKeys) assert.equal(drawing.active.materials[key], 'Q235B');
+  assert.deepEqual(preset.layouts[0].materials, PRESETS.A.layouts[0].materials);
+});
+
+test('旧前后斜撑连接件规格迁入共用规格，几何计算仍使用实际截面', () => {
+  const preset = structuredClone(PRESETS.A);
+  const sections = preset.layouts[0].sections;
+  delete sections.braceConnector;
+  Object.assign(sections, { braceConnectorF: 'auto', braceConnectorR: 'auto' });
+  const drawing = new DrawingLayouts(preset);
+  assert.equal(drawing.active.sections.braceConnector, singlePlate);
+  for (const key of ['braceConnectorF', 'braceConnectorR']) {
+    assert.ok(!Object.hasOwn(drawing.active.sections, key));
+    assert.ok(!Object.hasOwn(drawing.getModelParameters(), key));
+  }
+  assert.doesNotThrow(() => applyPresetSections('A', sections));
 });
 
 function applyCustomCuts(drawing, id) {
@@ -146,7 +324,10 @@ test('从预设逐项读取排布套数、参数和截面，恢复时取稳定�
   ];
   const preset = { projectInfo: {}, tilt: 25, layouts };
   const drawing = new DrawingLayouts(preset);
-  assert.deepEqual(drawing.layouts.map(({ id, label, ...layout }) => layout), layouts);
+  const expectedLayouts = layouts.map(layout => ({
+    ...layout, sections: { ...layout.sections, braceConnector: singlePlate },
+  }));
+  assert.deepEqual(drawing.layouts.map(({ id, label, materials, ...layout }) => layout), expectedLayouts);
   const expectedFirst = { tilt: 25, cols: 29, pitch: 2500, offset: 11 };
   assert.deepEqual(getPresetParameters(preset), expectedFirst);
   assert.deepEqual(getPresetParameters(preset, drawing.active), expectedFirst);
@@ -166,14 +347,14 @@ test('从预设逐项读取排布套数、参数和截面，恢复时取稳定�
   assert.equal(drawing.active.label, '排布2');
   assert.equal(drawing.active.quantity, 8);
   assert.deepEqual(drawing.getModelParameters(), { tilt: 25, cols: 9, pitch: 3100, offset: 13 });
-  assert.deepEqual(drawing.active.sections, layouts[2].sections);
+  assert.deepEqual(drawing.active.sections, expectedLayouts[2].sections);
 
   drawing.add();
   assert.equal(drawing.activeId, '4');
   drawing.reset();
   assert.equal(drawing.active.quantity, 1);
   assert.deepEqual(drawing.getModelParameters(), expectedFirst);
-  assert.deepEqual(drawing.active.sections, layouts[0].sections);
+  assert.deepEqual(drawing.active.sections, expectedLayouts[0].sections);
 });
 
 test('只有一条排布预设时可直接使用和新增', () => {

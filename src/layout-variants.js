@@ -1,16 +1,44 @@
-import { getLayoutParameters } from './config.js';
+import { DBL, getLayoutParameters, JOINT, PURLIN_ACCESSORY_KEYS, SECTION_LABEL, SECTION_LIB } from './config.js';
+import { braceConnectorSpec, needsSplitBraceConnector } from './brace-layout.js';
 import { getPurlinDimensions } from './solve.js';
 
 export { getLayoutParameters };
+
+const postWidths = new Map(SECTION_LIB.map(({ name, d }) => [name, d]));
+
+function updateBraceConnector(layout, sharedOuter) {
+  const { sections } = layout;
+  const outer = layout.outer ?? sharedOuter;
+  const split = needsSplitBraceConnector(outer, postWidths.get(sections.postF) ?? 0, postWidths.get(sections.postR) ?? 0);
+  sections.braceConnector = braceConnectorSpec(outer, split, JOINT, DBL);
+}
+
+function normalizeLayout({ sections, materials, ...layout }, sharedOuter) {
+  const { braceConnectorF, braceConnectorR, ...specs } = sections ?? {};
+  // 旧排布把檩托、檩条连接件存在顶层。新旧字段并存时使用 sections。
+  for (const key of PURLIN_ACCESSORY_KEYS) {
+    if (Object.hasOwn(layout, key)) {
+      if (!Object.hasOwn(specs, key)) specs[key] = layout[key];
+      delete layout[key];
+    }
+  }
+  const normalized = {
+    ...layout,
+    sections: specs,
+    materials: { ...materials },
+  };
+  updateBraceConnector(normalized, sharedOuter);
+  return normalized;
+}
 
 export class DrawingLayouts {
   constructor(preset) {
     const { layouts, projectInfo, ...shared } = preset;
     if (!layouts.length) throw new RangeError('每张图纸至少需要一种排布');
     this.defaultShared = shared;
-    this.defaultLayouts = layouts;
+    this.defaultLayouts = layouts.map(layout => normalizeLayout(layout, shared.outer));
     this.sharedParameters = structuredClone(shared);
-    this.layouts = layouts.map((layout, index) => ({
+    this.layouts = this.defaultLayouts.map((layout, index) => ({
       ...structuredClone(layout), id: String(index + 1), label: `排布${index + 1}`,
     }));
     this.activeId = this.layouts[0].id;
@@ -22,7 +50,7 @@ export class DrawingLayouts {
   }
 
   purlinLength(layout) {
-    return getPurlinDimensions({ ...this.sharedParameters, ...layout }).purlinLen;
+    return getPurlinDimensions({ ...this.sharedParameters, ...getLayoutParameters(layout) }).purlinLen;
   }
 
   getCutSettings() {
@@ -32,11 +60,12 @@ export class DrawingLayouts {
     };
   }
 
-  resetChangedCuts(previous) {
+  refreshDerivedValues(previousCuts) {
     // 预设存数值，下拉框返回字符串；只有料长上限实际改变才重切。
-    const maxChanged = String(this.sharedParameters.maxPurlin) !== String(previous.maxLength);
+    const maxChanged = String(this.sharedParameters.maxPurlin) !== String(previousCuts.maxLength);
     this.layouts.forEach((layout, index) => {
-      if (maxChanged || Math.abs(this.purlinLength(layout) - previous.lengths[index]) > 1e-6) {
+      updateBraceConnector(layout, this.sharedParameters.outer);
+      if (maxChanged || Math.abs(this.purlinLength(layout) - previousCuts.lengths[index]) > 1e-6) {
         layout.purlinCutMode = 'auto';
         layout.purlinCutLengths = [];
       }
@@ -49,10 +78,11 @@ export class DrawingLayouts {
     const active = this.active;
     const local = getLayoutParameters(active);
     for (const [key, value] of Object.entries(structuredClone(parameters))) {
-      if (Object.hasOwn(local, key)) active[key] = value;
+      if (PURLIN_ACCESSORY_KEYS.includes(key)) active.sections[key] = value;
+      else if (Object.hasOwn(local, key)) active[key] = value;
       else if (Object.hasOwn(this.sharedParameters, key)) this.sharedParameters[key] = value;
     }
-    this.resetChangedCuts(previousCuts);
+    this.refreshDerivedValues(previousCuts);
   }
 
   getModelParameters() {
@@ -88,6 +118,20 @@ export class DrawingLayouts {
     return this.active.quantity;
   }
 
+  setSection(key, name) {
+    if (!Object.hasOwn(SECTION_LABEL, key)) return;
+    const layout = this.active;
+    layout.sections[key] = name;
+    updateBraceConnector(layout, this.sharedParameters.outer);
+  }
+
+  setMaterialGrade(key, value) {
+    const grades = this.active.materials;
+    if (!Object.hasOwn(grades, key)) return undefined;
+    if (typeof value === 'string') grades[key] = value.trim();
+    return grades[key];
+  }
+
   reset() {
     const previousCuts = this.getCutSettings();
     this.sharedParameters = structuredClone(this.defaultShared);
@@ -95,6 +139,6 @@ export class DrawingLayouts {
     const index = this.layouts.findIndex(layout => layout.id === this.activeId);
     const { id, label, quantity } = this.layouts[index];
     this.layouts[index] = { ...structuredClone(original), id, label, quantity };
-    this.resetChangedCuts(previousCuts);
+    this.refreshDerivedValues(previousCuts);
   }
 }
