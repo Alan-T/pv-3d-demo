@@ -19,7 +19,7 @@ test('檩托规格保留四个尺寸，预设可用，未知名称不回退', ()
     assert.equal(getPurlinClipSpec(name).t, expected[index][2], '修改实例不能污染规格库');
   });
   for (const preset of Object.values(PRESETS)) {
-    for (const { parameters } of preset.layouts) assert.ok(getPurlinClipSpec(parameters.purlinClip));
+    for (const layout of preset.layouts) assert.ok(getPurlinClipSpec(layout.purlinClip));
   }
   assert.equal(getPurlinClipSpec('L80*64*4*50'), null);
 });

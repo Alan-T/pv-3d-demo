@@ -230,10 +230,10 @@ function build() {
 // 标注文字保持固定的屏幕像素高度（每帧调用）
 const tmpV = new V3(), camDir = new V3();
 const labelRight = new V3(), labelParentInverse = new THREE.Matrix3();
-function updateLabels(cam) {
-  const hpx = canvas.clientHeight || 1;
-  const k = (shared.state.labelK = canvas.clientWidth < 520 ? 1.0 : 1.25);
-  const collapsed = {};
+function updateLabels(cam, viewport = canvas) {
+  const hpx = viewport.clientHeight || 1;
+  const k = (shared.state.labelK = viewport.clientWidth < 520 ? 1.0 : 1.25);
+  const collapsed = new Set();
   cam.getWorldDirection(camDir);
   for (const sp of shared.labels) {
     sp.getWorldPosition(tmpV);
@@ -256,11 +256,13 @@ function updateLabels(cam) {
       }
       sp.position.copy(ud.outside.at).addScaledVector(direction, w / 2 + 6 * wpp);
     }
-    if (ud.fit) {
-      sp.visible = w < ud.fit.span * 0.92;
-      if (!sp.visible) collapsed[ud.fit.key] = true;
-    }
-    if (ud.altFor) sp.visible = !!collapsed[ud.altFor];
+    if (ud.fit && w >= ud.fit.span * 0.92) collapsed.add(ud.fit.key);
+  }
+  // 任一跨放不下文字，整组榀距就切换为汇总公式。
+  for (const sp of shared.labels) {
+    const { fit, altFor } = sp.userData;
+    if (fit) sp.visible = !collapsed.has(fit.key);
+    else if (altFor) sp.visible = collapsed.has(altFor);
   }
 }
 

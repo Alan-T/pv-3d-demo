@@ -1,3 +1,7 @@
+export function getLayoutParameters({ id, label, quantity, sections, ...parameters }) {
+  return parameters;
+}
+
 export class DrawingLayouts {
   constructor(preset) {
     const { layouts, projectInfo, ...shared } = preset;
@@ -18,15 +22,16 @@ export class DrawingLayouts {
 
   // P 是旧有三维模型、标注编辑器共用的参数对象。同一帧内编辑后即切换时也需记下最新值。
   captureParameters(parameters) {
-    const local = this.active.parameters;
+    const active = this.active;
+    const local = getLayoutParameters(active);
     for (const [key, value] of Object.entries(structuredClone(parameters))) {
-      const target = Object.hasOwn(local, key) ? local : this.sharedParameters;
-      target[key] = value;
+      if (Object.hasOwn(local, key)) active[key] = value;
+      else if (Object.hasOwn(this.sharedParameters, key)) this.sharedParameters[key] = value;
     }
   }
 
   getModelParameters() {
-    return structuredClone({ ...this.sharedParameters, ...this.active.parameters });
+    return structuredClone({ ...this.sharedParameters, ...getLayoutParameters(this.active) });
   }
 
   select(id) {
@@ -37,8 +42,7 @@ export class DrawingLayouts {
 
   add() {
     const id = String(this.nextId++);
-    const { parameters, sections } = structuredClone(this.active);
-    this.layouts.push({ id, label: `排布${this.layouts.length + 1}`, quantity: 1, parameters, sections });
+    this.layouts.push({ ...structuredClone(this.active), id, label: `排布${this.layouts.length + 1}`, quantity: 1 });
     this.activeId = id;
   }
 
@@ -62,7 +66,8 @@ export class DrawingLayouts {
   reset() {
     this.sharedParameters = structuredClone(this.defaultShared);
     const original = this.defaultLayouts[Number(this.activeId) - 1] ?? this.defaultLayouts[0];
-    const { parameters, sections } = structuredClone(original);
-    Object.assign(this.active, { parameters, sections });
+    const index = this.layouts.findIndex(layout => layout.id === this.activeId);
+    const { id, label, quantity } = this.layouts[index];
+    this.layouts[index] = { ...structuredClone(original), id, label, quantity };
   }
 }

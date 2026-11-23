@@ -1,4 +1,4 @@
-
+import { getLayoutParameters } from './layout-variants.js';
 
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
@@ -155,17 +155,15 @@ const PRESETS = {
     layouts: [
       {
         quantity: 1,
-        parameters: {
-          cols: 26, // 东西向组件列数，榀数由此计算
-          pitchEnd: 2500, // 首末跨榀距
-          pitch: 2800, // 中间跨榀距
-          purlinClip: 'L100*63*6.0*50', // 檩托
-          purlinConnector: 'U108*55*3.0*240', // 檩条连接件
-          postTieF: 'ends', postTieR: 'ends', // none 无 / ends 首末跨 / all 全部跨 / custom 自定义
-          postTieSpansF: [], postTieSpansR: [], // 自定义时逐跨设置，0 不安装、1 安装
-          purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
-          purlinTieSpans: [],
-        },
+        cols: 26, // 东西向组件列数，榀数由此计算
+        pitchEnd: 2500, // 首末跨榀距
+        pitch: 2800, // 中间跨榀距
+        purlinClip: 'L100*63*6.0*50', // 檩托
+        purlinConnector: 'U108*55*3.0*240', // 檩条连接件
+        postTieF: 'ends', postTieR: 'ends', // none 无 / ends 首末跨 / all 全部跨 / custom 自定义
+        postTieSpansF: [], postTieSpansR: [], // 自定义时逐跨设置，0 不安装、1 安装
+        purlinTies: 'all', // none 无 / all 全部跨 / inner 剔除首末跨 / custom 自定义
+        purlinTieSpans: [],
         sections: {
           postF: 'C90*55*20*3.0', postR: 'C90*55*20*3.0',
           beam: 'C90*50*15*2.0', purlin: 'C100*55*20*1.8',
@@ -176,17 +174,15 @@ const PRESETS = {
       },
       {
         quantity: 1,
-        parameters: {
-          cols: 13,
-          pitchEnd: 2500,
-          pitch: 2800,
-          purlinClip: 'L100*63*6.0*50',
-          purlinConnector: 'U108*55*3.0*240',
-          postTieF: 'ends', postTieR: 'ends',
-          postTieSpansF: [], postTieSpansR: [],
-          purlinTies: 'all',
-          purlinTieSpans: [],
-        },
+        cols: 13,
+        pitchEnd: 2500,
+        pitch: 2800,
+        purlinClip: 'L100*63*6.0*50',
+        purlinConnector: 'U108*55*3.0*240',
+        postTieF: 'ends', postTieR: 'ends',
+        postTieSpansF: [], postTieSpansR: [],
+        purlinTies: 'all',
+        purlinTieSpans: [],
         sections: {
           postF: 'C90*55*20*3.0', postR: 'C90*55*20*3.0',
           beam: 'C90*50*15*2.0', purlin: 'C100*55*20*1.8',
@@ -257,17 +253,15 @@ const PRESETS = {
     layouts: [
       {
         quantity: 1,
-        parameters: {
-          cols: 27,
-          pitchEnd: 3000,
-          pitch: 3300,
-          purlinClip: 'L90*56*5.0*50',
-          purlinConnector: 'U98*55*3.0*220',
-          postTieF: 'ends', postTieR: 'ends',
-          postTieSpansF: [], postTieSpansR: [],
-          purlinTies: 'none',
-          purlinTieSpans: [],
-        },
+        cols: 27,
+        pitchEnd: 3000,
+        pitch: 3300,
+        purlinClip: 'L90*56*5.0*50',
+        purlinConnector: 'U98*55*3.0*220',
+        postTieF: 'ends', postTieR: 'ends',
+        postTieSpansF: [], postTieSpansR: [],
+        purlinTies: 'none',
+        purlinTieSpans: [],
         sections: {
           postF: 'C80*40*15*3.0', postR: 'C80*40*15*3.0',
           beam: 'C80*40*10*2.0', purlin: 'C90*50*15*1.8',
@@ -278,17 +272,15 @@ const PRESETS = {
       },
       {
         quantity: 1,
-        parameters: {
-          cols: 14,
-          pitchEnd: 3000,
-          pitch: 3300,
-          purlinClip: 'L90*56*5.0*50',
-          purlinConnector: 'U98*55*3.0*220',
-          postTieF: 'ends', postTieR: 'ends',
-          postTieSpansF: [], postTieSpansR: [],
-          purlinTies: 'none',
-          purlinTieSpans: [],
-        },
+        cols: 14,
+        pitchEnd: 3000,
+        pitch: 3300,
+        purlinClip: 'L90*56*5.0*50',
+        purlinConnector: 'U98*55*3.0*220',
+        postTieF: 'ends', postTieR: 'ends',
+        postTieSpansF: [], postTieSpansR: [],
+        purlinTies: 'none',
+        purlinTieSpans: [],
         sections: {
           postF: 'C80*40*15*3.0', postR: 'C80*40*15*3.0',
           beam: 'C80*40*10*2.0', purlin: 'C90*50*15*1.8',
@@ -396,7 +388,7 @@ function limits(key) {
 
 // 三维模型使用图纸共用参数和当前排布参数的独立副本。
 function getPresetParameters({ projectInfo, layouts, ...sharedParameters }, layout = layouts[0]) {
-  return structuredClone({ ...sharedParameters, ...layout.parameters });
+  return structuredClone({ ...sharedParameters, ...getLayoutParameters(layout) });
 }
 const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };

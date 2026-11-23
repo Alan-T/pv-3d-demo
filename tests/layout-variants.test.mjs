@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRESETS } from '../src/config.js';
+import { PRESETS, getPresetParameters } from '../src/config.js';
 import { DrawingLayouts } from '../src/layout-variants.js';
 
 test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向布置与构件截面独立', () => {
   const a = new DrawingLayouts(PRESETS.A), b = new DrawingLayouts(PRESETS.B);
-  assert.deepEqual(a.layouts.map(item => item.parameters.cols), [26, 13]);
-  assert.deepEqual(b.layouts.map(item => item.parameters.cols), [27, 14]);
+  assert.deepEqual(a.layouts.map(item => item.cols), [26, 13]);
+  assert.deepEqual(b.layouts.map(item => item.cols), [27, 14]);
 
   const p = a.getModelParameters();
   Object.assign(p, { cols: 24, pitch: 3200, tilt: 18, modW: 1250, purlinTies: 'custom', purlinTieSpans: [1, 0] });
@@ -23,51 +23,57 @@ test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向�
   assert.equal(a.getModelParameters().pitch, 3200);
   assert.equal(a.active.sections.purlinTie, 'C60*40*10*1.6');
   assert.deepEqual(a.getModelParameters().purlinTieSpans, [1, 0]);
-  assert.equal(PRESETS.A.layouts[0].parameters.cols, 26);
+  assert.equal(PRESETS.A.layouts[0].cols, 26);
 });
 
 test('从预设逐项读取排布套数、参数和截面，恢复时取稳定标识对应的预设', () => {
   const layouts = [
-    { quantity: 4, parameters: { cols: 29, pitch: 2500, offset: 11 }, sections: { beam: 'C80' } },
-    { quantity: 7, parameters: { cols: 21, pitch: 2800, offset: 12 }, sections: { beam: 'C90' } },
-    { quantity: 2, parameters: { cols: 9, pitch: 3100, offset: 13 }, sections: { beam: 'C100' } },
+    { quantity: 4, cols: 29, pitch: 2500, offset: 11, sections: { beam: 'C80' } },
+    { quantity: 7, cols: 21, pitch: 2800, offset: 12, sections: { beam: 'C90' } },
+    { quantity: 2, cols: 9, pitch: 3100, offset: 13, sections: { beam: 'C100' } },
   ];
-  const drawing = new DrawingLayouts({ projectInfo: {}, tilt: 25, layouts });
-  assert.deepEqual(drawing.layouts.map(({ quantity, parameters, sections }) => ({ quantity, parameters, sections })), layouts);
+  const preset = { projectInfo: {}, tilt: 25, layouts };
+  const drawing = new DrawingLayouts(preset);
+  assert.deepEqual(drawing.layouts.map(({ id, label, ...layout }) => layout), layouts);
+  const expectedFirst = { tilt: 25, cols: 29, pitch: 2500, offset: 11 };
+  assert.deepEqual(getPresetParameters(preset), expectedFirst);
+  assert.deepEqual(getPresetParameters(preset, drawing.active), expectedFirst);
+  assert.deepEqual(drawing.getModelParameters(), expectedFirst);
   drawing.select('3');
   drawing.captureParameters({ ...drawing.getModelParameters(), tilt: 20, offset: 20 });
   drawing.setQuantity(8);
   drawing.active.sections.beam = 'C120';
   assert.equal(drawing.getModelParameters().offset, 20);
-  assert.equal(layouts[2].parameters.offset, 13);
+  assert.equal(layouts[2].offset, 13);
   assert.equal(layouts[2].sections.beam, 'C100');
   drawing.select('2');
-  assert.deepEqual(drawing.getModelParameters(), { tilt: 20, ...layouts[1].parameters });
+  assert.deepEqual(drawing.getModelParameters(), { tilt: 20, cols: 21, pitch: 2800, offset: 12 });
   drawing.select('3');
   drawing.remove('1');
   drawing.reset();
   assert.equal(drawing.active.label, '排布2');
   assert.equal(drawing.active.quantity, 8);
-  assert.deepEqual(drawing.getModelParameters(), { tilt: 25, ...layouts[2].parameters });
+  assert.deepEqual(drawing.getModelParameters(), { tilt: 25, cols: 9, pitch: 3100, offset: 13 });
   assert.deepEqual(drawing.active.sections, layouts[2].sections);
 
   drawing.add();
   assert.equal(drawing.activeId, '4');
   drawing.reset();
   assert.equal(drawing.active.quantity, 1);
-  assert.deepEqual(drawing.active.parameters, layouts[0].parameters);
+  assert.deepEqual(drawing.getModelParameters(), expectedFirst);
   assert.deepEqual(drawing.active.sections, layouts[0].sections);
 });
 
 test('只有一条排布预设时可直接使用和新增', () => {
-  const drawing = new DrawingLayouts({ ...PRESETS.B, layouts: [PRESETS.B.layouts[1]] });
+  const preset = { ...PRESETS.B, layouts: [PRESETS.B.layouts[1]] };
+  const drawing = new DrawingLayouts(preset);
   assert.deepEqual(drawing.layouts.map(item => item.id), ['1']);
   assert.equal(drawing.remove('1'), false);
   drawing.add();
   assert.equal(drawing.activeId, '2');
-  assert.deepEqual(drawing.active.parameters, PRESETS.B.layouts[1].parameters);
+  assert.deepEqual(drawing.getModelParameters(), getPresetParameters(preset));
   drawing.reset();
-  assert.deepEqual(drawing.active.parameters, PRESETS.B.layouts[1].parameters);
+  assert.deepEqual(drawing.getModelParameters(), getPresetParameters(preset));
 });
 
 test('新增独立复制当前排布；恢复只重置当前排布和共享参数，保留套数', () => {
@@ -82,18 +88,20 @@ test('新增独立复制当前排布；恢复只重置当前排布和共享参�
   assert.equal(drawing.activeId, '3');
   assert.equal(drawing.active.quantity, 1);
   assert.equal(drawing.getModelParameters().cols, 11);
-  assert.deepEqual(drawing.active.parameters.postTieSpansR, [1, 0]);
-  drawing.active.parameters.postTieSpansR[1] = 1;
+  assert.deepEqual(drawing.active.postTieSpansR, [1, 0]);
+  drawing.active.postTieSpansR[1] = 1;
   drawing.active.sections.postR = 'C80*40*15*2.0';
 
   drawing.select('2');
-  assert.deepEqual(drawing.active.parameters.postTieSpansR, [1, 0]);
+  assert.deepEqual(drawing.active.postTieSpansR, [1, 0]);
   assert.equal(drawing.active.sections.postR, 'C80*40*15*3.0');
   assert.equal(drawing.active.quantity, 8);
   drawing.reset();
   assert.equal(drawing.getModelParameters().tilt, PRESETS.A.tilt);
   assert.equal(drawing.getModelParameters().cols, 13);
   assert.equal(drawing.active.quantity, 8);
+  assert.notEqual(drawing.active.postTieSpansR, PRESETS.A.layouts[1].postTieSpansR);
+  assert.notEqual(drawing.active.sections, PRESETS.A.layouts[1].sections);
   drawing.select('3');
   assert.equal(drawing.getModelParameters().cols, 11);
   assert.equal(drawing.active.sections.postR, 'C80*40*15*2.0');
@@ -129,7 +137,7 @@ test('删除选中的首项后，下一排布保留参数和标识，后续新�
   drawing.select('1');
   assert.equal(drawing.remove('1'), true);
   assert.equal(drawing.activeId, '2');
-  assert.equal(drawing.active.parameters.cols, 13);
+  assert.equal(drawing.active.cols, 13);
   assert.equal(drawing.active.quantity, 7);
   drawing.add();
   assert.deepEqual(drawing.layouts.map(({ id, label }) => [id, label]), [
