@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { TinyOption } from '@opentiny/vue';
+import FieldSelect from './FieldSelect.vue';
 import type { DesignerSnapshot } from '../designer.ts';
 import type { PresetId } from '../config.ts';
 import type { JointType, ViewName } from '../joint-view-types.ts';
@@ -49,11 +51,11 @@ function sideTitle(side: number) {
     <div class="title">
       <div class="title-row">
         <b>光伏固定支架 3D 设计</b>
-        <select id="drawing-preset" aria-label="切换图纸" title="切换图纸" :value="snapshot.preset"
-          :disabled="!ready" @change="$emit('preset', ($event.currentTarget as HTMLSelectElement).value as PresetId)">
-          <option value="A" title="2 排组件 · 螺栓固定">图纸一</option>
-          <option value="B" title="3 排组件 · 压块固定 · 带外斜撑">图纸二</option>
-        </select>
+        <field-select id="drawing-preset" class="drawing-preset" label="切换图纸" title="切换图纸" :value="snapshot.preset"
+          :disabled="!ready" @change="$emit('preset', $event as PresetId)">
+          <tiny-option value="A" label="图纸一" title="2 排组件 · 螺栓固定" />
+          <tiny-option value="B" label="图纸二" title="3 排组件 · 压块固定 · 带外斜撑" />
+        </field-select>
       </div>
       <small>{{ snapshot.report?.title ?? `固定倾角 · 双立柱 · 组件竖排 ${snapshot.parameters.rows} 块（单位 mm）` }}</small>
     </div>

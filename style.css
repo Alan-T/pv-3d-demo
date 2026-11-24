@@ -50,11 +50,7 @@ html, body {
 .title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .title b { font-size: 17px; letter-spacing: .5px; }
 .title small { color: var(--muted); }
-#drawing-preset {
-  min-height: 28px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px;
-  background: var(--panel); color: var(--blue); font: inherit; font-size: 13px; cursor: pointer;
-}
-#drawing-preset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.title-row .drawing-preset { width: 90px; }
 .views { display: flex; flex-wrap: wrap; gap: 6px; }
 .views button {
   font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer;
@@ -65,18 +61,26 @@ html, body {
 .views button:disabled { opacity: .45; cursor: not-allowed; }
 .views button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
 .vgroup {
-  align-items: center; padding: 4px 6px 4px 10px; border-radius: 10px;
+  align-items: center; gap: 4px; padding: 3px 5px 3px 8px; border-radius: 8px;
   border: 1px solid var(--line); background: rgba(255,255,255,.72);
 }
 .vgroup .glabel { font-size: 12px; color: var(--muted); margin-right: 2px; }
-.vgroup .sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
-.views button.chip { padding: 4px 9px; font-size: 13px; }
+.vgroup .sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+.views.vgroup button { padding: 3px 7px; border-radius: 6px; font-size: 12px; }
 .views button.chip.on { background: #e8f0ff; color: var(--blue); border-color: var(--blue); }
 
+@media (width > 760px) {
+  #bar { display: grid; grid-template-columns: max-content minmax(0, 1fr); justify-items: start; }
+  .vgroup { grid-column: 1 / -1; }
+  #bar .views { max-width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  #bar .views > * { flex-shrink: 0; }
+}
+
 /* 蓝字点击修改：原位红字输入框 */
+#stage .dimension-editor { display: contents; }
 #dimEdit {
   position: absolute; z-index: 5; box-sizing: border-box; margin: 0; padding: 0 6px;
-  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; font-weight: 600; text-align: center;
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; font-weight: 600; line-height: normal; text-align: center;
   color: #e02424; caret-color: #e02424; background: #fff;
   border: 1.5px solid #e02424; border-radius: 6px; outline: none;
   box-shadow: 0 2px 8px rgba(224, 36, 36, .18);
@@ -192,19 +196,21 @@ section:last-child { border-bottom: 0; }
   content: ''; flex: 0 0 4px; height: 1em; border-radius: 2px; background: #2860ff;
 }
 .panel-page h3 small { color: var(--muted); font-size: 12px; font-weight: normal; }
-button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: normal; color: var(--blue); background: none; border: 0; cursor: pointer; padding: 0; }
 
 .prow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; margin-bottom: 10px; }
 .prow .pl { font-size: var(--field-label-size); }
 .field-label { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .prow .pv { display: flex; align-items: center; gap: 4px; justify-self: end; }
-.prow :where(.pv input, .project-value input, .project-value select, input.psec), .prow > select {
-  min-height: var(--field-height); padding: 3px 6px;
-  font: inherit; font-size: var(--field-value-size); line-height: 1.5;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--blue);
+.panel-fields .tiny-input {
+  display: block; min-width: 0;
+  --tv-Input-mini-height: var(--field-height);
+  --tv-Input-text-color: var(--blue);
+  --tv-Input-padding-y: 6px;
 }
-.prow .pv input, .design-parameters .prow > select { width: 124px; max-width: 100%; }
-.prow .pv input { text-align: right; }
+.panel-fields .tiny-select { min-width: 0; --tv-Select-height-mini: var(--field-height); }
+.panel-fields .tiny-select .tiny-input__inner { min-height: var(--tv-Input-mini-height); }
+.prow .pv > .tiny-input, .design-parameters .prow > .tiny-select { width: 124px; max-width: 100%; }
+.prow .pv .tiny-input__inner { text-align: right; }
 .prow .pv i { font-style: normal; color: var(--muted); font-size: 12px; min-width: 22px; }
 .prow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--blue); margin: 0; }
 .prow small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -2px; }
@@ -215,10 +221,11 @@ button.link { margin-left: auto; font: inherit; font-size: 12px; font-weight: no
 .prow.psize .pl { white-space: nowrap; }
 .prow.psize { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; }
 .prow.psize .pv { width: 100%; min-width: 0; gap: 3px; }
-.prow.psize .pv input { flex: 1; width: 0; min-width: 0; padding-inline: 4px; appearance: textfield; }
+.prow.psize .pv > .tiny-input { flex: 1; width: 0; --tv-Input-padding-y: 4px; }
+.prow.psize .tiny-input__inner { appearance: textfield; }
 .prow.psize input::-webkit-inner-spin-button, .prow.psize input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .prow.psize .pv b { font-weight: normal; color: var(--muted); font-size: 12px; }
-.prow > select { justify-self: end; }
+.prow > .tiny-select { justify-self: end; }
 .toggles label.off { opacity: .45; cursor: not-allowed; }
 
 .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }

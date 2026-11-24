@@ -6,6 +6,7 @@
 - 在线演示：[光伏固定支架 3D 设计](http://47.116.75.159:257/)
 - 项目使用 Vue 3 单文件组件和 TypeScript，基于 three.js r128 与 OrbitControls 展示模型，使用 Vite 开发和构建。
 - 使用 Yarn 管理依赖，three.js 固定为 `0.128.0`，OrbitControls 从同一个 `three` 包导入。
+- 界面使用 TinyVue 3。脚本中从 `@opentiny/vue` 导入 `TinyButton` 等组件，模板标签使用小写短横线形式，如 `<tiny-button>`。Vite 按需打包组件和样式。
 
 ## 本地启动
 

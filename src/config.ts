@@ -68,6 +68,18 @@ function getSectionLibrary(key: string): NamedSection[] {
   return key === 'postTie' || key === 'purlinTie' ? TIE_SECTION_LIB : SECTION_LIB;
 }
 
+export function normalizeSection(name: string) {
+  return name.toLowerCase().replace(/[×＊*]/g, 'x').replace(/\s+/g, '');
+}
+
+export function findSection(key: MemberKey, text: string) {
+  const query = normalizeSection(text);
+  if (!query) return undefined;
+  const library = getSectionLibrary(key);
+  return library.find(section => normalizeSection(section.name) === query)
+    ?? library.find(section => normalizeSection(section.name).includes(query));
+}
+
 function applySection(key: MemberKey, { name, ...dimensions }: NamedSection) {
   const target = FIX[key];
   // 保留对象引用，但清掉旧截面字段，避免 C/L 切换后残留 type、卷边或名称。

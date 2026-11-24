@@ -44,6 +44,8 @@ function openEdit(sp: THREE.Sprite) {
   if (!editEl) return;
   editing = { sprite: sp, key: sp.userData.edit };
   editEl.value = String(P[editing.key]);
+  // 画布决定本次编辑的初值，同步给输入组件的 v-model。
+  editEl.dispatchEvent(new Event('input', { bubbles: true }));
   editEl.hidden = false;
   placeEdit();
   editEl.focus();

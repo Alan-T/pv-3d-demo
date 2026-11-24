@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Designer } from './designer.ts';
-import type { ParameterKey, MemberKey, MaterialKey } from './config.ts';
-type Field = HTMLInputElement | HTMLSelectElement;
+import type { ParameterKey } from './config.ts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { TinyInput } from '@opentiny/vue';
 import { createDesigner, getSnapshot } from './designer.ts';
 import { PRESETS } from './config.ts';
 import ParameterPanel from './components/ParameterPanel.vue';
@@ -11,7 +11,8 @@ import TabList from './components/TabList.vue';
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 const stage = ref<HTMLElement | null>(null);
-const editor = ref<HTMLInputElement | null>(null);
+const editor = ref<{ getInput(): HTMLInputElement } | null>(null);
+const dimensionDraft = ref('');
 const snapshot = shallowRef(getSnapshot());
 const projectInfo = ref({ ...PRESETS[snapshot.value.preset].projectInfo });
 const ready = ref(false);
@@ -36,11 +37,14 @@ function handleError(error: unknown) {
 
 onMounted(() => {
   try {
-    if (!canvas.value || !stage.value || !editor.value) throw new Error('无法找到三维画布或尺寸编辑框');
+    const dimensionInput = editor.value?.getInput();
+    if (!canvas.value || !stage.value || !dimensionInput) throw new Error('无法找到三维画布或尺寸编辑框');
+    dimensionInput.id = 'dimEdit';
+    dimensionInput.hidden = true;
     designer = createDesigner({
       canvas: canvas.value,
       stage: stage.value,
-      editor: editor.value,
+      editor: dimensionInput,
       onUpdate: value => { snapshot.value = value; },
       onReady: () => { rendered.value = true; },
       onError: handleError,
@@ -56,18 +60,10 @@ onBeforeUnmount(() => {
   ready.value = false;
 });
 
-function changeParameter(key: ParameterKey, value: string | boolean, input: Field) {
+function changeParameter(key: ParameterKey, value: string | boolean, input?: HTMLInputElement) {
   const normalized = designer.changeParameter(key, value);
-  if (input instanceof HTMLInputElement && input.type === 'checkbox') input.checked = !!normalized;
-  else input.value = String(normalized);
-}
-
-function changeSection(key: MemberKey, value: string, input: Field) {
-  input.value = designer.changeSection(key, value);
-}
-
-function changeMaterialGrade(key: MaterialKey, value: string, input: Field) {
-  input.value = designer.changeMaterialGrade(key, value) ?? '';
+  if (input?.type === 'checkbox') input.checked = !!normalized;
+  else if (input) input.value = String(normalized);
 }
 
 function changeLayoutQuantity(input: HTMLInputElement) {
@@ -107,10 +103,10 @@ async function toggleSheet() {
       <div id="loading" role="status" :class="{ done: rendered && !failed, fail: failed }">
         <i></i><span>{{ failed ? '3D 模型加载失败，请用最新版 Chrome / Edge 打开后刷新' : '正在加载 3D 模型…' }}</span>
       </div>
-      <ViewToolbar :snapshot="snapshot" :ready="ready" @view="name => designer.selectView(name)"
+      <view-toolbar :snapshot="snapshot" :ready="ready" @view="name => designer.selectView(name)"
         @joint="(...args) => designer.selectJoint(...args)" @preset="preset => designer.applyPreset(preset)" />
-      <input id="dimEdit" ref="editor" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
-        aria-label="修改尺寸" hidden>
+      <tiny-input ref="editor" v-model="dimensionDraft" class="dimension-editor" inputmode="decimal"
+        autocomplete="off" spellcheck="false" label="修改尺寸" tabindex="0" />
       <div id="legend">
         <span><i class="sw in"></i>蓝字 = 输入参数（点击可改）</span>
         <span><i class="sw out"></i>黑字 = 推算值</span>
@@ -121,8 +117,8 @@ async function toggleSheet() {
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </div>
-    <ParameterPanel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
-      @parameter="changeParameter" @section="changeSection" @material-grade="changeMaterialGrade" @reset-preset="designer.resetPreset()"
+    <parameter-panel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
+      @parameter="changeParameter" @section="(key, value) => designer.changeSection(key, value)" @material-grade="(key, value) => designer.changeMaterialGrade(key, value)" @reset-preset="designer.resetPreset()"
       @layout-quantity="changeLayoutQuantity"
       @purlin-cut-lengths="(lengths, done) => done(designer.changePurlinCutLengths(lengths))"
       @reset-purlin-cut="done => done(designer.resetPurlinCutLengths())"
@@ -131,7 +127,7 @@ async function toggleSheet() {
       @toggle-sheet="toggleSheet" />
     <div class="layout-bar">
       <span class="drawing-label" aria-hidden="true">排布方案</span>
-      <TabList class="drawing-tabs" prefix="layout" label="排布方案" controls="stage" closable
+      <tab-list class="drawing-tabs" prefix="layout" label="排布方案" controls="stage" closable
         :model-value="snapshot.activeLayoutId" :tabs="snapshot.layouts" :disabled="!ready"
         @update:model-value="id => designer.selectLayout(id)" @remove="id => designer.removeLayout(id)" @wheel="scrollLayouts" />
       <div class="layout-actions">

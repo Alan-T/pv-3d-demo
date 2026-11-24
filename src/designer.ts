@@ -31,7 +31,7 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { applyPresetSections, applySection, getSectionLibrary, FIX, P, PARAMS, PRESETS, show } from './config.ts';
+import { applyPresetSections, applySection, findSection, FIX, P, PARAMS, PRESETS, show } from './config.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
 import { initMaterials, disposeMaterials } from './materials.ts';
@@ -46,7 +46,6 @@ import { DrawingLayouts } from './layout-variants.ts';
 const state = shared.state;
 const drawings = Object.fromEntries(Object.entries(PRESETS).map(([id, preset]) => [id, new DrawingLayouts(preset)]));
 const currentDrawing = () => drawings[state.preset];
-const normalizeSection = (name: string) => String(name).toLowerCase().replace(/[×x*＊]/g, 'x').replace(/\s+/g, '');
 
 function describePostTieLengths({ rods, enabled }: ReturnType<typeof calculatePostTies>[number]) {
   const endSpans = new Set<number>();
@@ -223,10 +222,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   function changeSection(key: MemberKey, text: string) {
-    const query = normalizeSection(text);
-    const library = getSectionLibrary(key);
-    const section = query && (library.find(item => normalizeSection(item.name) === query)
-      ?? library.find(item => normalizeSection(item.name).includes(query)));
+    const section = findSection(key, text);
     if (section) {
       applySection(key, section);
       currentDrawing().setSection(key, section.name);

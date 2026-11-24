@@ -2,9 +2,13 @@
 import type { Designer, DesignerSnapshot } from '../designer.ts';
 import type { MaterialKey, MemberKey, ParameterDefinition, ParameterKey, ProjectInfo as ProjectData } from '../config.ts';
 import { computed, ref } from 'vue';
-import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.ts';
+import { TinyButton, TinyOption, TinySelect } from '@opentiny/vue';
+import { MATERIAL_GRADE_OPTIONS, PARAMS, SECTION_LABEL } from '../config.ts';
+import { useEditableSelects } from '../select-input.ts';
 import ParameterField from './ParameterField.vue';
-import MaterialGradeField from './MaterialGradeField.vue';
+import FieldInput from './FieldInput.vue';
+import FieldSelect from './FieldSelect.vue';
+import SectionSelect from './SectionSelect.vue';
 import PurlinCutEditor from './PurlinCutEditor.vue';
 import HelpHint from './HelpHint.vue';
 import ProjectInfo from './ProjectInfo.vue';
@@ -12,11 +16,11 @@ import DesignNotes from './DesignNotes.vue';
 import TabList from './TabList.vue';
 
 const props = defineProps<{ projectInfo: ProjectData; snapshot: DesignerSnapshot; ready?: boolean; open?: boolean }>();
-defineEmits<{
+const emit = defineEmits<{
   'update:projectInfo': [value: ProjectData];
-  parameter: [key: ParameterKey, value: string | boolean, input: HTMLInputElement | HTMLSelectElement];
-  section: [key: MemberKey, value: string, input: HTMLInputElement | HTMLSelectElement];
-  'material-grade': [key: MaterialKey, value: string, input: HTMLInputElement | HTMLSelectElement];
+  parameter: [key: ParameterKey, value: string | boolean, input?: HTMLInputElement];
+  section: [key: MemberKey, value: string];
+  'material-grade': [key: MaterialKey, value: string];
   'reset-preset': [];
   'layout-quantity': [input: HTMLInputElement];
   'purlin-cut-lengths': [lengths: number[], done: (error: string) => void];
@@ -36,6 +40,8 @@ const tabs = [
 ];
 const activeTab = ref(tabs[0].id);
 const currentLayout = computed(() => props.snapshot.layouts.find(layout => layout.id === props.snapshot.activeLayoutId)!);
+const materialSelect = useEditableSelects<MaterialKey>('grade', key => currentLayout.value.materials[key],
+  (key, value) => emit('material-grade', key, value.trim()));
 
 function fieldFor<K extends ParameterKey>(key: K) {
   return PARAMS.find((field): field is ParameterDefinition & { key: K } => field.key === key)!;
@@ -67,7 +73,7 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'project'" id="panel-page-project" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-project" tabindex="0">
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="项目信息">
-          <ProjectInfo :model-value="projectInfo" :parameters="snapshot.parameters"
+          <project-info :model-value="projectInfo" :parameters="snapshot.parameters" :disabled="!ready"
             @update:model-value="$emit('update:projectInfo', $event)"
             @parameter="(...args) => $emit('parameter', ...args)" />
           <section>
@@ -85,12 +91,13 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'parameters'" id="panel-page-parameters" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-parameters" tabindex="0">
         <fieldset class="pbody panel-fields design-parameters" :disabled="!ready" aria-label="设计参数">
-          <h3>设计参数 <button id="reset" type="button" class="link" @click="$emit('reset-preset')">恢复图纸参数</button></h3>
+          <h3>设计参数 <tiny-button id="reset" type="text" native-type="button" size="mini" :reset-time="0"
+            :disabled="!ready" @click="$emit('reset-preset')">恢复图纸参数</tiny-button></h3>
           <section aria-labelledby="common-parameters-heading">
             <h4 id="common-parameters-heading">通用参数</h4>
             <div id="params">
-              <ParameterField v-for="field in commonFields" :key="field.key || field.keys[0]" :definition="field"
-                :parameters="snapshot.parameters" @change="(...args) => $emit('parameter', ...args)" />
+              <parameter-field v-for="field in commonFields" :key="field.key || field.keys[0]" :definition="field"
+                :parameters="snapshot.parameters" :disabled="!ready" @change="(...args) => $emit('parameter', ...args)" />
             </div>
           </section>
 
@@ -99,12 +106,12 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
             <div class="prow">
               <label class="pl" for="layout-quantity">排布套数</label>
               <div class="pv">
-                <input id="layout-quantity" type="number" min="1" step="1" :value="currentLayout.quantity"
-                  @change="$emit('layout-quantity', $event.currentTarget as HTMLInputElement)">
+                <field-input id="layout-quantity" type="number" min="1" step="1" :value="currentLayout.quantity"
+                  @commit="$emit('layout-quantity', $event)" />
                 <i>套</i>
               </div>
             </div>
-            <ParameterField v-for="field in layoutFields" :key="field.key" :definition="field"
+            <parameter-field v-for="field in layoutFields" :key="field.key" :definition="field"
               :parameters="snapshot.parameters" @change="(...args) => $emit('parameter', ...args)" />
             <dl class="layout-counts">
               <div><dt>每套榀数</dt><dd id="layout-frame-count">{{ ready ? snapshot.frameCount + ' 榀' : '—' }}</dd></div>
@@ -112,9 +119,9 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
             </dl>
 
             <h5>檩条分段</h5>
-            <ParameterField :definition="purlinCutModeField" :parameters="snapshot.parameters"
+            <parameter-field :definition="purlinCutModeField" :parameters="snapshot.parameters" :disabled="!ready"
               @change="(...args) => $emit('parameter', ...args)" />
-            <PurlinCutEditor v-if="snapshot.parameters.purlinCutMode === 'custom'" :key="`${snapshot.preset}-${currentLayout.id}`"
+            <purlin-cut-editor v-if="snapshot.parameters.purlinCutMode === 'custom'" :key="`${snapshot.preset}-${currentLayout.id}`"
               :lengths="snapshot.parameters.purlinCutLengths" :total="snapshot.purlinLength" :error="snapshot.purlinCutError"
               @apply="(...args) => $emit('purlin-cut-lengths', ...args)" @reset="done => $emit('reset-purlin-cut', done)" />
 
@@ -124,13 +131,14 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
                 <div class="prow">
                   <div class="pl field-label">
                     <label :for="`post-tie-${row.key}`">{{ row.label }}立柱拉杆</label>
-                    <HelpHint :label="`${row.label}立柱拉杆`" :text="`上孔距柱顶 ${row.topOffset}，上下孔高差 ${row.holeRise} mm`" />
+                    <help-hint :label="`${row.label}立柱拉杆`" :text="`上孔距柱顶 ${row.topOffset}，上下孔高差 ${row.holeRise} mm`" />
                   </div>
-                  <select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters[`postTie${row.key}`]"
-                    :aria-describedby="row.lengthDescription ? `post-tie-${row.key}-length` : undefined"
-                    @change="$emit('post-mode', row.key, ($event.currentTarget as HTMLSelectElement).value)">
-                    <option v-for="[value, label] in postTieModes" :key="value" :value="value">{{ label }}</option>
-                  </select>
+                  <field-select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters[`postTie${row.key}`]"
+                    :label="`${row.label}立柱拉杆`" :disabled="!ready"
+                    :description="row.lengthDescription ? `post-tie-${row.key}-length` : undefined"
+                    @change="$emit('post-mode', row.key, $event)">
+                    <tiny-option v-for="[value, label] in postTieModes" :key="value" :value="value" :label="label" />
+                  </field-select>
                   <small v-if="row.lengthDescription" :id="`post-tie-${row.key}-length`" class="field-description">{{ row.lengthDescription }}</small>
                 </div>
                 <div v-if="snapshot.parameters[`postTie${row.key}`] === 'custom'" class="tie-spans">
@@ -144,7 +152,7 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
 
             <h5>檩条拉杆布置</h5>
             <div id="purlin-tie-controls">
-              <ParameterField :definition="purlinTieField" :parameters="snapshot.parameters"
+              <parameter-field :definition="purlinTieField" :parameters="snapshot.parameters" :disabled="!ready"
                 :select-description="snapshot.purlinTieLength != null ? `长度 ${snapshot.purlinTieLength} mm` : undefined"
                 @change="(...args) => $emit('parameter', ...args)" />
               <div id="purlin-tie-spans" class="tie-spans" :hidden="snapshot.parameters.purlinTies !== 'custom'">
@@ -163,39 +171,33 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'members'" id="panel-page-members" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-members" tabindex="0">
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="构件规格">
-          <section class="layout-parameters layout-member-specs" aria-labelledby="layout-member-heading">
+          <section :key="`${snapshot.preset}-${snapshot.activeLayoutId}`" class="layout-parameters layout-member-specs" aria-labelledby="layout-member-heading">
             <h3 id="layout-member-heading">排布规格 <small>{{ currentLayout.label }}</small></h3>
             <div class="spec-row spec-heading">
               <h4>构件截面</h4><span title="可选择或直接输入材质牌号">材质</span>
             </div>
             <div id="sections">
-              <datalist id="sectionLib"><option v-for="section in SECTION_LIB" :key="section.name" :value="section.name" /></datalist>
               <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow spec-row">
                 <label class="pl" :for="`section-${key}`">{{ label }}</label>
-                <select v-if="key === 'postTie' || key === 'purlinTie'" :id="`section-${key}`" :value="snapshot.sections[key]" :aria-label="`${label}截面`"
-                  @change="$emit('section', key, ($event.currentTarget as HTMLSelectElement).value, $event.currentTarget as HTMLSelectElement)">
-                  <option v-for="section in TIE_SECTION_LIB" :key="section.name" :value="section.name">{{ section.name }}</option>
-                </select>
-                <input v-else :id="`section-${key}`" class="psec" type="text" list="sectionLib"
-                  placeholder="如 C80*40" :value="snapshot.sections[key]"
-                  autocomplete="off" spellcheck="false" :aria-label="`${label}截面`"
-                  title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以" @focus="($event.currentTarget as HTMLInputElement).select()"
-                  @change="$emit('section', key, ($event.currentTarget as HTMLInputElement).value, $event.currentTarget as HTMLInputElement)">
-                <MaterialGradeField :member="key" :label="label" :value="currentLayout.materials[key]"
-                  @change="(...args) => $emit('material-grade', ...args)" />
+                <section-select :member="key" :value="snapshot.sections[key]" :label="label" :disabled="!ready"
+                  @change="$emit('section', key, $event)" />
+                <tiny-select v-bind="materialSelect(key, `${label}材质`, MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
+                  :title="currentLayout.materials[key] || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
+                  filterable allow-create default-first-option clearable placement="bottom-end" />
               </div>
             </div>
             <div class="spec-row spec-heading spec-divider">
               <h4>檩条附件</h4><span>材质</span>
             </div>
-            <ParameterField v-for="field in [purlinClipField, purlinConnectorField]" :key="field.key"
-              class="spec-row" :definition="field" :parameters="snapshot.parameters" @change="(...args) => $emit('parameter', ...args)">
+            <parameter-field v-for="field in [purlinClipField, purlinConnectorField]" :key="field.key"
+              class="spec-row" :definition="field" :parameters="snapshot.parameters" :disabled="!ready" @change="(...args) => $emit('parameter', ...args)">
               <template #label>{{ field.key === 'purlinClip' ? '檩托' : '连接件' }}</template>
               <template #after-select>
-                <MaterialGradeField :member="field.key" :label="field.label" :value="currentLayout.materials[field.key]"
-                  @change="(...args) => $emit('material-grade', ...args)" />
+                <tiny-select v-bind="materialSelect(field.key, `${field.label}材质`, MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
+                  :title="currentLayout.materials[field.key] || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
+                  filterable allow-create default-first-option clearable placement="bottom-end" />
               </template>
-            </ParameterField>
+            </parameter-field>
             <div id="brace-connector-specs">
               <div class="spec-row spec-heading spec-divider">
                 <h4>斜撑连接件</h4><span>材质</span>
@@ -203,8 +205,9 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
               <div class="prow spec-row">
                 <label class="pl" for="brace-connector">前后共用</label>
                 <output id="brace-connector" class="brace-connector-spec" aria-describedby="brace-connector-note">{{ snapshot.braceConnectorSpec || '—' }}</output>
-                <MaterialGradeField member="braceConnector" label="斜撑连接件"
-                  :value="currentLayout.materials.braceConnector" @change="(...args) => $emit('material-grade', ...args)" />
+                <tiny-select v-bind="materialSelect('braceConnector', '斜撑连接件材质', MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
+                  :title="currentLayout.materials.braceConnector || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
+                  filterable allow-create default-first-option clearable placement="bottom-end" />
                 <small id="brace-connector-note" class="field-description">自动匹配 · 宽 × 高 × 厚（mm）</small>
               </div>
             </div>
@@ -235,17 +238,18 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
               </tbody>
             </table>
           </section>
-          <DesignNotes />
+          <design-notes />
         </div>
       </div>
     </div>
 
-    <TabList v-model="activeTab" prefix="panel" label="参数面板分类" :tabs="tabs" />
+    <tab-list v-model="activeTab" prefix="panel" label="参数面板分类" :tabs="tabs" />
   </aside>
 </template>
 
 <style scoped>
 .design-parameters > h3 { margin: 14px 0 0; }
+.design-parameters #reset { margin-left: auto; color: var(--blue); font-size: var(--field-value-size); }
 .design-parameters > section:first-of-type { border-bottom: 0; }
 .layout-parameters {
   margin-inline: -10px;
@@ -260,7 +264,12 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.28fr) clamp(96px, 31%, 112px);
   align-items: center; column-gap: 4px;
 }
-.spec-row > :deep(select), .spec-row > input.psec { width: 100%; min-width: 0; padding-inline: 3px; text-align: left; }
+.spec-row > :deep(.tiny-select) { width: 100%; min-width: 0; }
+.spec-row > :deep(.tiny-select .tiny-input) {
+  --tv-Input-suffix-padding-left: 4px;
+  --tv-Input-suffix-padding-right: 22px;
+  --tv-Input-suffix-right: 2px;
+}
 .spec-row :deep(.field-label) { gap: 3px; }
 .spec-heading { margin: 12px 0 8px; font-size: 12px; color: var(--muted); }
 .spec-heading > :first-child { grid-column: 1 / 3; }

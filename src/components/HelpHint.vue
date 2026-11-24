@@ -48,10 +48,10 @@ onBeforeUnmount(() => { cancelClose(); listen(false); });
     @focus="open" @blur="close" @click.stop="open">
     <span aria-hidden="true">?</span>
   </button>
-  <Teleport to="body">
+  <teleport to="body">
     <div v-if="visible" :id="id" ref="tooltip" class="help-tooltip" role="tooltip" :style="position"
       @pointerenter="cancelClose" @pointerleave="leave">{{ text }}</div>
-  </Teleport>
+  </teleport>
 </template>
 
 <style scoped>
