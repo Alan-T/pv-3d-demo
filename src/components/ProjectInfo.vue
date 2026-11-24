@@ -1,13 +1,23 @@
-<script setup>
-import { limits } from '../config.js';
+<script setup lang="ts">
+import type { ProjectInfo, ModelParameters } from '../config.ts';
+import { limits } from '../config.ts';
 
-const props = defineProps({
-  modelValue: { type: Object, required: true },
-  parameters: { type: Object, required: true },
-});
-const emit = defineEmits(['update:modelValue', 'parameter']);
+type SlopeKey = 'slopeEW' | 'slopeNS';
+type NumericKey = { [K in keyof ProjectInfo]: ProjectInfo[K] extends number ? K : never }[keyof ProjectInfo];
+interface FieldOptions {
+  label: string; suggestions?: string[]; options?: string[];
+  min?: number; max?: number; step?: number; unit?: string;
+}
+type Field = FieldOptions & (
+  | { key: NumericKey; type: 'number'; parameter?: false }
+  | { key: Exclude<keyof ProjectInfo, NumericKey>; type?: undefined; parameter?: false }
+  | { key: SlopeKey; type: 'number'; parameter: true }
+);
 
-const fields = [
+const props = defineProps<{ modelValue: ProjectInfo; parameters: ModelParameters }>();
+const emit = defineEmits<{ 'update:modelValue': [value: ProjectInfo]; parameter: [key: SlopeKey, value: string, field: HTMLInputElement] }>();
+
+const fields: Field[] = [
   { key: 'number', label: '项目编号' },
   { key: 'version', label: '版本' },
   { key: 'name', label: '项目名称' },
@@ -19,12 +29,12 @@ const fields = [
   { key: 'latitude', label: '纬度', type: 'number', min: -90, max: 90, unit: '°' },
 ];
 
-function slopeField(key, label) {
+function slopeField(key: SlopeKey, label: string): Field {
   const [min, max, step] = limits(key);
   return { key, label, type: 'number', parameter: true, min, max, step, unit: '%' };
 }
 
-const environmentFields = [
+const environmentFields: Field[] = [
   { key: 'designStandard', label: '参考规范', suggestions: ['US2010(ASCE 7-10)'] },
   { key: 'designMethod', label: '设计条文', suggestions: ['ASD'] },
   { key: 'terrainCategory', label: '地面粗糙度', suggestions: ['3'] },
@@ -42,24 +52,25 @@ const groups = [
   { id: 'environment', title: '规范与环境', fields: environmentFields },
 ];
 
-function fieldValue(field) {
-  return (field.parameter ? props.parameters : props.modelValue)[field.key];
+function fieldValue(field: Field) {
+  return field.parameter ? props.parameters[field.key] : props.modelValue[field.key];
 }
 
-function changeField(field, event) {
-  const input = event.target;
+function changeField(field: Field, event: Event) {
+  const input = event.currentTarget;
+  if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) return;
   if (field.parameter) {
-    emit('parameter', field.key, input.value, input);
+    if (input instanceof HTMLInputElement) emit('parameter', field.key, input.value, input);
     return;
   }
-  let value = input.value;
+  let value: string | number = input.value;
   if (field.type === 'number') {
     const number = Number(value);
     if (value.trim() !== '' && Number.isFinite(number)) {
       const rounded = field.step ? Math.round(number / field.step) * field.step : number;
       value = Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, rounded));
     } else value = fieldValue(field);
-    input.value = value;
+    input.value = String(value);
   }
   emit('update:modelValue', { ...props.modelValue, [field.key]: value });
 }

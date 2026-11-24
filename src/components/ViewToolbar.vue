@@ -1,12 +1,15 @@
-<script setup>
-const props = defineProps({ snapshot: { type: Object, required: true }, ready: Boolean });
-defineEmits(['view', 'joint', 'preset']);
+<script setup lang="ts">
+import type { DesignerSnapshot } from '../designer.ts';
+import type { PresetId } from '../config.ts';
+import type { JointType, ViewName } from '../joint-view-types.ts';
+const props = defineProps<{ snapshot: DesignerSnapshot; ready?: boolean }>();
+defineEmits<{ view: [name: ViewName]; joint: [kind: 'side' | 'type', value: JointType | number]; preset: [id: PresetId] }>();
 
-const views = [
+const views: [ViewName, string, string?][] = [
   ['3d', '3D 视图'], ['side', '侧视图'], ['front', '正视图'], ['top', '俯视图'],
   ['normal', '垂直组件', '垂直于组件面看，组件半透明，便于看檩条'],
 ];
-const joints = [
+const joints: [JointType, string, string][] = [
   ['foot', '斜撑-立柱', '斜撑下端：连接板 + 3 颗 M12×35'],
   ['top', '立柱-斜梁', '柱顶：斜梁腹板贴立柱腹板，1 颗 M16×40，立柱上竖向长圆孔'],
   ['btop', '斜撑-斜梁', '斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12×35'],
@@ -17,7 +20,7 @@ const joints = [
   ['purlinTie', '檩条拉杆', '正视查看檩条槽内的螺栓头，轴测查看拉杆下方的螺母。Ø14 通孔，M12×35 外六角螺栓，两面平垫，螺母侧加弹垫。'],
 ];
 
-function unavailableReason(type) {
+function unavailableReason(type: JointType) {
   if (type === 'splice' && !props.snapshot.spliceAvailable) return '当前檩条没有切割接头或未选择有效连接件';
   if (['postTie', 'purlinTie'].includes(type) && !props.snapshot.tieJointAvailable?.[type]?.some(Boolean)) {
     return type === 'postTie' ? '当前后排未布置有效的立柱拉杆' : '当前未布置檩条拉杆';
@@ -25,12 +28,12 @@ function unavailableReason(type) {
   return '';
 }
 
-function sideAvailable(side) {
+function sideAvailable(side: number) {
   const type = props.snapshot.jointType;
   return !['postTie', 'purlinTie'].includes(type) || !!props.snapshot.tieJointAvailable?.[type]?.[side];
 }
 
-function sideTitle(side) {
+function sideTitle(side: number) {
   if (props.snapshot.jointType === 'postTie') {
     return `后排立柱拉杆${side ? '后侧' : '前侧'}连接${sideAvailable(side) ? '' : '：当前后排未生成有效拉杆'}`;
   }
@@ -47,7 +50,7 @@ function sideTitle(side) {
       <div class="title-row">
         <b>光伏固定支架 3D 设计</b>
         <select id="drawing-preset" aria-label="切换图纸" title="切换图纸" :value="snapshot.preset"
-          :disabled="!ready" @change="$emit('preset', $event.target.value)">
+          :disabled="!ready" @change="$emit('preset', ($event.currentTarget as HTMLSelectElement).value as PresetId)">
           <option value="A" title="2 排组件 · 螺栓固定">图纸一</option>
           <option value="B" title="3 排组件 · 压块固定 · 带外斜撑">图纸二</option>
         </select>

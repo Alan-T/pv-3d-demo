@@ -1,36 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
 
-const props = defineProps({
-  tabs: { type: Array, required: true },
-  modelValue: { type: String, required: true },
-  prefix: { type: String, required: true },
-  label: { type: String, required: true },
-  controls: String,
-  disabled: Boolean,
-  closable: Boolean,
-});
-const emit = defineEmits(['update:modelValue', 'remove']);
-const list = ref(null);
+const props = defineProps<{ tabs: { id: string; label: string; title?: string }[]; modelValue: string; prefix: string; label: string; controls?: string; disabled?: boolean; closable?: boolean }>();
+const emit = defineEmits<{ 'update:modelValue': [id: string]; remove: [id: string] }>();
+const list = ref<HTMLElement | null>(null);
 
 watch(() => props.modelValue, () => {
-  if (list.value.scrollWidth > list.value.clientWidth) {
+  if (list.value && list.value.scrollWidth > list.value.clientWidth) {
     list.value.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 }, { flush: 'post' });
 
-function select(id) {
+function select(id: string) {
   if (id !== props.modelValue) emit('update:modelValue', id);
 }
 
-async function remove(id) {
+async function remove(id: string) {
   if (!props.closable || props.disabled || props.tabs.length <= 1) return;
   emit('remove', id);
   await nextTick();
-  list.value?.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
+  list.value?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus({ preventScroll: true });
 }
 
-function navigate(event, index) {
+function navigate(event: KeyboardEvent, index: number) {
   const count = props.tabs.length;
   if (event.key === 'Delete' && props.closable) {
     event.preventDefault();
@@ -45,7 +37,7 @@ function navigate(event, index) {
   else return;
   event.preventDefault();
   const id = props.tabs[target].id;
-  document.getElementById(`${props.prefix}-tab-${id}`).focus({ preventScroll: true });
+  document.getElementById(`${props.prefix}-tab-${id}`)?.focus({ preventScroll: true });
   select(id);
 }
 </script>

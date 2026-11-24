@@ -1,22 +1,33 @@
-<script setup>
-import { MATERIAL_GRADE_OPTIONS } from '../config.js';
+<script setup lang="ts">
+import type { MaterialKey } from '../config.ts';
+import { MATERIAL_GRADE_OPTIONS } from '../config.ts';
 
-defineProps({
-  member: { type: String, required: true },
-  label: { type: String, required: true },
-  value: { type: String, default: '' },
-});
-defineEmits(['change']);
+const { member, label, value = '' } = defineProps<{
+  member: MaterialKey;
+  label: string;
+  value?: string;
+}>();
+
+const emit = defineEmits<{
+  change: [member: MaterialKey, value: string, field: HTMLInputElement | HTMLSelectElement];
+}>();
+
+function changeGrade(event: Event) {
+  const field = event.currentTarget;
+  if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+    emit('change', member, field.value, field);
+  }
+}
 </script>
 
 <template>
   <div class="grade-field">
     <input :id="`grade-${member}`" type="text" :value="value" :aria-label="`${label}材质`"
       :title="value || '输入材质牌号'" placeholder="未指定" autocomplete="off" spellcheck="false"
-      @focus="$event.target.select()" @change="$emit('change', member, $event.target.value, $event.target)">
+      @focus="($event.currentTarget as HTMLInputElement).select()" @change="changeGrade">
     <span class="grade-picker">
       <select :id="`grade-picker-${member}`" :value="value" :aria-label="`选择${label}材质`" title="选择材质"
-        @change="$emit('change', member, $event.target.value, $event.target)">
+        @change="changeGrade">
         <option value="">未指定</option>
         <option v-if="value && !MATERIAL_GRADE_OPTIONS.includes(value)" :value="value">{{ value }}</option>
         <option v-for="grade in MATERIAL_GRADE_OPTIONS" :key="grade" :value="grade">{{ grade }}</option>

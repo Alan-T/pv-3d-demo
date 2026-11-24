@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DBL, FIX, JOINT, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.js';
-import { DrawingLayouts } from '../src/layout-variants.js';
-import { BraceConnectorPart } from '../src/parts/brace-connector.js';
-import { layoutEW, solve } from '../src/solve.js';
+import { DBL, FIX, JOINT, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { DrawingLayouts } from '../src/layout-variants.ts';
+import { BraceConnectorPart } from '../src/parts/brace-connector.ts';
+import { layoutEW, solve } from '../src/solve.ts';
 
 test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向布置与构件截面独立', () => {
   const a = new DrawingLayouts(PRESETS.A), b = new DrawingLayouts(PRESETS.B);

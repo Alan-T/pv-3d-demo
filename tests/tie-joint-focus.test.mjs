@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { createTieJointFocus } from '../src/tie-joint-focus.js';
+import { createTieJointFocus } from '../src/tie-joint-focus.ts';
 
 function fixture() {
   const geometry = new THREE.BoxGeometry();

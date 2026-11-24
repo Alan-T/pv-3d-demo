@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
-import { FIX, PRESETS, getPresetParameters } from '../src/config.js';
-import { PurlinConnectorPart } from '../src/parts/purlin-connector.js';
-import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.js';
-import { cutPurlin, PURLIN_CUT_GAP } from '../src/purlin-cut.js';
-import { layoutEW } from '../src/solve.js';
+import { FIX, PRESETS, getPresetParameters } from '../src/config.ts';
+import { PurlinConnectorPart } from '../src/parts/purlin-connector.ts';
+import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.ts';
+import { cutPurlin, PURLIN_CUT_GAP } from '../src/purlin-cut.ts';
+import { layoutEW } from '../src/solve.ts';
 
 const drawing = getPresetParameters(PRESETS.A);
 const netLengths = [5650, 3950, 4000, 3950, 4300, 4100, 4800, 3700];

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { OrthographicCamera, Sprite } from 'three';
-import { shared } from '../src/core.js';
-import { updateLabels } from '../src/dims.js';
+import { shared } from '../src/core.ts';
+import { updateLabels } from '../src/dims.ts';
 
 test('榀距标注在临界缩放时整组切换，放大后恢复逐跨尺寸', (t) => {
   const camera = new OrthographicCamera(-100, 100, 100, -100);

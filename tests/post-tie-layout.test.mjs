@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.js';
-import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections, getPresetParameters } from '../src/config.js';
-import { solve, layoutEW } from '../src/solve.js';
-import { PostTiePart } from '../src/parts/post-tie.js';
-import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';
+import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.ts';
+import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { solve, layoutEW } from '../src/solve.ts';
+import { PostTiePart } from '../src/parts/post-tie.ts';
+import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
 
 test('二维孔位规则：整百孔距、柱顶余量优先接近225，低柱退化为水平杆', () => {
   assert.deepEqual(postTieHeights({postLength:2298,embed:1500,strutHeight:250}), {topOffset:248,holeRise:100});

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { getPurlinClipSpec } from '../src/purlin-clip-spec.js';
-import { PurlinClipPart } from '../src/parts/purlin-clip.js';
-import { BoltsPart } from '../src/parts/bolts.js';
-import { FIX, CLAMP, JOINT, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.js';
-import { solve, layoutEW } from '../src/solve.js';
+import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
+import { PurlinClipPart } from '../src/parts/purlin-clip.ts';
+import { BoltsPart } from '../src/parts/bolts.ts';
+import { FIX, CLAMP, JOINT, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
+import { solve, layoutEW } from '../src/solve.ts';
 
 // 实例矩阵使用 Float32，米制坐标允许 0.002 mm 的数值误差。
 const close = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 2e-6, `${message}: ${actual} / ${expected}`);

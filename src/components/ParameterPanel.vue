@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { Designer, DesignerSnapshot } from '../designer.ts';
+import type { MaterialKey, MemberKey, ParameterDefinition, ParameterKey, ProjectInfo as ProjectData } from '../config.ts';
 import { computed, ref } from 'vue';
-import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.js';
+import { TIE_SECTION_LIB, PARAMS, SECTION_LABEL, SECTION_LIB } from '../config.ts';
 import ParameterField from './ParameterField.vue';
 import MaterialGradeField from './MaterialGradeField.vue';
 import PurlinCutEditor from './PurlinCutEditor.vue';
@@ -9,13 +11,22 @@ import ProjectInfo from './ProjectInfo.vue';
 import DesignNotes from './DesignNotes.vue';
 import TabList from './TabList.vue';
 
-const props = defineProps({
-  projectInfo: { type: Object, required: true },
-  snapshot: { type: Object, required: true },
-  ready: Boolean,
-  open: Boolean,
-});
-defineEmits(['update:projectInfo', 'parameter', 'section', 'material-grade', 'reset-preset', 'layout-quantity', 'purlin-cut-lengths', 'reset-purlin-cut', 'post-mode', 'post-bay', 'purlin-bay', 'display', 'toggle-sheet']);
+const props = defineProps<{ projectInfo: ProjectData; snapshot: DesignerSnapshot; ready?: boolean; open?: boolean }>();
+defineEmits<{
+  'update:projectInfo': [value: ProjectData];
+  parameter: [key: ParameterKey, value: string | boolean, input: HTMLInputElement | HTMLSelectElement];
+  section: [key: MemberKey, value: string, input: HTMLInputElement | HTMLSelectElement];
+  'material-grade': [key: MaterialKey, value: string, input: HTMLInputElement | HTMLSelectElement];
+  'reset-preset': [];
+  'layout-quantity': [input: HTMLInputElement];
+  'purlin-cut-lengths': [lengths: number[], done: (error: string) => void];
+  'reset-purlin-cut': [done: (result: ReturnType<Designer['resetPurlinCutLengths']>) => void];
+  'post-mode': Parameters<Designer['changePostTieMode']>;
+  'post-bay': Parameters<Designer['changePostTieBay']>;
+  'purlin-bay': Parameters<Designer['changePurlinTieBay']>;
+  display: Parameters<Designer['changeDisplay']>;
+  'toggle-sheet': [];
+}>();
 
 const tabs = [
   { id: 'project', label: '项目信息' },
@@ -24,18 +35,22 @@ const tabs = [
   { id: 'results', label: '结果' },
 ];
 const activeTab = ref(tabs[0].id);
-const currentLayout = computed(() => props.snapshot.layouts.find(layout => layout.id === props.snapshot.activeLayoutId));
+const currentLayout = computed(() => props.snapshot.layouts.find(layout => layout.id === props.snapshot.activeLayoutId)!);
 
-const layoutKeys = ['cols', 'pitchEnd', 'pitch'];
-const layoutFields = layoutKeys.map(key => PARAMS.find(item => item.key === key));
+function fieldFor<K extends ParameterKey>(key: K) {
+  return PARAMS.find((field): field is ParameterDefinition & { key: K } => field.key === key)!;
+}
+
+const layoutKeys: ParameterKey[] = ['cols', 'pitchEnd', 'pitch'];
+const layoutFields = layoutKeys.map(fieldFor);
 const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'purlinCutMode', 'slopeEW', 'slopeNS', ...layoutKeys];
-const commonFields = PARAMS.filter(item => !otherFields.includes(item.key));
-const purlinCutModeField = PARAMS.find(item => item.key === 'purlinCutMode');
-const purlinTieField = { ...PARAMS.find(item => item.key === 'purlinTies'), label: '檩条拉杆' };
-const purlinClipField = PARAMS.find(item => item.key === 'purlinClip');
-const purlinConnectorField = PARAMS.find(item => item.key === 'purlinConnector');
+const commonFields = PARAMS.filter(item => !item.key || !otherFields.includes(item.key));
+const purlinCutModeField = fieldFor('purlinCutMode');
+const purlinTieField = { ...fieldFor('purlinTies'), label: '檩条拉杆' };
+const purlinClipField = fieldFor('purlinClip');
+const purlinConnectorField = fieldFor('purlinConnector');
 const postTieModes = [['none', '无'], ['ends', '首末跨'], ['all', '全部跨'], ['custom', '自定义']];
-const displays = [
+const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
   ['dims', '尺寸标注'], ['buried', '埋地部分'], ['modules', '光伏组件'],
   ['postTies', '立柱拉杆'], ['purlinTies', '檩条拉杆'],
   ['shadows', '显示投影', '显示模型在地面和构件上的投影阴影'],
@@ -60,7 +75,7 @@ const displays = [
             <div class="toggles">
               <label v-for="[key, label, title] in displays" :key="key" :title="title">
                 <input type="checkbox" :data-k="key" :checked="snapshot.display[key]"
-                  @change="$emit('display', key, $event.target.checked)">{{ label }}
+                  @change="$emit('display', key, ($event.currentTarget as HTMLInputElement).checked)">{{ label }}
               </label>
             </div>
           </section>
@@ -85,7 +100,7 @@ const displays = [
               <label class="pl" for="layout-quantity">排布套数</label>
               <div class="pv">
                 <input id="layout-quantity" type="number" min="1" step="1" :value="currentLayout.quantity"
-                  @change="$emit('layout-quantity', $event.currentTarget)">
+                  @change="$emit('layout-quantity', $event.currentTarget as HTMLInputElement)">
                 <i>套</i>
               </div>
             </div>
@@ -111,17 +126,17 @@ const displays = [
                     <label :for="`post-tie-${row.key}`">{{ row.label }}立柱拉杆</label>
                     <HelpHint :label="`${row.label}立柱拉杆`" :text="`上孔距柱顶 ${row.topOffset}，上下孔高差 ${row.holeRise} mm`" />
                   </div>
-                  <select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters['postTie' + row.key]"
+                  <select :id="`post-tie-${row.key}`" :data-tie-row="row.key" :value="snapshot.parameters[`postTie${row.key}`]"
                     :aria-describedby="row.lengthDescription ? `post-tie-${row.key}-length` : undefined"
-                    @change="$emit('post-mode', row.key, $event.target.value)">
+                    @change="$emit('post-mode', row.key, ($event.currentTarget as HTMLSelectElement).value)">
                     <option v-for="[value, label] in postTieModes" :key="value" :value="value">{{ label }}</option>
                   </select>
                   <small v-if="row.lengthDescription" :id="`post-tie-${row.key}-length`" class="field-description">{{ row.lengthDescription }}</small>
                 </div>
-                <div v-if="snapshot.parameters['postTie' + row.key] === 'custom'" class="tie-spans">
+                <div v-if="snapshot.parameters[`postTie${row.key}`] === 'custom'" class="tie-spans">
                   <label v-for="(enabled, index) in row.enabled" :key="index">
                     <input type="checkbox" :data-tie-row="row.key" :data-tie-bay="index" :checked="!!enabled"
-                      @change="$emit('post-bay', row.key, index, $event.target.checked)">第 {{ index + 1 }} 跨
+                      @change="$emit('post-bay', row.key, index, ($event.currentTarget as HTMLInputElement).checked)">第 {{ index + 1 }} 跨
                   </label>
                 </div>
               </template>
@@ -136,7 +151,7 @@ const displays = [
                 <template v-if="snapshot.parameters.purlinTies === 'custom'">
                   <label v-for="bay in snapshot.bayCount" :key="bay">
                     <input type="checkbox" :data-purlin-tie-bay="bay - 1" :checked="snapshot.parameters.purlinTieSpans[bay - 1] === 1"
-                      @change="$emit('purlin-bay', bay - 1, $event.target.checked)">第 {{ bay }} 跨
+                      @change="$emit('purlin-bay', bay - 1, ($event.currentTarget as HTMLInputElement).checked)">第 {{ bay }} 跨
                   </label>
                 </template>
               </div>
@@ -158,14 +173,14 @@ const displays = [
               <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow spec-row">
                 <label class="pl" :for="`section-${key}`">{{ label }}</label>
                 <select v-if="key === 'postTie' || key === 'purlinTie'" :id="`section-${key}`" :value="snapshot.sections[key]" :aria-label="`${label}截面`"
-                  @change="$emit('section', key, $event.target.value, $event.target)">
+                  @change="$emit('section', key, ($event.currentTarget as HTMLSelectElement).value, $event.currentTarget as HTMLSelectElement)">
                   <option v-for="section in TIE_SECTION_LIB" :key="section.name" :value="section.name">{{ section.name }}</option>
                 </select>
                 <input v-else :id="`section-${key}`" class="psec" type="text" list="sectionLib"
                   placeholder="如 C80*40" :value="snapshot.sections[key]"
                   autocomplete="off" spellcheck="false" :aria-label="`${label}截面`"
-                  title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以" @focus="$event.target.select()"
-                  @change="$emit('section', key, $event.target.value, $event.target)">
+                  title="输入关键字过滤，回车确认；分隔符 x / × / * 都可以" @focus="($event.currentTarget as HTMLInputElement).select()"
+                  @change="$emit('section', key, ($event.currentTarget as HTMLInputElement).value, $event.currentTarget as HTMLInputElement)">
                 <MaterialGradeField :member="key" :label="label" :value="currentLayout.materials[key]"
                   @change="(...args) => $emit('material-grade', ...args)" />
               </div>

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BoltsPart } from '../src/parts/bolts.js';
-import { FIX, CLAMP, JOINT, PARAMS, PRESETS } from '../src/config.js';
-import { getPurlinClipSpec } from '../src/purlin-clip-spec.js';
+import { BoltsPart } from '../src/parts/bolts.ts';
+import { FIX, CLAMP, JOINT, PARAMS, PRESETS } from '../src/config.ts';
+import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 
 test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保持不变', () => {
   const geometries = [];

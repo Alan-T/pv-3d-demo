@@ -1,14 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue';
-import { PURLIN_CUT_GAP } from '../purlin-cut.js';
+import { PURLIN_CUT_GAP } from '../purlin-cut.ts';
 import HelpHint from './HelpHint.vue';
 
-const props = defineProps({
-  lengths: { type: Array, required: true },
-  total: { type: Number, required: true },
-  error: String,
-});
-const emit = defineEmits(['apply', 'reset']);
+const props = defineProps<{ lengths: number[]; total: number; error?: string }>();
+const emit = defineEmits<{
+  apply: [lengths: number[], done: (error: string) => void];
+  reset: [done: (result: { lengths?: number[]; error: string }) => void];
+}>();
 const draft = ref('');
 const inputError = ref('');
 
@@ -31,7 +30,7 @@ function apply() {
   });
 }
 
-function submitOnEnter(event) {
+function submitOnEnter(event: KeyboardEvent) {
   if (event.isComposing) return;
   event.preventDefault();
   apply();
@@ -40,7 +39,7 @@ function submitOnEnter(event) {
 function reset() {
   emit('reset', ({ lengths, error }) => {
     inputError.value = error;
-    if (!error) draft.value = lengths.join(', ');
+    if (!error && lengths) draft.value = lengths.join(', ');
   });
 }
 </script>

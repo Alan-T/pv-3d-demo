@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
-import { PurlinTiePart } from '../src/parts/purlin-tie.js';
-import { createSectionGeometry, createSectionShape } from '../src/section-geometry.js';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.js';
-import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.js';
-import { solve, layoutEW } from '../src/solve.js';
-import { ewMatrix } from '../src/core.js';
+import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
+import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
+import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
+import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.ts';
+import { solve, layoutEW } from '../src/solve.ts';
+import { ewMatrix } from '../src/core.ts';
 
 test('图纸一：3974mm、12套，去掉首末跨为10套', () => {
   applyPresetSections('A');

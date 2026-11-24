@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.js';
-import { solve, layoutEW } from '../src/solve.js';
-import { calculatePostTies } from '../src/post-tie-layout.js';
-import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
-import { createTieJointSpecs } from '../src/tie-joint-spec.js';
-import { PostTiePart } from '../src/parts/post-tie.js';
-import { PurlinTiePart } from '../src/parts/purlin-tie.js';
-import { createSectionGeometry } from '../src/section-geometry.js';
-import { ewMatrix } from '../src/core.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { solve, layoutEW } from '../src/solve.ts';
+import { calculatePostTies } from '../src/post-tie-layout.ts';
+import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
+import { createTieJointSpecs } from '../src/tie-joint-spec.ts';
+import { PostTiePart } from '../src/parts/post-tie.ts';
+import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
+import { createSectionGeometry } from '../src/section-geometry.ts';
+import { ewMatrix } from '../src/core.ts';
 
 const mm = (x, y, z = 0) => new THREE.Vector3(x, y, z).multiplyScalar(.001);
 const near = (a, b, message) => assert.ok(a.distanceTo(b) < 1e-8, message);

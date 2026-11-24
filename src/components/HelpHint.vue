@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
+import type { CSSProperties } from 'vue';
 import { nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 
 defineProps({ text: { type: String, required: true }, label: { type: String, required: true } });
-const id = useId(), trigger = ref(null), tooltip = ref(null), visible = ref(false);
-const position = ref({ visibility: 'hidden' });
-let hideTimer;
+const id = useId(), trigger = ref<HTMLButtonElement | null>(null), tooltip = ref<HTMLElement | null>(null), visible = ref(false);
+const position = ref<CSSProperties>({ visibility: 'hidden' });
+let hideTimer: ReturnType<typeof setTimeout>;
 
 function cancelClose() { clearTimeout(hideTimer); }
 function close() { cancelClose(); visible.value = false; }
@@ -25,11 +26,11 @@ async function open() {
   const top = anchor.bottom + 8 + box.height <= height - 12 ? anchor.bottom + 8 : Math.max(12, anchor.top - box.height - 8);
   position.value = { left: `${left}px`, top: `${top}px` };
 }
-function outside(event) {
-  if (!trigger.value?.contains(event.target) && !tooltip.value?.contains(event.target)) close();
+function outside(event: Event) {
+  if (event.target instanceof Node && !trigger.value?.contains(event.target) && !tooltip.value?.contains(event.target)) close();
 }
-function keydown(event) { if (event.key === 'Escape') close(); }
-function listen(enabled) {
+function keydown(event: Event) { if (event instanceof KeyboardEvent && event.key === 'Escape') close(); }
+function listen(enabled: boolean) {
   const method = enabled ? 'addEventListener' : 'removeEventListener';
   document[method]('pointerdown', outside);
   document[method]('keydown', keydown);

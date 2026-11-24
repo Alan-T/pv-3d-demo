@@ -4,7 +4,7 @@
 
 - 仓库：[Alan-T/pv-3d-demo](https://github.com/Alan-T/pv-3d-demo)
 - 在线演示：[光伏固定支架 3D 设计](http://47.116.75.159:257/)
-- 技术：Vue 3 单文件组件、JavaScript ES Modules、three.js r128、OrbitControls，使用 Vite 开发和构建。
+- 项目使用 Vue 3 单文件组件和 TypeScript，基于 three.js r128 与 OrbitControls 展示模型，使用 Vite 开发和构建。
 - 使用 Yarn 管理依赖，three.js 固定为 `0.128.0`，OrbitControls 从同一个 `three` 包导入。
 
 ## 本地启动
@@ -28,9 +28,9 @@ yarn build
 yarn preview
 ```
 
-`yarn test` 运行现有 Node.js 测试，`yarn build` 生成 `dist/`，`yarn preview` 在本机预览构建产物（默认 `http://localhost:4173/`）。提交 `yarn.lock` 以固定依赖版本。
+`yarn test` 运行 Node.js 测试。`yarn build` 先检查类型，通过后生成 `dist/`。开发时可用 `yarn typecheck` 单独运行类型检查。`yarn preview` 在本机预览构建产物（默认 `http://localhost:4173/`）。提交 `yarn.lock` 以固定依赖版本。
 
-`vite.config.js` 集中配置开发端口 `5173`、预览端口 `4173` 和构建目录 `dist/`。Vite 启动及构建时会自动加载该文件。
+`vite.config.ts` 集中配置开发端口 `5173`、预览端口 `4173` 和构建目录 `dist/`。Vite 启动及构建时会自动加载该文件。
 
 ### Windows 一键预览
 
@@ -83,7 +83,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 左上角选择图纸，左下角选择该图纸中的排布。每个排布独立记录套数、东西向组件列数、首末跨和中间跨榀距、构件截面及拉杆布置。同一图纸中的排布共用组件尺寸、沿坡排数、倾角和地形坡度。
 
-各图纸的默认排布在 `src/config.js` 的 `PRESETS.A.layouts` 和 `PRESETS.B.layouts` 中维护。每项直接填写套数（`quantity`）、列数（`cols`）、跨距（`pitchEnd`、`pitch`）和拉杆布置等参数。`sections` 和 `materials` 按相同的构件键分别保存规格和材质。檩托使用 `purlinClip`，檩条连接件使用 `purlinConnector`。前后柱共用 `braceConnector`，`sections.braceConnector` 保存自动选定的单块板规格（宽*高*厚，mm），`materials.braceConnector` 保存该排布所选的材质牌号。在「构件规格」中可从列表选择牌号，也可直接输入。数组顺序决定初始标签编号。
+各图纸的默认排布在 `src/config.ts` 的 `PRESETS.A.layouts` 和 `PRESETS.B.layouts` 中维护。每项直接填写套数（`quantity`）、列数（`cols`）、跨距（`pitchEnd`、`pitch`）和拉杆布置等参数。`sections` 和 `materials` 按相同的构件键分别保存规格和材质。檩托使用 `purlinClip`，檩条连接件使用 `purlinConnector`。前后柱共用 `braceConnector`，`sections.braceConnector` 保存自动选定的单块板规格（宽*高*厚，mm），`materials.braceConnector` 保存该排布所选的材质牌号。在「构件规格」中可从列表选择牌号，也可直接输入。数组顺序决定初始标签编号。
 
 新增排布会复制当前排布的几何参数和构件规格，套数从 1 开始。鼠标悬浮在排布标签上时，点击「×」即可删除该排布。触屏上先选中标签即可看到「×」。每张图纸至少保留一个排布，删除后按标签顺序从「排布1」重新编号。
 
@@ -130,7 +130,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 调整「檩条最大长度」会使当前图纸的所有排布切回「自动」，按新上限重新切割，即使原来的各段都在新上限以内。
 
-最大长度可选 `5700 / 7200 / 9000`。自动分段由 `src/purlin-cut.js` 的 `cutPurlin()` 计算。
+最大长度可选 `5700 / 7200 / 9000`。自动分段由 `src/purlin-cut.ts` 的 `cutPurlin()` 计算。
 
 1. 总长不超过上限时保留一段。
 2. 与二维自动切割一致，从理论最少段数开始，把平均段长四舍五入到 100，再补偿接缝来初始化接头位置。
@@ -142,7 +142,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 默认檩条为 **C100*55*15*1.8**；连接件为无卷边 **U108*55*3.0，长 240**，每个接头使用 8 套 M12×35（上下翼板各 2 套、腹板 4 套）。连接件随“按图纸配色”切换颜色。“檩条-檩条”节点预览实际接头。
 
-连接件纵向孔位目前为模型假设，具体值见 `src/parts/purlin.js` 中的 `splice`。
+连接件纵向孔位目前为模型假设，具体值见 `src/parts/purlin.ts` 中的 `splice`。
 
 ### 默认连接规格
 
@@ -158,48 +158,48 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 
 ## 代码结构
 
-`src/main.js` 将 Vue 根组件 `App.vue` 挂载到 `index.html`。页面控件、结果表格和视图按钮使用 Vue 模板与事件绑定。`App.vue` 在挂载时创建 3D 场景，在卸载时释放动画循环、监听器、控制器和渲染资源。`designer.js` 接收页面操作并向 Vue 提供普通数据快照，Three.js 对象由场景模块管理。参数和求解逻辑仍通过 ES Modules 共享。`deploy/serve.js` 是独立的 Node.js CommonJS 脚本。
+`src/main.ts` 将 Vue 根组件 `App.vue` 挂载到 `index.html`。Vue 组件通过 `<script setup lang="ts">` 直接使用模型模块的类型。页面控件、结果表格和视图按钮使用 Vue 模板与事件绑定。`App.vue` 在挂载时创建 3D 场景，在卸载时释放动画循环、监听器、控制器和渲染资源。`designer.ts` 接收页面操作并向 Vue 提供普通数据快照，Three.js 对象由场景模块管理。参数和求解逻辑仍通过 ES Modules 共享。`deploy/serve.js` 是独立的 Node.js CommonJS 脚本。
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
 | `index.html` / `style.css` | Vue 挂载入口和全局样式 |
 | `src/App.vue` | 页面布局、场景生命周期、加载状态及面板折叠 |
 | `src/components/` | 视图工具栏、参数控件、参数与结果面板及图纸说明 |
-| `src/designer.js` | 页面操作、场景初始化与清理、数据快照和调试入口 |
-| `src/report.js` | 计算结果、提示和图纸核对数据 |
+| `src/designer.ts` | 页面操作、场景初始化与清理、数据快照和调试入口 |
+| `src/report.ts` | 计算结果、提示和图纸核对数据 |
 | `启动预览.bat` | Windows 本地预览入口 |
-| `src/core.js` | 单位、向量、矩阵工具、实例化及共享状态 |
-| `src/config.js` | 图纸预设、默认截面、截面库、连接尺寸与参数范围 |
-| `src/solve.js` | 框架几何、东西布置与榀数 |
-| `src/purlin-cut.js` | 接头避让、切割方案搜索及分段长度 |
-| `src/scene.js` / `src/materials.js` | 场景、相机、渲染器、材质、配色及透明显示 |
-| `src/parts/post.js` | 立柱和埋地段 |
-| `src/post-tie-layout.js` | 立柱拉杆孔位、跨间布置及下料长度（参考二维 TopView.vue） |
-| `src/parts/post-tie.js` | 前/后排立柱拉杆实体，接收截面、材质及安装坐标 |
-| `src/parts/beam.js` | 斜梁及柱顶连接螺栓 |
-| `src/parts/brace.js` | 内外斜撑、连接板及螺栓 |
-| `src/parts/brace-connector.js` | 单面 / 双面斜撑连接板、节点孔位及连接板螺栓 |
-| `src/parts/purlin-connector.js` | U 型檩条连接件、规格及接头螺栓 |
-| `src/parts/purlin-clip.js` | L 形檩托及底边、立边螺栓 |
-| `src/parts/purlin.js` | 分段檩条、檩托、U 型连接件、连接螺栓与截面封口 |
-| `src/parts/module.js` / `src/parts/clamp.js` | 组件、安装螺栓、中压块及边压块 |
-| `src/parts/bolts.js` | 螺栓、螺母、垫圈几何及实例收集器 |
-| `src/model.js` | 求解后组装构件、地面、封口、标注并刷新界面 |
-| `src/part-options.js` | 将截面、材质、连接规格转换为各构件的构造参数，不读取页面状态 |
-| `src/section-geometry.js` | 独立截面轮廓、单位长度杆件和剖切封口；支持 C 型钢与圆管几何 |
-| `src/brace-layout.js` | 双立柱斜撑连接孔布局、截面变化引起的板位偏移，以及由孔位推导的杆件端点和长度 |
-| `src/bracket.js` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
-| `src/dims.js` / `src/joint-detail.js` | 尺寸标注及节点引线 |
-| `src/view.js` | 视图显隐、剖切、相机取景及动画 |
-| `src/edit.js` | 3D 尺寸拾取、原位编辑及编辑事件清理 |
-| `src/main.js` | 创建并挂载 Vue 应用，加载全局样式 |
+| `src/core.ts` | 单位、向量、矩阵工具、实例化及共享状态 |
+| `src/config.ts` | 图纸预设、默认截面、截面库、连接尺寸与参数范围 |
+| `src/solve.ts` | 框架几何、东西布置与榀数 |
+| `src/purlin-cut.ts` | 接头避让、切割方案搜索及分段长度 |
+| `src/scene.ts` / `src/materials.ts` | 场景、相机、渲染器、材质、配色及透明显示 |
+| `src/parts/post.ts` | 立柱和埋地段 |
+| `src/post-tie-layout.ts` | 立柱拉杆孔位、跨间布置及下料长度（参考二维 TopView.vue） |
+| `src/parts/post-tie.ts` | 前/后排立柱拉杆实体，接收截面、材质及安装坐标 |
+| `src/parts/beam.ts` | 斜梁及柱顶连接螺栓 |
+| `src/parts/brace.ts` | 内外斜撑、连接板及螺栓 |
+| `src/parts/brace-connector.ts` | 单面 / 双面斜撑连接板、节点孔位及连接板螺栓 |
+| `src/parts/purlin-connector.ts` | U 型檩条连接件、规格及接头螺栓 |
+| `src/parts/purlin-clip.ts` | L 形檩托及底边、立边螺栓 |
+| `src/parts/purlin.ts` | 分段檩条、檩托、U 型连接件、连接螺栓与截面封口 |
+| `src/parts/module.ts` / `src/parts/clamp.ts` | 组件、安装螺栓、中压块及边压块 |
+| `src/parts/bolts.ts` | 螺栓、螺母、垫圈几何及实例收集器 |
+| `src/model.ts` | 求解后组装构件、地面、封口、标注并刷新界面 |
+| `src/part-options.ts` | 将截面、材质、连接规格转换为各构件的构造参数，不读取页面状态 |
+| `src/section-geometry.ts` | 独立截面轮廓、单位长度杆件和剖切封口；支持 C 型钢与圆管几何 |
+| `src/brace-layout.ts` | 双立柱斜撑连接孔布局、截面变化引起的板位偏移，以及由孔位推导的杆件端点和长度 |
+| `src/bracket.ts` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
+| `src/dims.ts` / `src/joint-detail.ts` | 尺寸标注及节点引线 |
+| `src/view.ts` | 视图显隐、剖切、相机取景及动画 |
+| `src/edit.ts` | 3D 尺寸拾取、原位编辑及编辑事件清理 |
+| `src/main.ts` | 创建并挂载 Vue 应用，加载全局样式 |
 | `package.json` / `yarn.lock` | Yarn 脚本、Vue、three.js 和 Vite 依赖及锁定版本 |
-| `vite.config.js` | Vue 单文件组件插件、开发服务、预览服务和构建目录配置 |
+| `vite.config.ts` | Vue 单文件组件插件、开发服务、预览服务和构建目录配置 |
 | `deploy/` | 静态服务及 systemd 配置 |
 
-构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.js` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
+构件的 `build(c)` 接收参数 `P`、求解结果 `S`、布置 `layout`、方向向量、模型分组和螺栓收集器。新增构件时，在 `src/parts/` 实现并导出构建函数，在 `src/model.ts` 中导入并调用。螺栓模块提供收集器，统一生成实例化网格。
 
-构件现由 `createBracket(parameters, dependencies)` 统一创建，各文件导出 `PostPart`、`BeamPart` 等类，通过 `new` 创建实例。构造函数直接解构 options，显式接收截面与连接规格、材质、截面几何工具和资源跟踪器；构建函数接收本次支架的上下文。`parts` 不直接导入页面配置和材质模块，几何缓存属于当前构件实例。`model.js` 是页面默认配置的组装入口。
+构件现由 `createBracket(parameters, dependencies)` 统一创建，各文件导出 `PostPart`、`BeamPart` 等类，通过 `new` 创建实例。构造函数直接解构 options，显式接收截面与连接规格、材质、截面几何工具和资源跟踪器；构建函数接收本次支架的上下文。`parts` 不直接导入页面配置和材质模块，几何缓存属于当前构件实例。`model.ts` 是页面默认配置的组装入口。
 
 立柱、斜梁、斜撑和檩条通过注入的 `createSectionGeometry(section)` 创建杆件，檩条通过 `createSectionCapGeometry(section)` 创建剖切封口。两者共用 `createSectionShape(section)`，截面模块只依赖 three.js，不读取页面配置、材质或运行状态。返回的几何体由构件通过 `track` 管理释放。
 
@@ -273,7 +273,7 @@ const post = new PostPart({
 post.build(context);
 ```
 
-`bracket.js` 根据 `partOptions` 创建完整支架的构件实例；组装器显式调用 `parts.post.build(context)` 等方法，连接件在所属构件内单独实例化。
+`bracket.ts` 根据 `partOptions` 创建完整支架的构件实例；组装器显式调用 `parts.post.build(context)` 等方法，连接件在所属构件内单独实例化。
 
 ### 组件锯齿垫圈
 
@@ -286,7 +286,7 @@ post.build(context);
 - 直埋柱下料长度沿用二维：`Math.round(Math.hypot(水平跨距, 上下孔高差 ± 东西坡高) / 10) * 10 + 270`。前后排分别计算，按规格长度统计数量并计入钢材估重。
 - 二维坡高使用 `跨距 × 坡度`，模型实际榀位使用 `跨距 × sin(atan(坡度))`；下料长度保留前者，实体孔位对准实际榀位，多出的端部余量平分，不改变既有支架坐标。
 - 当前仅适配直埋 C 型立柱；X 形两根暂放在立柱两侧翼缘外侧以避免穿插，每根两端各一套 M12×35 外六角螺栓及螺母，两面平垫、螺母侧弹垫，随连接件开关显示并计入数量；尚未对型材做真实孔洞切削。圆管抱箍、螺旋桩的孔距及埋深修正规则未启用。
-- 验证：`yarn node --test tests/post-tie-layout.test.mjs`。
+- 验证：`yarn test tests/post-tie-layout.test.mjs`。
 
 ### 檩条拉杆
 
@@ -294,8 +294,8 @@ post.build(context);
 - 长度 = 首末檩条间距 + 两端各 85 mm，四舍五入至毫米。图纸一为 3974 mm × 12 套，仅中间跨为 10 套。
 - 截面与立柱拉杆共用 `L35*35*1.6`、`C59*39*8*1.6`、`C60*40*10*1.6` 三个选项，默认 `L35*35*1.6`，默认材质为 `S420GD`，可单独修改。L 型水平肢贴檩条下翼缘底面；C 型腹板贴底、槽口朝下，腹板宽度沿东西向、孔位位于腹板中线。每个檩条交点一套 M12×35 外六角螺栓及螺母（沿用既有连接规格），两面平垫、螺母侧弹垫；头在檩条槽内，螺母在拉杆安装面下面。拉杆安装面和檩条下翼缘使用真实 Ø14 通孔（孔径暂定）。图纸一共48套，随连接件开关显示。
 - 随东西坡度布置，计入钢材估重；独立“檩条拉杆”显示开关，侧视和其它构件的节点详图隐藏，专用“檩条拉杆”节点中显示。
-- `src/purlin-tie-layout.js` 负责布置与长度；`src/parts/purlin-tie.js` 负责实体；`section-geometry.js` 增加独立 L 型角钢轮廓。
-- 验证：`yarn node --test tests/purlin-tie-layout.test.mjs`。
+- `src/purlin-tie-layout.ts` 负责布置与长度；`src/parts/purlin-tie.ts` 负责实体；`section-geometry.ts` 增加独立 L 型角钢轮廓。
+- 验证：`yarn test tests/purlin-tie-layout.test.mjs`。
 
 立柱拉杆东西坡度选长规则：前、后排及各跨分别计算平地长度与两根实际长度（均按原规则取整）。两根与平地长度的差值都在 ±100 mm 内（含边界），则两根均使用平地长度；任一根超出，两根均采用各自实际长度。模型长度、数量统计和估重使用选定长度，安装孔坐标保持实际坡度位置。
 
@@ -308,6 +308,6 @@ post.build(context);
 
 ### 檩条连接件选择
 
-页面“檩条连接件”下拉框提供清单去重后的14种规格（按高度、翼缘宽度、板厚、长度升序）（高度*翼缘宽*板厚*长度），由用户手动选择，不随檩条截面变化自动切换。图纸一默认 U108*55*3.0*240，图纸二默认 U98*55*3.0*220，恢复图纸参数时一并恢复。规格名称清单在 config.js 的 PURLIN_CONNECTOR_SPECS 中维护，src/purlin-connector-spec.js 负责名称解析与孔位；模型、螺栓、节点文字、剖切范围及数量统计使用所选规格。
+页面“檩条连接件”下拉框提供清单去重后的14种规格（按高度、翼缘宽度、板厚、长度升序）（高度*翼缘宽*板厚*长度），由用户手动选择，不随檩条截面变化自动切换。图纸一默认 U108*55*3.0*240，图纸二默认 U98*55*3.0*220，恢复图纸参数时一并恢复。规格名称清单在 config.ts 的 PURLIN_CONNECTOR_SPECS 中维护，src/purlin-connector-spec.ts 负责名称解析与孔位；模型、螺栓、节点文字、剖切范围及数量统计使用所选规格。
 
 220长：腹板孔距30/50/60/50/30，上下翼板孔距110；240长：腹板孔距35/50/70/50/35，上下翼板孔距120。连接件具有真实14×25长圆孔，每个接头8套M12×35，翼板螺栓夹紧距离包含装配间隙。55翼缘孔心距外背30，45翼缘为23；53翼缘孔位暂沿用宽翼30。节点文字、剖切范围、数量统计随所选规格更新。

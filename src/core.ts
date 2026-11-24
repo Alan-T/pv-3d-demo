@@ -1,0 +1,109 @@
+
+import * as THREE from 'three';
+import type { createTieJointFocus } from './tie-joint-focus.ts';
+import type { createBracket } from './bracket.ts';
+import type { PresetId } from './config.ts';
+import type { JointType, ViewName } from './joint-view-types.ts';
+import type { Solution } from './solve.ts';
+
+type Bracket = ReturnType<typeof createBracket>;
+type DimensionGroups = Record<'root' | 'key' | 'side' | 'deep' | 'ew' | 'normal' | 'joint' | 'topCuts', THREE.Group>;
+export interface RuntimeState {
+  preset: PresetId;
+  view: ViewName;
+  jointType: JointType;
+  jointSel: number;
+  labelK: number;
+  S: Solution | null;
+  layout: Bracket['layout'] | null;
+  groups: (Bracket['groups'] & { ground: THREE.Mesh; tieFocus?: ReturnType<typeof createTieJointFocus>; tieCapCache?: Map<string, THREE.Group> }) | null;
+  dims: DimensionGroups | null;
+}
+type Disposable = { dispose(): void };
+
+
+/* 光伏固定支架 3D 设计 —— three.js r128（ES Modules）
+ *
+ * 坐标约定（与原图侧视一致）：x 向北（图右）、y 向上、z 向东（侧视图从东往西看）。
+ * 图纸尺寸都用 mm，建模时乘 MM 换成米。原点 (0,0) 在组件前沿正下方的 ±0 地面。
+ *
+ * 代码按功能拆成 ES Modules，通过 import 获取依赖。本文件导出共用的常量、工具和运行状态。
+ */
+
+const MM = 0.001;
+const V3 = THREE.Vector3;
+
+const constants = {
+  DEG: Math.PI / 180,
+  MM,
+  V3,
+  FONT: '"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif',
+  V: (x: number, y: number, z: number) => new V3(x * MM, y * MM, z * MM),   // mm 坐标 → 米
+  EX: new V3(1, 0, 0), EY: new V3(0, 1, 0), EZ: new V3(0, 0, 1), NZ: new V3(0, 0, -1),
+  disposables: [] as Disposable[],     // 每次重建前要释放的几何体、材质、贴图
+  labels: [] as THREE.Sprite[],          // 标注文字精灵（每帧按屏幕像素调大小）
+  state: {
+    preset: 'A',
+    view: '3d',
+    jointType: 'foot',   // 节点详图：foot 斜撑-立柱，top 立柱-斜梁，btop 斜撑-斜梁，clip 檩条-斜梁，mod 檩条-组件（中压块），side 边压块，splice 檩条接头，postTie 立柱拉杆，purlinTie 檩条拉杆
+    jointSel: 1,         // 0 前侧，1 后侧（斜撑-立柱的后侧与节点图同向）
+    labelK: 1.25,        // 文字像素高度系数（手机上小一点），点击修改时输入框也按它定大小
+    S: null,             // solve() 的结果
+    layout: null,        // 东西向布置、连接节点、零件数量
+    groups: null,        // 模型分组：model / buried / modules / hw / slope / hwSlope，地面 ground
+    dims: null,          // 标注分组
+  } as RuntimeState,
+}
+
+export const { DEG, FONT, V, EX, EY, EZ, NZ } = constants;
+export const shared = { disposables: constants.disposables, labels: constants.labels, state: constants.state };
+export { MM, V3 };
+
+export function track<T extends Disposable>(first: T, ...rest: Disposable[]): T {
+  shared.disposables.push(first, ...rest);
+  return first;
+}
+
+export function getBuiltState() {
+  const state = shared.state;
+  if (!state.S || !state.layout || !state.groups) throw new Error('模型尚未构建');
+  return state as RuntimeState & { S: Solution; layout: Bracket['layout']; groups: NonNullable<RuntimeState['groups']> };
+}
+
+// 杆件：单位长度的截面几何体，靠矩阵基向量定方向、拉伸长度
+export function addMember(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, origin: THREE.Vector3, X: THREE.Vector3, Y: THREE.Vector3, Z: THREE.Vector3) {
+  const m = new THREE.Mesh(geo, mat);
+  m.matrixAutoUpdate = false;
+  m.matrix.makeBasis(X, Y, Z).setPosition(origin);
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// 东西坡度的世界变换（ew 见 layoutEW）。不给 zRef：沿檩条方向剪切 (x, y, z) → (x, y + z·sin, z·cos)，
+// 檩条、组件、压块跟着地面顺坡；给 zRef：榀位 zRef 那一榀整体平移到坡上，立柱仍竖直、构件不变形
+export function ewMatrix(ew: { sa: number; ca: number }, zRef?: number) {
+  const m = new THREE.Matrix4();
+  if (zRef === undefined) m.set(1, 0, 0, 0, 0, 1, ew.sa, 0, 0, 0, ew.ca, 0, 0, 0, 0, 1);
+  else m.makeTranslation(0, zRef * ew.sa * MM, zRef * (ew.ca - 1) * MM);
+  return m;
+}
+export function ewPlace<T extends THREE.Object3D>(obj: T, ew: { sa: number; ca: number }, zRef?: number) {
+  obj.matrixAutoUpdate = false;
+  obj.updateMatrix();
+  obj.matrix.premultiply(ewMatrix(ew, zRef));
+  return obj;
+}
+
+// 连接件数量多（每榀几十个零件），全部用实例化网格
+export function instanced(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material | THREE.Material[], mats: THREE.Matrix4[]) {
+  if (!mats.length) return;
+  const im = new THREE.InstancedMesh(geo, mat, mats.length);
+  mats.forEach((m, i) => im.setMatrixAt(i, m));
+  im.instanceMatrix.needsUpdate = true;
+  im.frustumCulled = false;      // 包围球按几何体原点算，不能拿来裁剪实例
+  im.castShadow = true;
+  im.userData.noBox = true;
+  parent.add(im);
+  track(im);
+}

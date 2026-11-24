@@ -1,14 +1,17 @@
-<script setup>
+<script setup lang="ts">
+import type { Designer } from './designer.ts';
+import type { ParameterKey, MemberKey, MaterialKey } from './config.ts';
+type Field = HTMLInputElement | HTMLSelectElement;
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
-import { createDesigner, getSnapshot } from './designer.js';
-import { PRESETS } from './config.js';
+import { createDesigner, getSnapshot } from './designer.ts';
+import { PRESETS } from './config.ts';
 import ParameterPanel from './components/ParameterPanel.vue';
 import ViewToolbar from './components/ViewToolbar.vue';
 import TabList from './components/TabList.vue';
 
-const canvas = ref(null);
-const stage = ref(null);
-const editor = ref(null);
+const canvas = ref<HTMLCanvasElement | null>(null);
+const stage = ref<HTMLElement | null>(null);
+const editor = ref<HTMLInputElement | null>(null);
 const snapshot = shallowRef(getSnapshot());
 const projectInfo = ref({ ...PRESETS[snapshot.value.preset].projectInfo });
 const ready = ref(false);
@@ -19,13 +22,13 @@ const animatePanel = ref(false);
 const sheetOpen = ref(false);
 const panelTitle = computed(() => panelCollapsed.value ? '展开参数面板' : '收起参数面板');
 const storageKey = 'pv3d.panelCollapsed';
-let designer;
+let designer: Designer;
 
 try {
   panelCollapsed.value = localStorage.getItem(storageKey) === '1';
 } catch { /* Storage can be unavailable in private browsing. */ }
 
-function handleError(error) {
+function handleError(error: unknown) {
   console.error(error);
   failed.value = true;
   ready.value = false;
@@ -33,6 +36,7 @@ function handleError(error) {
 
 onMounted(() => {
   try {
+    if (!canvas.value || !stage.value || !editor.value) throw new Error('无法找到三维画布或尺寸编辑框');
     designer = createDesigner({
       canvas: canvas.value,
       stage: stage.value,
@@ -49,29 +53,30 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   designer?.dispose();
-  designer = null;
+  ready.value = false;
 });
 
-function changeParameter(key, value, input) {
+function changeParameter(key: ParameterKey, value: string | boolean, input: Field) {
   const normalized = designer.changeParameter(key, value);
-  if (input.type === 'checkbox') input.checked = !!normalized;
-  else input.value = normalized;
+  if (input instanceof HTMLInputElement && input.type === 'checkbox') input.checked = !!normalized;
+  else input.value = String(normalized);
 }
 
-function changeSection(key, value, input) {
+function changeSection(key: MemberKey, value: string, input: Field) {
   input.value = designer.changeSection(key, value);
 }
 
-function changeMaterialGrade(key, value, input) {
-  input.value = designer.changeMaterialGrade(key, value);
+function changeMaterialGrade(key: MaterialKey, value: string, input: Field) {
+  input.value = designer.changeMaterialGrade(key, value) ?? '';
 }
 
-function changeLayoutQuantity(input) {
-  input.value = designer.changeLayoutQuantity(input.value);
+function changeLayoutQuantity(input: HTMLInputElement) {
+  input.value = String(designer.changeLayoutQuantity(input.value));
 }
 
-function scrollLayouts(event) {
+function scrollLayouts(event: WheelEvent) {
   const list = event.currentTarget;
+  if (!(list instanceof HTMLElement)) return;
   if (event.ctrlKey || event.shiftKey || event.deltaX || list.scrollWidth <= list.clientWidth) return;
   event.preventDefault();
   list.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : 1);

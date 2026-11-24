@@ -1,0 +1,191 @@
+import type { FIX } from './config.ts';
+import type { ModelParameters } from './design-types.ts';
+import type { JointSpecs } from './joint-view-types.ts';
+import type { PartOptions, ConnectorSpec } from './part-types.ts';
+import type { solve as solveSupport, layoutEW as layoutSupport, EWLayout } from './solve.ts';
+import { getPurlinConnectorSpec } from './purlin-connector-spec.ts';
+import { getPurlinClipSpec } from './purlin-clip-spec.ts';
+import { BraceConnectorPart } from './parts/brace-connector.ts';
+import { PostPart } from './parts/post.ts';
+import { PurlinTiePart } from './parts/purlin-tie.ts';
+import { calculatePurlinTies } from './purlin-tie-layout.ts';
+import { PostTiePart } from './parts/post-tie.ts';
+import { calculatePostTies } from './post-tie-layout.ts';
+import { BeamPart } from './parts/beam.ts';
+import { BracePart } from './parts/brace.ts';
+import { PurlinPart } from './parts/purlin.ts';
+import { ModulePart } from './parts/module.ts';
+import { ClampPart } from './parts/clamp.ts';
+import { BoltsPart } from './parts/bolts.ts';
+import * as THREE from 'three';
+import { V3, MM, ewPlace } from './core.ts';
+import { captureFramePose } from './frame-projection.ts';
+
+// 东西坡度：各榀的构件（立柱、斜梁、斜撑、连接板、檩托、M12 螺栓）按离得最近的榀位整体平移到坡上；
+// 顺坡剪切的分组（userData.slope）跳过
+function liftFrames(obj: THREE.Object3D, layout: EWLayout) {
+  const { zs, ew } = layout, m = new THREE.Matrix4(), p = new V3();
+  const lift = (v: THREE.Vector3) => {
+    const z = v.z / MM;
+    const z0 = zs.reduce((a, q) => (Math.abs(q - z) < Math.abs(a - z) ? q : a));
+    v.y += z0 * ew.sa * MM;
+    v.z += z0 * (ew.ca - 1) * MM;
+  };
+  const visit = (o: THREE.Object3D) => {
+    if (o.userData.slope) return;
+    const level = o instanceof THREE.Mesh ? captureFramePose(o) : null;
+    if (o instanceof THREE.InstancedMesh) {
+      for (let i = 0; i < o.count; i++) {
+        o.getMatrixAt(i, m);
+        lift(p.setFromMatrixPosition(m));
+        o.setMatrixAt(i, m.setPosition(p));
+      }
+      o.instanceMatrix.needsUpdate = true;
+    } else if (o instanceof THREE.Mesh) {
+      if (o.matrixAutoUpdate) lift(o.position);
+      else { lift(p.setFromMatrixPosition(o.matrix)); o.matrix.setPosition(p); }
+    }
+    if (level) o.userData.frameDisplay = { level, sloped: captureFramePose(o), flat: false };
+    for (const ch of o.children) visit(ch);
+  };
+  visit(obj);
+}
+
+
+export type SectionRangeLayout = EWLayout & { purlinConnector: ConnectorSpec | null };
+interface BracketDependencies {
+  sections: typeof FIX;
+  partOptions: PartOptions;
+  solvers: { solve: typeof solveSupport; layoutEW: typeof layoutSupport };
+  sectionRange: (layout: SectionRangeLayout, key: string) => number[];
+}
+
+/** Build a support without attaching it to a scene or changing page state.
+ * Component builders receive a per-build context. They must use the supplied
+ * material/resource lifecycle consistently; the current page adapters retain
+ * their existing shared material and geometry configuration.
+ */
+export function createBracket(parameters: ModelParameters, { sections, partOptions, solvers, sectionRange }: BracketDependencies) {
+  const P = { ...parameters };
+  const clipSpec = getPurlinClipSpec(P.purlinClip);
+  if (!clipSpec) throw new Error(`檩托规格不存在：${P.purlinClip}`);
+
+  const beam = new BeamPart(partOptions.beam);
+
+  const purlin = new PurlinPart({
+    ...partOptions.purlin,
+    purlinConnector: { ...partOptions.purlin.purlinConnector, connectorSpec: getPurlinConnectorSpec(P.purlinConnector) },
+    purlinClip: { ...partOptions.purlin.purlinClip, CLIP: clipSpec },
+  });
+  const module = new ModulePart(partOptions.module);
+  const clamp = new ClampPart(partOptions.clamp);
+  const boltPart = new BoltsPart({ ...partOptions.bolts, CLIP: clipSpec });
+  const { solve, layoutEW } = solvers;
+  const viewSectionRange = sectionRange;
+  const S = solve(P), frameLayout = layoutEW(P);
+  const connector = new BraceConnectorPart(partOptions.brace.braceConnector);
+  const O = S.outer;
+  const joints = [
+    connector.braceJoint(S.connections[0], S.tFp, O && O.toFp),
+    connector.braceJoint(S.connections[1], S.tRp, O && O.toRp),
+  ];
+  const layout = Object.assign(frameLayout, {
+    joints,
+    purlinTies: calculatePurlinTies({ mode: P.purlinTies, selected: P.purlinTieSpans, purlins: S.purlins, framePositions: frameLayout.zs }),
+    purlinConnector: purlin.splice,
+    purlinClip: clipSpec,
+  });
+  const postOptions = partOptions.post;
+  const frontPost = new PostPart({ section: postOptions.postFSection, material: postOptions.postMaterial,
+    buriedMaterial: postOptions.buriedMaterial, x: S.xf, bottom: S.botF, top: S.topF, ground: S.gy(S.xf),
+    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
+  const rearPost = new PostPart({ section: postOptions.postRSection, material: postOptions.postMaterial,
+    buriedMaterial: postOptions.buriedMaterial, x: S.xr, bottom: S.botR, top: S.topR, ground: S.gy(S.xr),
+    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
+  const braceOptions = partOptions.brace;
+  const braceConfig = { material: braceOptions.braceMaterial, createSectionGeometry: braceOptions.createSectionGeometry, track: braceOptions.track };
+  const frontBrace = new BracePart({ ...braceConfig, section: braceOptions.braceFSection, node: layout.joints[0] });
+  const rearBrace = new BracePart({ ...braceConfig, section: braceOptions.braceRSection, node: layout.joints[1] });
+  const frontOuterBrace = layout.joints[0].o ? new BracePart({ ...braceConfig, section: braceOptions.braceOFSection, node: layout.joints[0].o }) : null;
+  const rearOuterBrace = layout.joints[1].o ? new BracePart({ ...braceConfig, section: braceOptions.braceORSection, node: layout.joints[1].o }) : null;
+  const g = {
+    model: new THREE.Group(),
+    buried: new THREE.Group(),
+    modules: new THREE.Group(),
+    hw: new THREE.Group(),          // 连接件：螺栓、连接板、檩托
+    purlinTies: new THREE.Group(),
+    purlinTieHardware: new THREE.Group(),
+    postTieHardware: new THREE.Group(),
+    caps: [] as THREE.Group[],
+    slope: new THREE.Group(),       // 顺坡的檩条及其剖切封口
+    hwSlope: new THREE.Group(),     // 顺坡的连接件：压块、组件螺栓
+    postTies: new THREE.Group(),     // 已按实际榀位计算的跨间拉杆，不再变换
+  };
+  g.model.add(g.buried, g.modules, g.hw, g.slope, g.postTies);
+  g.postTies.userData.slope = true;
+  g.hw.add(g.hwSlope);
+  // 东西坡度：各构件先按沿坡坐标搭，再换到坡上（见 ewMatrix）
+  for (const k of ['modules', 'slope', 'hwSlope'] as const) { g[k].userData.slope = true; ewPlace(g[k], layout.ew); }
+
+  // 各构件共用的构建上下文：u 沿坡向上、n 垂直斜梁向上；zw 是立柱腹板所在平面（框架平面东侧），
+  // zBeamWeb 是斜梁腹板内表面（相对榀位 z0），柱顶、撑顶螺栓的螺母在这一侧
+  const zw = sections.postF.f / 2;
+  const bolts = boltPart.collector(P.modT, { moduleSerratedWasher: P.fix === 'bolt' && !!P.serratedWasher });
+  const c = {
+    P, S, layout, bolts, ...g,
+    u: new V3(S.c, S.s, 0), n: new V3(-S.s, S.c, 0),
+    zw, zBeamWeb: zw + sections.beam.t,
+  };
+  frontPost.build(c);
+  rearPost.build(c);
+  beam.build(c);
+  frontBrace.build(c);
+  rearBrace.build(c);
+  frontOuterBrace?.build(c);
+  rearOuterBrace?.build(c);
+  for (const z of layout.zs) for (const joint of layout.joints) connector.build(c, joint, z);
+  if (!purlin.splice && layout.cuts.positions.length) layout.warn.push('请选择有效的檩条连接件规格，接头暂不生成连接件。');
+  const clip = purlin.build(c);
+  g.slope.add(g.purlinTies);
+  g.purlinTies.add(g.purlinTieHardware);
+  const purlinTie = new PurlinTiePart(partOptions.purlinTie);
+  purlinTie.build({ solution: S, ties: layout.purlinTies, parent: g.purlinTies, u: c.u, n: c.n, bolts });
+  module.build(c);
+  const clamps = P.fix === 'clamp' ? clamp.build(c) : null;
+  const counts = { clip, clamps, postTieBolts: 0, ...bolts.flush(g.hw, g.hwSlope, g.purlinTieHardware) };
+
+  // 轴测节点图剖切面的封口：被切开的檩条、组件补画截面，只在剖切时显示。支架节点、檩条-组件、边压块三种剖切范围各一套。
+  // 略往保留的一侧挪 0.5，免得被剖切面自己裁掉；组件的封口放进组件分组，跟着“光伏组件”开关
+  for (const key of ['frame', 'mod', 'side', 'splice', 'clip']) {
+    const [lo, hi] = viewSectionRange(layout, key);
+    const pc = new THREE.Group(), mc = new THREE.Group();
+    pc.userData.section = mc.userData.section = key;
+    g.slope.add(pc);
+    g.modules.add(mc);
+    g.caps.push(pc, mc);
+    for (const z of [lo + 0.5, hi - 0.5]) {
+      purlin.cap(c, z, pc);
+      module.cap(c, z, mc);
+    }
+  }
+  if (layout.ew.i) liftFrames(g.model, layout);
+
+  const postTies = calculatePostTies(P, S, layout);
+  // 拉杆孔位已经是世界坐标；在榀位抬高之后独立生成紧固件，避免重复施加坡度。
+  const tieBolts = boltPart.collector(P.modT);
+  g.postTies.add(g.postTieHardware);
+  const [frontPostTie, rearPostTie] = postTies.map(row => {
+    if (!row.valid && row.enabled.some(Boolean)) S.warn.push(`${row.rear ? '后' : '前'}排立柱拉杆安装高度不足，未生成拉杆，请调整柱高或斜撑下节点高度`);
+    const part = new PostTiePart({ ...partOptions.postTie,
+      postSection: row.rear ? sections.postR : sections.postF });
+    part.build({ row, parent: g.postTies, bolts: tieBolts });
+    return part;
+  });
+  counts.postTieBolts = tieBolts.flush(g.postTieHardware, g.postTieHardware).m12;
+  counts.m12 += counts.postTieBolts;
+
+  const result = Object.assign(layout, { counts, postTies });
+  const builtLayout: typeof result & { jointSpecs?: JointSpecs } = result;
+  const instances = { frontPost, rearPost, frontBrace, rearBrace, frontOuterBrace, rearOuterBrace, purlinTie, frontPostTie, rearPostTie };
+  return { model: g.model, groups: g, solution: S, layout: builtLayout, instances };
+}

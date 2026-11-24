@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.js';
-import { ewMatrix } from '../src/core.js';
-import { solve, layoutEW } from '../src/solve.js';
-import { calculatePurlinTies } from '../src/purlin-tie-layout.js';
-import { PurlinTiePart } from '../src/parts/purlin-tie.js';
-import { createSectionGeometry } from '../src/section-geometry.js';
-import { createDrilledAngleGeometry, createDrilledChannelWebGeometry, createDrilledPurlinGeometry } from '../src/drilled-section-geometry.js';
-import { createTieJointSpecs } from '../src/tie-joint-spec.js';
-import { createClippingCaps } from '../src/clipping-caps.js';
+import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { ewMatrix } from '../src/core.ts';
+import { solve, layoutEW } from '../src/solve.ts';
+import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
+import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
+import { createSectionGeometry } from '../src/section-geometry.ts';
+import { createDrilledAngleGeometry, createDrilledChannelWebGeometry, createDrilledPurlinGeometry } from '../src/drilled-section-geometry.ts';
+import { createTieJointSpecs } from '../src/tie-joint-spec.ts';
+import { createClippingCaps } from '../src/clipping-caps.ts';
 
 const MM = .001;
 const channelArea = ({ d, f, l, t }) => t * (d + 2 * f + 2 * l) - 4 * t * t;

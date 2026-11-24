@@ -1,14 +1,18 @@
-<script setup>
-import { limits } from '../config.js';
+<script setup lang="ts">
+import type { ParameterDefinition, ParameterKey, ModelParameters } from '../config.ts';
+import { limits } from '../config.ts';
 import HelpHint from './HelpHint.vue';
 
-defineProps({
-  definition: { type: Object, required: true },
-  parameters: { type: Object, required: true },
-  selectDescription: String,
-});
-defineEmits(['change']);
+defineProps<{ definition: ParameterDefinition; parameters: ModelParameters; selectDescription?: string }>();
+const emit = defineEmits<{ change: [key: ParameterKey, value: string | boolean, field: HTMLInputElement | HTMLSelectElement] }>();
 const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东西向）', modT: '组件厚度' };
+function changeField(key: ParameterKey, event: Event) {
+  const input = event.currentTarget;
+  if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+    const value = input instanceof HTMLInputElement && input.type === 'checkbox' ? input.checked : input.value;
+    emit('change', key, value, input);
+  }
+}
 </script>
 
 <template>
@@ -17,7 +21,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
     <div class="pl field-label">
       <label v-if="definition.type === 'bool'" :for="`param-${definition.key}`">
         <input :id="`param-${definition.key}`" type="checkbox" :checked="!!parameters[definition.key]"
-          @change="$emit('change', definition.key, $event.target.checked, $event.target)">
+          @change="changeField(definition.key, $event)">
         {{ definition.label }}
       </label>
       <span v-else-if="definition.type === 'size'">{{ definition.label }}</span>
@@ -28,7 +32,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
       <select :id="`param-${definition.key}`" :value="String(parameters[definition.key])"
         :aria-label="definition.label"
         :aria-describedby="selectDescription ? `param-${definition.key}-description` : undefined"
-        @change="$emit('change', definition.key, $event.target.value, $event.target)">
+        @change="changeField(definition.key, $event)">
         <option v-for="[value, label] in definition.options" :key="value" :value="value">{{ label }}</option>
       </select>
       <slot name="after-select" />
@@ -40,7 +44,7 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
           <b v-if="index">×</b>
           <input :id="`param-${key}`" type="number" :data-k="key" :aria-label="sizeLabels[key]"
             :min="limits(key)[0]" :max="limits(key)[1]" step="1" :value="parameters[key]"
-            @change="$emit('change', key, $event.target.value, $event.target)">
+            @change="changeField(key, $event)">
         </template>
         <i>{{ definition.unit }}</i>
       </span>
@@ -49,12 +53,12 @@ const sizeLabels = { modL: '组件长度（沿坡）', modW: '组件宽度（东
       <span class="pv">
         <input :id="`param-${definition.key}`" type="number" :min="definition.min" :max="definition.max"
           :step="definition.step" :value="parameters[definition.key]"
-          @change="$emit('change', definition.key, $event.target.value, $event.target)">
+          @change="changeField(definition.key, $event)">
         <i>{{ definition.unit }}</i>
       </span>
       <input v-if="definition.type !== 'number'" type="range" :min="definition.min" :max="definition.max" :step="definition.step"
         :value="parameters[definition.key]" :aria-label="definition.label"
-        @input="$emit('change', definition.key, $event.target.value, $event.target)">
+        @input="changeField(definition.key, $event)">
     </template>
   </div>
 </template>
