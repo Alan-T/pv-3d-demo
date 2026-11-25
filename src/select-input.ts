@@ -1,4 +1,4 @@
-import { computed, nextTick, type ComponentPublicInstance } from 'vue';
+import { computed, nextTick, watch, type ComponentPublicInstance } from 'vue';
 
 export function setSelectExpanded(input: HTMLInputElement | null, expanded: boolean, keepFocus: boolean) {
   if (!input) return;
@@ -12,24 +12,40 @@ export function setSelectExpanded(input: HTMLInputElement | null, expanded: bool
   }, 0));
 }
 
-function editableSelect(id: string, label: string, choices: readonly string[], read: () => string, save: (text: string) => void) {
-  const presetOptions = choices.map(value => ({ value, label: value }));
+export type SelectChoice = string | { value: string; label: string };
+
+function editableSelect(id: string, label: string, choices: readonly SelectChoice[], read: () => string, save: (text: string) => void,
+  editScope?: () => unknown) {
+  // 可手填的下拉框始终编辑显示文本，在读写项目数据时转换标准项的编码。
+  const catalog = choices.map(option => typeof option === 'string' ? { value: option, label: option } : option);
+  const presetOptions = catalog.map(({ label }) => ({ value: label, label }));
+  const displayValue = computed(() => {
+    const stored = read();
+    return catalog.find(option => option.value === stored)?.label ?? stored;
+  });
   const options = computed(() => {
-    const value = read();
-    return value && !choices.includes(value) ? [{ value, label: value }, ...presetOptions] : presetOptions;
+    const value = displayValue.value;
+    return value && !presetOptions.some(option => option.value === value) ? [{ value, label: value }, ...presetOptions] : presetOptions;
   });
   let select: (ComponentPublicInstance & { blur(): void }) | null = null;
   let input: HTMLInputElement | null = null;
   let draft: string | undefined;
   let navigated = false;
 
+  if (editScope) watch(editScope, () => {
+    draft = undefined;
+    if (input?.getAttribute('aria-expanded') === 'true') select?.blur();
+  });
+
   function commit(text?: string) {
     draft = undefined;
-    if (text !== undefined && text !== read()) save(text);
+    if (text === undefined) return;
+    const value = catalog.find(option => option.label === text)?.value ?? text;
+    if (value !== read()) save(value);
   }
 
   return {
-    get modelValue() { return read(); },
+    get modelValue() { return displayValue.value; },
     get options() { return options.value; },
     ref(control: Element | ComponentPublicInstance | null) {
       if (!control || !('$el' in control)) {
@@ -69,12 +85,14 @@ function editableSelect(id: string, label: string, choices: readonly string[], r
   };
 }
 
-export function useEditableSelects<K extends string>(prefix: string, read: (key: K) => string, save: (key: K, value: string) => void) {
+export function useEditableSelects<K extends string>(prefix: string, read: (key: K) => string, save: (key: K, value: string) => void,
+  editScope?: (key: K) => unknown) {
   const fields = new Map<K, ReturnType<typeof editableSelect>>();
-  return (key: K, label: string, choices: readonly string[]) => {
+  return (key: K, label: string, choices: readonly SelectChoice[]) => {
     let field = fields.get(key);
     if (!field) {
-      field = editableSelect(`${prefix}-${key}`, label, choices, () => read(key), value => save(key, value));
+      field = editableSelect(`${prefix}-${key}`, label, choices, () => read(key), value => save(key, value),
+        editScope && (() => editScope(key)));
       fields.set(key, field);
     }
     return field;

@@ -1,28 +1,41 @@
 <script setup lang="ts">
-import type { ProjectInfo, ModelParameters } from '../config.ts';
-import { limits } from '../config.ts';
-import { useEditableSelects } from '../select-input.ts';
+import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../config.ts';
+import { isSurfaceFinishKey, limits, SURFACE_FINISH_OPTIONS } from '../config.ts';
+import { useEditableSelects, type SelectChoice } from '../select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';
 import FieldSelect from './FieldSelect.vue';
+import HelpHint from './HelpHint.vue';
 
 type SlopeKey = 'slopeEW' | 'slopeNS';
 type NumericKey = { [K in keyof ProjectInfo]: ProjectInfo[K] extends number ? K : never }[keyof ProjectInfo];
 type TextKey = Exclude<keyof ProjectInfo, NumericKey>;
 interface FieldOptions {
   label: string;
+  hint?: string;
   min?: number; max?: number; step?: number; unit?: string;
 }
 type Field = FieldOptions & (
   | { key: NumericKey; type: 'number'; parameter?: false; options?: never }
-  | { key: TextKey; type?: undefined; parameter?: false; options?: string[]; fixedOptions?: boolean }
+  | { key: TextKey; type?: undefined; parameter?: false; options?: SelectChoice[]; fixedOptions?: false }
+  | { key: TextKey; type?: undefined; parameter?: false; options: string[]; fixedOptions: true }
   | { key: SlopeKey; type: 'number'; parameter: true; options?: never }
 );
+type SurfaceFinishField = FieldOptions & {
+  key: SurfaceFinishKey; options: SelectChoice[]; fixedOptions?: false;
+};
 
-const props = defineProps<{ modelValue: ProjectInfo; parameters: ModelParameters; disabled?: boolean }>();
-const emit = defineEmits<{ 'update:modelValue': [value: ProjectInfo]; parameter: [key: SlopeKey, value: string, field: HTMLInputElement] }>();
-const projectSelect = useEditableSelects<TextKey>('project', key => props.modelValue[key],
-  (key, value) => emit('update:modelValue', { ...props.modelValue, [key]: value }));
+const props = defineProps<{ modelValue: ProjectInfo; parameters: ModelParameters; preset: PresetId; disabled?: boolean }>();
+const emit = defineEmits<{
+  'update:modelValue': [value: ProjectInfo];
+  parameter: [key: SlopeKey | SurfaceFinishKey, value: string, field?: HTMLInputElement];
+}>();
+const projectSelect = useEditableSelects<TextKey | SurfaceFinishKey>('project',
+  key => isSurfaceFinishKey(key) ? props.parameters[key] : props.modelValue[key],
+  (key, value) => {
+    if (isSurfaceFinishKey(key)) emit('parameter', key, value);
+    else emit('update:modelValue', { ...props.modelValue, [key]: value });
+  }, key => isSurfaceFinishKey(key) ? props.preset : undefined);
 
 const fields: Field[] = [
   { key: 'number', label: '项目编号' },
@@ -54,9 +67,24 @@ const environmentFields: Field[] = [
   slopeField('slopeNS', '南北坡度'),
   { key: 'designLife', label: '设计年限', type: 'number', min: 1, step: 1, unit: '年' },
 ];
+const corrosionFields: Field[] = [
+  { key: 'corrosivityCategory', label: '大气腐蚀等级', options: ['C1', 'C2', 'C3', 'C4', 'C5', 'CX'], fixedOptions: true },
+];
+const surfaceFinishFields: SurfaceFinishField[] = [
+  { key: 'moduleFastenerFinish', label: '组件紧固件', options: SURFACE_FINISH_OPTIONS },
+  { key: 'otherFastenerFinish', label: '其他紧固件', options: SURFACE_FINISH_OPTIONS },
+  { key: 'postFinish', label: '立柱', options: SURFACE_FINISH_OPTIONS },
+  { key: 'otherFinish', label: '其他大件', hint: '适用于立柱以外的大件，例如斜梁和檩条。', options: SURFACE_FINISH_OPTIONS },
+  { key: 'zamSmallPartFinish', label: '锌铝镁小件', hint: '厚度小于等于 3.5 mm 的小件使用锌铝镁小件表面处理。', options: SURFACE_FINISH_OPTIONS },
+  { key: 'smallPartFinish', label: '其他小件', hint: '适用于锌铝镁小件以外的小件。', options: SURFACE_FINISH_OPTIONS },
+  { key: 'pileFinish', label: '桩', options: SURFACE_FINISH_OPTIONS },
+  { key: 'roundRodFinish', label: '圆钢拉杆', options: SURFACE_FINISH_OPTIONS },
+];
 const groups = [
   { id: 'basic', title: '项目信息', fields },
   { id: 'environment', title: '规范与环境', fields: environmentFields },
+  { id: 'corrosion', title: '腐蚀', fields: corrosionFields },
+  { id: 'surface-finish', title: '表面处理', fields: surfaceFinishFields },
 ];
 
 function fieldValue(field: Field) {
@@ -85,7 +113,10 @@ function changeField(field: Field, input: HTMLInputElement) {
   <section v-for="group in groups" :key="group.id" class="project-info" :data-project-group="group.id">
     <h3>{{ group.title }}</h3>
     <div v-for="field in group.fields" :key="field.key" class="prow">
-      <label class="pl" :for="`project-${field.key}`">{{ field.label }}</label>
+      <div class="pl field-label">
+        <label :for="`project-${field.key}`">{{ field.label }}</label>
+        <help-hint v-if="field.hint" :label="field.label" :text="field.hint" />
+      </div>
       <div class="project-value">
         <field-select v-if="field.options && field.fixedOptions" :id="`project-${field.key}`" :value="String(fieldValue(field))"
           :label="field.label" :disabled="disabled" @change="emit('update:modelValue', { ...modelValue, [field.key]: $event })">
@@ -105,6 +136,13 @@ function changeField(field: Field, input: HTMLInputElement) {
 
 <style scoped>
 .project-info .prow { grid-template-columns: 72px minmax(0, 1fr); }
+.project-info[data-project-group="corrosion"] .prow {
+  grid-template-columns: 80px minmax(0, 1fr);
+}
+.project-info[data-project-group="surface-finish"] .prow {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+.project-info[data-project-group="surface-finish"] .field-label { white-space: nowrap; }
 .project-value { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .project-value > .tiny-input, .project-value > .tiny-select { width: 100%; min-width: 0; }
 .project-unit { flex: none; min-width: 12px; white-space: nowrap; color: var(--muted); font-size: 12px; }

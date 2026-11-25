@@ -31,7 +31,7 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { applyPresetSections, applySection, findSection, FIX, P, PARAMS, PRESETS, show } from './config.ts';
+import { applyPresetSections, applySection, findSection, isSurfaceFinishKey, FIX, P, PARAMS, PRESETS, show } from './config.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
 import { initMaterials, disposeMaterials } from './materials.ts';
@@ -199,6 +199,14 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   function changeParameter(key: keyof ModelParameters, value: string | boolean) {
+    if (isSurfaceFinishKey(key)) {
+      if (typeof value === 'string' && P[key] !== value) {
+        P[key] = value;
+        currentDrawing().sharedParameters[key] = value;
+        publish();
+      }
+      return P[key];
+    }
     const definition = PARAMS.find(item => item.key === key);
     if (definition?.type === 'select') {
       if (!definition.options.some(([option]) => option === value)) return P[key];

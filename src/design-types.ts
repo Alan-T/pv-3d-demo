@@ -14,9 +14,20 @@ export interface ProjectInfo {
   tradeTerm: string; country: string; longitude: number; latitude: number;
   designStandard: string; designMethod: string; terrainCategory: string; buildingCategory: string;
   windSpeed: number; snowPressure: number; elevation: number; airDensity: number; designLife: number;
+  corrosivityCategory: string;
 }
 
-export interface SharedParameters {
+const surfaceFinishKeys = [
+  'moduleFastenerFinish', 'otherFastenerFinish', 'postFinish', 'otherFinish',
+  'zamSmallPartFinish', 'smallPartFinish', 'pileFinish', 'roundRodFinish',
+] as const;
+export type SurfaceFinishKey = typeof surfaceFinishKeys[number];
+
+export function isSurfaceFinishKey(key: string): key is SurfaceFinishKey {
+  return surfaceFinishKeys.some(finishKey => finishKey === key);
+}
+
+export interface SharedParameters extends Record<SurfaceFinishKey, string> {
   modL: number; modW: number; modT: number; modPower: number; modWeight: number;
   hole: number; rows: number; fix: 'bolt' | 'clamp'; serratedWasher: ToggleValue; clampL: number;
   tilt: number; h0: number; span: number; embed: number; slopeNS: number; slopeEW: number;

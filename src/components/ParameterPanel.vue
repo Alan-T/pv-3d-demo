@@ -73,7 +73,7 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'project'" id="panel-page-project" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-project" tabindex="0">
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="项目信息">
-          <project-info :model-value="projectInfo" :parameters="snapshot.parameters" :disabled="!ready"
+          <project-info :preset="snapshot.preset" :model-value="projectInfo" :parameters="snapshot.parameters" :disabled="!ready"
             @update:model-value="$emit('update:projectInfo', $event)"
             @parameter="(...args) => $emit('parameter', ...args)" />
           <section>

@@ -4,6 +4,7 @@
 import type { ChannelSection, DrawingPreset, LayoutPreset, MemberKey, ModelParameters, NamedSection,
   ParameterDefinition, PresetId, PurlinAccessory, Section } from './design-types.ts';
 export type * from './design-types.ts';
+export { isSurfaceFinishKey } from './design-types.ts';
 
 const frameDefaults = { d: 90, f: 55, l: 20, t: 3 };
 const FIX = {
@@ -91,6 +92,26 @@ const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', 
 
 export const MATERIAL_GRADE_OPTIONS = ['S350GD', 'S420GD', 'S450GD', 'S550GD', 'Q235B'];
 
+export const SURFACE_FINISH_OPTIONS = [
+  { value: '20040', label: 'HDG Average ≥ 40μm' },
+  { value: '20045', label: 'HDG Average ≥ 45μm' },
+  { value: '20050', label: 'HDG Average ≥ 50μm' },
+  { value: '20055', label: 'HDG Average ≥ 55μm' },
+  { value: '20060', label: 'HDG Average ≥ 60μm' },
+  { value: '20065', label: 'HDG Average ≥ 65μm' },
+  { value: '20085', label: 'HDG Average ≥ 85μm' },
+  { value: '20100', label: 'HDG Average ≥ 100μm' },
+  { value: '20110', label: 'HDG Average ≥ 110μm' },
+  { value: '20120', label: 'HDG Average ≥ 120μm' },
+  { value: '10275', label: 'ZM275g/m2 (Double sided)' },
+  { value: '10310', label: 'ZM310g/m2 (Double sided)' },
+  { value: '10350', label: 'ZM350g/m2 (Double sided)' },
+  { value: '10450', label: 'ZM450g/m2 (Double sided)' },
+  { value: '30304', label: 'SUS304(A2-70)' },
+  { value: '30316', label: 'SUS316(A4-70)' },
+  { value: '40015', label: 'AA15μm' },
+];
+
 export const PURLIN_ACCESSORY_KEYS: PurlinAccessory[] = ['purlinClip', 'purlinConnector'];
 const ACCESSORY_SECTION_KEYS = [...PURLIN_ACCESSORY_KEYS, 'braceConnector', 'braceConnectorF', 'braceConnectorR'];
 // 檩托：立边高*底边宽*厚度*长度（mm）。
@@ -141,7 +162,18 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
       elevation: 0, // m
       airDensity: 1.225, // kg/m³
       designLife: 25, // 年
+      corrosivityCategory: 'C4',
     },
+
+    // 表面处理，当前图纸的所有排布共用。
+    moduleFastenerFinish: '30304',
+    otherFastenerFinish: '30304',
+    postFinish: '20085',
+    otherFinish: '10310',
+    zamSmallPartFinish: '10310',
+    smallPartFinish: '20085',
+    pileFinish: '20085',
+    roundRodFinish: '20045',
 
     // 组件尺寸与阵列
     modL: 2384, // 组件长度（沿坡）
@@ -261,7 +293,18 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
       elevation: 0, // m
       airDensity: 1.225, // kg/m³
       designLife: 25, // 年
+      corrosivityCategory: 'C4',
     },
+
+    // 表面处理，当前图纸的所有排布共用。
+    moduleFastenerFinish: '30304',
+    otherFastenerFinish: '30304',
+    postFinish: '20085',
+    otherFinish: '10310',
+    zamSmallPartFinish: '10310',
+    smallPartFinish: '20085',
+    pileFinish: '20085',
+    roundRodFinish: '20045',
 
     // 组件尺寸与阵列
     modL: 2382, // 组件长度（沿坡）
