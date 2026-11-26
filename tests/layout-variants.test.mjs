@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DBL, FIX, JOINT, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { FIX, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/brace-connector-spec.ts';
+import { braceConnection } from '../src/brace-layout.ts';
+import { MM } from '../src/core.ts';
 import { DrawingLayouts } from '../src/layout-variants.ts';
 import { BraceConnectorPart } from '../src/parts/brace-connector.ts';
 import { layoutEW, solve } from '../src/solve.ts';
@@ -144,7 +147,7 @@ test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整',
   const parameters = getPresetParameters(PRESETS.B);
   const narrow = 'C80*40*15*3.0', wide = 'C200*80*30*3.0';
   const connector = new BraceConnectorPart({
-    DBL, JOINT, postFSection: FIX.postF, postRSection: FIX.postR,
+    plates: braceConnectorPlates, postFSection: FIX.postF, postRSection: FIX.postR,
     track(geometry) { t.after(() => geometry.dispose()); return geometry; },
   });
   for (const [postF, postR, outer, split, offsets, expectedLabel] of [
@@ -163,12 +166,12 @@ test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整',
       assert.equal(joint.plateCount, split ? 2 : 1);
       assert.equal(joint.boltRoles.filter(role => role === 'post').length, 2 * joint.plateCount);
       if (split) {
-        assert.ok(c.plateShift >= JOINT.singleBack);
+        assert.ok(c.plateShift >= BRACE_JOINT.singleBack);
         for (const x of [joint.bolts[0][0], joint.bolts[2][0]]) {
-          assert.ok(Math.abs(x - c.xc) + JOINT.slotW / 2 <= joint.postSection.d / 2);
+          assert.ok(Math.abs(x - c.xc) + BRACE_JOINT.slotW / 2 <= joint.postSection.d / 2);
         }
-        assert.equal(joint.Q.x, joint.bolts[0][0] + c.side * JOINT.boltU);
-        assert.equal(joint.o.Q.x, joint.bolts[2][0] - c.side * JOINT.boltU);
+        assert.equal(joint.Q.x, joint.bolts[0][0] + c.side * BRACE_JOINT.boltU);
+        assert.equal(joint.o.Q.x, joint.bolts[2][0] - c.side * BRACE_JOINT.boltU);
       }
     }
   }
@@ -176,6 +179,28 @@ test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整',
   const s = solve({ ...parameters, outer: 1 });
   assert.ok(s.connections.every(c => c.split));
   assert.ok(s.warn.some(w => w.includes('前立柱截面宽 50 mm') && w.includes('安装孔超出柱边')));
+});
+
+test('双面板的模型与标注读取独立规格，宽柱分装仍使用两块单面板', t => {
+  const connector = new BraceConnectorPart({
+    plates: { ...braceConnectorPlates, double: parseBraceConnectorSpec('300*150*7.0') },
+    postFSection: FIX.postF,
+    track(geometry) { t.after(() => geometry.dispose()); return geometry; },
+  });
+  for (const [postWidth, dimensions, label] of [
+    [90, [300, 150, 7], '双面 300×150×7.0'],
+    // 柱宽 140 时两块单面板的背边相接，总宽为两块板宽之和。
+    [140, [320, 120, 5.75], '单面 160×120×5.75（每柱两块）'],
+  ]) {
+    const connection = braceConnection({ x: 0, y: 0, side: 1, outer: true, postWidth,
+      boltOffset: BRACE_JOINT.boltU, singleBack: BRACE_JOINT.singleBack, rise: BRACE_JOINT.rise });
+    const joint = connector.braceJoint(connection, { x: 500, y: 500 }, { x: -500, y: 500 });
+    joint.plateGeo.computeBoundingBox();
+    const { min, max } = joint.plateGeo.boundingBox;
+    const size = max.clone().sub(min).toArray().map(value => Number((value / MM).toFixed(3)));
+    assert.deepEqual(size, dimensions);
+    assert.equal(joint.specLabel, label);
+  }
 });
 
 test('构件材质与截面独立，复制、切换和恢复排布均保留正确牌号', () => {

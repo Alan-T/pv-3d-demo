@@ -49,6 +49,11 @@ const TIE_SECTION_LIB: string[] = [
 ];
 // 檩托：立边高*底边宽*厚度*长度（mm）。
 const PURLIN_CLIP_SPECS = ['L100*63*6.0*50', 'L90*56*5.0*50', 'L75*50*5.0*50'];
+// 斜撑连接板：单块板的宽*高*厚（mm）。分装时每侧用一块单面板。
+const BRACE_CONNECTOR_SPECS: readonly [single: string, double: string] = [
+  '160*120*5.75', // 单面板
+  '280*120*5.75', // 双面板
+];
 // 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
 const PURLIN_CONNECTOR_SPECS = [
   'U88*45*2.75*220',
@@ -121,24 +126,6 @@ function applySection(key: MemberKey, { name, ...dimensions }: NamedSection) {
   Object.assign(target, dimensions);
 }
 
-// 斜撑连接板只有两种规格：单面 160×120×5.75、双面 280×120×5.75（按连接板详图）。坐标原点在立柱中心线、板竖向中点
-const JOINT = {
-  plateT: 5.75,
-  plateH: 120,
-  boltPitch: 70,    // 立柱中心线上两孔间距（孔心距板上、下边各 25）
-  boltU: 120,       // 斜撑孔离立柱中心线（水平），斜撑孔 (±120, 30)
-  rise: 30,         // 斜撑孔比板竖向中点高（孔心距板上边 30）
-  braceEdge: 35,    // 斜撑两端孔心到斜撑端头（沿斜撑）
-  postTopHole: 50,  // 立柱-斜梁螺栓孔心到柱顶（立柱中心线上）
-  singleW: 160,     // 单面板宽
-  singleBack: 20,   // 单面板从立柱中心线往背离斜撑一侧伸出 20（往斜撑一侧伸出 140，斜撑孔距板边 20）
-  singleBot: 30,    // 单面板下边从背侧板边到立柱中心线往斜撑一侧 30（下边宽 50）
-  chamferY: 5,      // 斜撑一侧竖直板边高 55（到板竖向中点 +5），再斜切到下边
-  slotW: 14, slotL: 28,
-};
-// 带外斜撑时的双面连接板 280×120×5.75：左右对称，上边 ±half，两侧竖直板边高 55，再斜切到下边 ±botHalf（下边宽 60）。
-// 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
-const DBL = { half: 140, botHalf: 30 };
 // 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
 const CLAMP = {
   bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
@@ -239,7 +226,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
           braceOF: 'C80*40*15*2.0', braceOR: 'C80*40*15*2.0',
           postTie: 'C59*39*8*1.6', purlinTie: 'L35*35*1.6',
           purlinClip: 'L100*63*6.0*50', purlinConnector: 'U108*55*3.0*240',
-          braceConnector: '160*120*5.75', // 前后柱共用，自动选型后保存单块板的宽*高*厚
+          braceConnector: '160*120*5.75', // 前后柱共用，保存单块板规格
         },
         materials: {
           postF: 'S420GD', postR: 'S420GD',
@@ -498,5 +485,5 @@ function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: Draw
 }
 const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, PURLIN_CONNECTOR_SPECS, applySection };
-export { applyPresetSections, getPresetParameters, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };
+export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, BRACE_CONNECTOR_SPECS, PURLIN_CONNECTOR_SPECS, applySection };
+export { applyPresetSections, getPresetParameters, FIX, PRESETS, DEFAULTS, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

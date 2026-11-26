@@ -1,5 +1,6 @@
 import type { BufferGeometry, Material } from 'three';
-import type { FIX, JOINT, DBL, CLAMP } from './config.ts';
+import type { FIX, CLAMP } from './config.ts';
+import type { braceConnectorPlates } from './brace-connector-spec.ts';
 import type { createSectionGeometry, createSectionCapGeometry } from './section-geometry.ts';
 import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledChannelWebGeometry } from './drilled-section-geometry.ts';
 
@@ -7,7 +8,7 @@ import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledC
 interface PartDependencies {
   sections: typeof FIX;
   materials: Record<'purlinTie' | 'postTie' | 'post' | 'buried' | 'beam' | 'brace' | 'bracket' | 'purlin' | 'purlinCap' | 'purlinConnector' | 'clip' | 'moduleCap' | 'clamp' | 'boltSteel' | 'boltNut' | 'boltWasher' | 'boltSpring' | 'slot', Material>;
-  connections: { JOINT: typeof JOINT; DBL: typeof DBL; CLAMP: typeof CLAMP };
+  connections: { plates: typeof braceConnectorPlates; CLAMP: typeof CLAMP };
   geometry: {
     createSectionGeometry: typeof createSectionGeometry;
     createSectionCapGeometry: typeof createSectionCapGeometry;
@@ -17,7 +18,7 @@ interface PartDependencies {
 }
 
 export function createPartOptions({ sections, materials, connections, geometry, track }: PartDependencies) {
-  const { JOINT, DBL, CLAMP } = connections;
+  const { plates, CLAMP } = connections;
   const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
     purlinTie: { section: sections.purlinTie, purlinSection: sections.purlin, material: materials.purlinTie, createSectionGeometry, createDrilledAngleGeometry, createDrilledChannelWebGeometry, track },
@@ -36,8 +37,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       track },
     brace: { braceMaterial: materials.brace,
       createSectionGeometry,
-      DBL,
-      JOINT,
       postFSection: sections.postF,
       postRSection: sections.postR,
       braceFSection: sections.braceF,
@@ -45,8 +44,7 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       braceOFSection: sections.braceOF,
       braceORSection: sections.braceOR,
       braceConnector: { bracketMaterial: materials.bracket,
-      DBL,
-      JOINT,
+      plates,
       postFSection: sections.postF,
       postRSection: sections.postR,
       braceFSection: sections.braceF,
@@ -88,7 +86,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       springMaterial: materials.boltSpring,
       slotMaterial: materials.slot,
       CLAMP,
-      JOINT,
       track },
   };
 }

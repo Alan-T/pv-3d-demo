@@ -1,11 +1,11 @@
 import { createPartOptions } from './part-options.ts';
-import { JOINT, DBL, CLAMP } from './config.ts';
+import { braceConnectorPlates } from './brace-connector-spec.ts';
 import { modMats } from './materials.ts';
 import { createSectionGeometry, createSectionCapGeometry } from './section-geometry.ts';
 import { createBracket } from './bracket.ts';
 import { getScene, tryGetScene } from './scene.ts';
 import { M } from './materials.ts';
-import { FIX, P } from './config.ts';
+import { CLAMP, FIX, P } from './config.ts';
 import { MM, track, ewPlace, shared } from './core.ts';
 import { solve, layoutEW } from './solve.ts';
 import { build as dimsBuild } from './dims.ts';
@@ -75,7 +75,7 @@ export function build() {
   const partOptions = createPartOptions({
     sections: FIX,
     materials: M,
-    connections: { JOINT, DBL, CLAMP },
+    connections: { plates: braceConnectorPlates, CLAMP },
     geometry: { createSectionGeometry, createSectionCapGeometry, modMats },
     track,
   });

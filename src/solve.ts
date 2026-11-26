@@ -1,7 +1,8 @@
 import type { ModelParameters } from './config.ts';
-import { braceConnection, braceMember, needsSplitBraceConnector } from './brace-layout.ts';
+import { BRACE_JOINT, needsSplitBraceConnector } from './brace-connector-spec.ts';
+import { braceConnection, braceMember } from './brace-layout.ts';
 import { cutPurlin } from './purlin-cut.ts';
-import { JOINT, FIX } from './config.ts';
+import { FIX } from './config.ts';
 import { DEG } from './core.ts';
 
 /* 几何求解：由参数算出框架平面内的关键点和东西向布置，单位 mm。纯计算，不碰 three.js 场景 */
@@ -28,7 +29,7 @@ export function solve(p: ModelParameters) {
   const nodeR = nodeF + L * s / c;
   // 连接孔位于立柱中心线与斜梁腹板中心线的交点；柱顶水平切，孔心向上留边。
   const holeF = nodeF, holeR = nodeR;
-  const topF = holeF + JOINT.postTopHole, topR = holeR + JOINT.postTopHole;
+  const topF = holeF + BRACE_JOINT.postTopHole, topR = holeR + BRACE_JOINT.postTopHole;
   // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
   // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
   // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
@@ -47,21 +48,20 @@ export function solve(p: ModelParameters) {
     warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
   }
   // 板型按同一榀的前、后柱共同选定；安装孔的横向位置按各自柱宽计算。
-  const connector = { outer: p.outer, split: needsSplitBraceConnector(p.outer, FIX.postF.d, FIX.postR.d),
-    boltOffset: JOINT.boltU, singleBack: JOINT.singleBack, rise: JOINT.rise };
+  const connector = { outer: p.outer, split: needsSplitBraceConnector(p.outer, FIX.postF.d, FIX.postR.d) };
   const connections = [
     braceConnection({ ...connector, x: xf, y: p.braceHF, side: 1, postWidth: FIX.postF.d }),
     braceConnection({ ...connector, x: xr, y: p.braceHR, side: -1, postWidth: FIX.postR.d }),
   ];
   for (const joint of connections) {
     const front = joint.side > 0, width = front ? FIX.postF.d : FIX.postR.d;
-    if (joint.split && joint.plateShift + JOINT.slotW / 2 > width / 2) {
-      warn.push(`${front ? '前' : '后'}立柱截面宽 ${width} mm，共用斜撑连接板分装时 Ø${JOINT.slotW} 安装孔超出柱边，请调整立柱截面`);
+    if (joint.split && joint.plateShift + BRACE_JOINT.slotW / 2 > width / 2) {
+      warn.push(`${front ? '前' : '后'}立柱截面宽 ${width} mm，共用斜撑连接板分装时 Ø${BRACE_JOINT.slotW} 安装孔超出柱边，请调整立柱截面`);
     }
   }
   const bF = connections[0].Q, bR = connections[1].Q;
   const tFp = along(tF), tRp = along(tR);
-  const braceMembers = [braceMember(bF, tFp, JOINT.braceEdge), braceMember(bR, tRp, JOINT.braceEdge)];
+  const braceMembers = [braceMember(bF, tFp, BRACE_JOINT.braceEdge), braceMember(bR, tRp, BRACE_JOINT.braceEdge)];
   const braceF = braceMembers[0].len, braceR = braceMembers[1].len;
 
   // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
@@ -73,7 +73,7 @@ export function solve(p: ModelParameters) {
     const toFp = along(toF), toRp = along(toR);
     outer = {
       oF, oR, toF, toR, toFp, toRp,
-      braceOF: braceMember(oF, toFp, JOINT.braceEdge).len, braceOR: braceMember(oR, toRp, JOINT.braceEdge).len,
+      braceOF: braceMember(oF, toFp, BRACE_JOINT.braceEdge).len, braceOR: braceMember(oR, toRp, BRACE_JOINT.braceEdge).len,
     };
   }
 

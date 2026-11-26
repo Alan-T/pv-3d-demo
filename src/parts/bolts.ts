@@ -1,4 +1,5 @@
 import type { PartOptions, ClipSpec } from '../part-types.ts';
+import { BRACE_JOINT } from '../brace-connector-spec.ts';
 import { V3, MM, instanced } from '../core.ts';
 import { createSerratedWasherGeometry } from '../serrated-washer-geometry.ts';
 import * as THREE from 'three';
@@ -17,7 +18,6 @@ export class BoltsPart {
     slotMaterial,
     CLAMP,
     CLIP,
-    JOINT,
     track,
   }: PartOptions['bolts'] & { CLIP: ClipSpec }) {
   /* 螺栓：M16 / M12 / M8 三种规格，按连接位置分几种叠层厚度；每次重建由各构件登记位置，最后统一画成实例化网格 */
@@ -84,7 +84,7 @@ export class BoltsPart {
       parts.push([cyl(socket.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), slotMaterial]);           // 内六角孔
     }
     if (slot) {
-      const width = slot.width ?? JOINT.slotW;
+      const width = slot.width ?? BRACE_JOINT.slotW;
       const w = (width / 2) * MM, l = ((slot.len - width) / 2) * MM;
       const s = new THREE.Shape();
       s.moveTo(w, -l);
@@ -146,9 +146,9 @@ export class BoltsPart {
         if (thickness !== undefined) {
           const base = kind, key = base + ':' + thickness;
           if (!K[key]) {
-            // postTie 传入拉杆腹板 + 当前立柱翼缘的总夹紧厚度。
-            const stack = ['postTie', 'purlinTie', 'splice'].includes(base) ? thickness : thickness + (base === 'top' || base === 'btop' ? beamSection.t : JOINT.plateT);
-            const slot = ['btop', 'postTie', 'purlinTie', 'splice'].includes(base) ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : JOINT.slotL, width: base === 'top' ? 18 : JOINT.slotW };
+            // 上节点叠加斜梁板厚，其他节点传入总夹紧厚度。
+            const stack = base === 'top' || base === 'btop' ? thickness + beamSection.t : thickness;
+            const slot = ['btop', 'postTie', 'purlinTie', 'splice'].includes(base) ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : BRACE_JOINT.slotL, width: base === 'top' ? 18 : BRACE_JOINT.slotW };
             K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie', 'splice'].includes(base), spring: true });
 
             mats[key] = [];

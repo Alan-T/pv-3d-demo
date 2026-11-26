@@ -5,9 +5,9 @@ type StoredLayout = LayoutPreset & Partial<Record<PurlinAccessory, string>> & {
   sections: LayoutPreset['sections'] & { braceConnectorF?: string; braceConnectorR?: string };
 };
 
-import { DBL, getLayoutParameters, JOINT, PURLIN_ACCESSORY_KEYS, isMemberKey } from './config.ts';
+import { getLayoutParameters, PURLIN_ACCESSORY_KEYS, isMemberKey } from './config.ts';
 import { getSectionLibrary } from './section-spec.ts';
-import { braceConnectorSpec, needsSplitBraceConnector } from './brace-layout.ts';
+import { getBraceConnectorPlate, needsSplitBraceConnector } from './brace-connector-spec.ts';
 import { getPurlinDimensions } from './solve.ts';
 
 export { getLayoutParameters };
@@ -18,7 +18,7 @@ function updateBraceConnector(layout: LayoutPreset & { outer?: ModelParameters['
   const { sections } = layout;
   const outer = layout.outer ?? sharedOuter;
   const split = needsSplitBraceConnector(outer, postWidths.get(sections.postF) ?? 0, postWidths.get(sections.postR) ?? 0);
-  sections.braceConnector = braceConnectorSpec(outer, split, JOINT, DBL);
+  sections.braceConnector = getBraceConnectorPlate(outer, split).name;
 }
 
 function normalizeLayout({ sections, materials, ...layout }: StoredLayout, sharedOuter: ModelParameters['outer']) {

@@ -1,24 +1,16 @@
-import type { DBL, JOINT } from './config.ts';
+import { BRACE_JOINT, needsSplitBraceConnector } from './brace-connector-spec.ts';
 
 export interface FramePoint { x: number; y: number }
 interface ConnectionOptions extends FramePoint {
   side: number; postWidth: number; outer: boolean | number; split?: boolean;
-  boltOffset: number; singleBack?: number; rise: number;
-}
-
-/** 带外斜撑时，前后立柱共用的板型按较宽一侧选定。 */
-export function needsSplitBraceConnector(outer: boolean | number, frontWidth: number, rearWidth = frontWidth) {
-  return !!outer && Math.max(frontWidth, rearWidth) >= 140;
-}
-
-/** 单块板规格（宽*高*厚，mm）；分装时两块单面板使用同一规格。 */
-export function braceConnectorSpec(outer: boolean | number, split: boolean, joint: typeof JOINT, doublePlate: typeof DBL) {
-  const width = outer && !split ? doublePlate.half * 2 : joint.singleW;
-  return `${width}*${joint.plateH}*${joint.plateT}`;
+  boltOffset?: number; singleBack?: number; rise?: number;
 }
 
 /** 二维 112 双立柱的连接孔布局；尺寸和坐标均为 mm，不依赖页面状态。 */
-export function braceConnection({ x, y, side, postWidth, outer, split = needsSplitBraceConnector(outer, postWidth), boltOffset, singleBack = 20, rise }: ConnectionOptions) {
+export function braceConnection({
+  x, y, side, postWidth, outer, split = needsSplitBraceConnector(outer, postWidth),
+  boltOffset = BRACE_JOINT.boltU, singleBack = BRACE_JOINT.singleBack, rise = BRACE_JOINT.rise,
+}: ConnectionOptions) {
   // 分装时保持两块单面板背边不重叠，宽柱继续沿用各自柱边到孔心 50 mm 的布置。
   const plateShift = split ? Math.max(singleBack, postWidth / 2 - 50)
     : outer ? 0 : Math.max(0, Math.ceil((postWidth - 120) / 20)) * 10;

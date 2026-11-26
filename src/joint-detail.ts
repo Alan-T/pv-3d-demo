@@ -1,5 +1,6 @@
 import { mats, DimSet } from './dims.ts';
-import { CLAMP, JOINT, FIX, P, section } from './config.ts';
+import { CLAMP, FIX, P, section } from './config.ts';
+import { BRACE_JOINT } from './brace-connector-spec.ts';
 import { V, V3, MM, DEG, ewPlace, track } from './core.ts';
 
 import * as THREE from 'three';
@@ -62,7 +63,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
     const J = layout.joints[fr];
     if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
       const o = J.o, yBot = J.yc - J.hh, ax = J.xc - J.side * (J.extent + 60);   // 文字挂在板外侧 60
-      const outerPlateX = o.Q.x + J.side * JOINT.boltU;
+      const outerPlateX = o.Q.x + J.side * BRACE_JOINT.boltU;
       const ly = (k: number) => yBot - 50 - 48 * k;
       specs.foot.push({
         labelSide: -J.side, anchorX: ax,
@@ -72,8 +73,8 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
           [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
           [J.bolts[1][0], J.bolts[1][1], ly(3), 'M12×35 外六角螺栓及螺母 ×' + J.bolts.length],
           [outerPlateX - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
-          [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
-          [J.xc, J.yc - JOINT.boltPitch / 2, ly(6), '两面平垫，螺母侧弹垫；长圆孔'],
+          [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${BRACE_JOINT.braceEdge}`],
+          [J.xc, J.yc - BRACE_JOINT.boltPitch / 2, ly(6), '两面平垫，螺母侧弹垫；长圆孔'],
         ],
         lines: [[J.xc, yBot - 70, J.xc, J.yTop + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260],
@@ -86,14 +87,14 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         leaders: [
           [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 70, `斜撑 ${sec(section('brace', !!fr))}`],
           [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 15, `立柱 ${sec(section('post', !!fr))}`],
-          [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12×35 外六角螺栓及螺母 ×3'],
+          [J.xc, J.yc + BRACE_JOINT.boltPitch / 2, J.yc + 40, 'M12×35 外六角螺栓及螺母 ×3'],
           [J.xc + J.side * 45, J.yc + 10, J.yc - 20, `斜撑连接板 ${J.spec}`],
-          [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
-          [J.xc, J.yc - JOINT.boltPitch / 2, J.yc - 130, '两面平垫，螺母侧弹垫；长圆孔'],
+          [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${BRACE_JOINT.braceEdge}`],
+          [J.xc, J.yc - BRACE_JOINT.boltPitch / 2, J.yc - 130, '两面平垫，螺母侧弹垫；长圆孔'],
         ],
         lines: [[J.xc, J.yc - J.hh - 70, J.xc, J.yc + J.hh + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260]],
-        box: [J.xc - J.side * (section('post', !!fr).d / 2 + 110), J.xc + J.side * (JOINT.singleW - JOINT.singleBack + 170),
+        box: [J.xc - J.side * (section('post', !!fr).d / 2 + 110), J.xc + J.side * (J.extent + 170),
           J.yc - 160, J.yc + J.hh + 150],
       });
     }
@@ -105,13 +106,13 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         labelSide: ls, anchorX: ax,
         leaders: [
           [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
-          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${JOINT.postTopHole}`],
+          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${BRACE_JOINT.postTopHole}`],
           [hole.x, hole.y, y0 - 130, 'M16×40 外六角螺栓（平垫 + 弹垫）'],
           [hole.x, hole.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
           [node.x, node.y - 190, y0 - 260, `立柱 ${sec(section('post', !!fr))}`],
         ],
         lines: [[node.x, node.y - 280, node.x, ty + 70], seg2(mv(node, -320, 0), mv(node, 320, 0))],
-        dims: [[node.x, ty, hole.x, hole.y, -ls * (section('post', !!fr).d / 2 + 60), 0, `${JOINT.postTopHole}`]],
+        dims: [[node.x, ty, hole.x, hole.y, -ls * (section('post', !!fr).d / 2 + 60), 0, `${BRACE_JOINT.postTopHole}`]],
         box: [node.x - ls * 260, ax, y0 - 290, ty + 90],
       });
     }
@@ -122,7 +123,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         labelSide: ls, anchorX: ax,
         leaders: [
           [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
-          [end.x, end.y, y0 - 65, `斜撑端头平切，孔心到端头 ${JOINT.braceEdge}`],
+          [end.x, end.y, y0 - 65, `斜撑端头平切，孔心到端头 ${BRACE_JOINT.braceEdge}`],
           [T.x, T.y, y0 - 130, 'M12×35 外六角螺栓（平垫 + 弹垫）'],
           [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(section('brace', !!fr))}`],
         ],
