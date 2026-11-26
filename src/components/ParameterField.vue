@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ParameterDefinition, ParameterKey, ModelParameters } from '../config.ts';
-import { limits } from '../config.ts';
+import { limits, MODULE_THICKNESSES } from '../config.ts';
 import { TinyOption } from '@opentiny/vue';
 import HelpHint from './HelpHint.vue';
 import FieldInput from './FieldInput.vue';
@@ -20,7 +20,8 @@ function changeField(key: ParameterKey, event: Event) {
 
 <template>
   <div v-show="!definition.when || definition.when(parameters)" class="prow"
-    :class="{ pbool: definition.type === 'bool', psize: definition.type === 'size' }">
+    :class="{ pbool: definition.type === 'bool', psize: definition.type === 'size',
+      'select-with-unit-column': definition.type === 'select' && (definition.unit || definition.key === 'fix') }">
     <div class="pl field-label">
       <label v-if="definition.type === 'bool'" :for="`param-${definition.key}`">
         <input :id="`param-${definition.key}`" type="checkbox" :checked="!!parameters[definition.key]"
@@ -33,11 +34,18 @@ function changeField(key: ParameterKey, event: Event) {
     </div>
     <template v-if="definition.type === 'select'">
       <field-select :id="`param-${definition.key}`" :value="String(parameters[definition.key])"
-        :label="definition.label" :disabled="disabled"
+        :label="definition.unit ? `${definition.label}（${definition.unit}）` : definition.label" :disabled="disabled"
         :description="selectDescription ? `param-${definition.key}-description` : undefined"
         @change="emit('change', definition.key, $event)">
-        <tiny-option v-for="[value, label] in definition.options" :key="value" :value="value" :label="label" />
+        <template v-if="'numericOptions' in definition">
+          <tiny-option v-for="option in definition.numericOptions" :key="option"
+            :value="String(option)" :label="String(option)" />
+        </template>
+        <template v-else>
+          <tiny-option v-for="[value, label] in definition.options" :key="value" :value="value" :label="label" />
+        </template>
       </field-select>
+      <i v-if="definition.unit" class="select-unit">{{ definition.unit }}</i>
       <slot name="after-select" />
       <small v-if="selectDescription" :id="`param-${definition.key}-description`" class="field-description">{{ selectDescription }}</small>
     </template>
@@ -45,7 +53,12 @@ function changeField(key: ParameterKey, event: Event) {
       <span class="pv">
         <template v-for="(key, index) in definition.keys" :key="key">
           <b v-if="index">×</b>
-          <field-input :id="`param-${key}`" type="number" :data-k="key" :label="sizeLabels[key]"
+          <field-select v-if="key === 'modT'" :id="`param-${key}`" :value="String(parameters[key])"
+            :label="sizeLabels[key]" :disabled="disabled" @change="emit('change', key, $event)">
+            <tiny-option v-for="thickness in MODULE_THICKNESSES" :key="thickness"
+              :value="String(thickness)" :label="String(thickness)" />
+          </field-select>
+          <field-input v-else :id="`param-${key}`" type="number" :data-k="key" :label="sizeLabels[key]"
             :min="limits(key)[0]" :max="limits(key)[1]" step="1" :value="parameters[key]"
             @commit="emit('change', key, $event.value, $event)" />
         </template>

@@ -183,6 +183,7 @@ html, body {
   --field-label-size: 13px;
   --field-value-size: 12px;
   --field-height: 26px;
+  --field-unit-width: 22px;
   border: 0; margin: 0; min-width: 0;
 }
 .report-body { padding-top: 0; }
@@ -201,6 +202,7 @@ section:last-child { border-bottom: 0; }
 .prow .pl { font-size: var(--field-label-size); }
 .field-label { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .prow .pv { display: flex; align-items: center; gap: 4px; justify-self: end; }
+.prow.select-with-unit-column { grid-template-columns: minmax(0, 1fr) auto minmax(var(--field-unit-width), auto); column-gap: 4px; }
 .panel-fields .tiny-input {
   display: block; min-width: 0;
   --tv-Input-mini-height: var(--field-height);
@@ -211,7 +213,7 @@ section:last-child { border-bottom: 0; }
 .panel-fields .tiny-select .tiny-input__inner { min-height: var(--tv-Input-mini-height); }
 .prow .pv > .tiny-input, .design-parameters .prow > .tiny-select { width: 124px; max-width: 100%; }
 .prow .pv .tiny-input__inner { text-align: right; }
-.prow .pv i { font-style: normal; color: var(--muted); font-size: 12px; min-width: 22px; }
+.prow .pv > i, .prow > .select-unit { font-style: normal; color: var(--muted); font-size: 12px; min-width: var(--field-unit-width); }
 .prow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--blue); margin: 0; }
 .prow small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -2px; }
 .prow .field-description { margin-top: 0; color: #697685; line-height: 1.45; font-variant-numeric: tabular-nums; }
@@ -222,6 +224,12 @@ section:last-child { border-bottom: 0; }
 .prow.psize { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; }
 .prow.psize .pv { width: 100%; min-width: 0; gap: 3px; }
 .prow.psize .pv > .tiny-input { flex: 1; width: 0; --tv-Input-padding-y: 4px; }
+.prow.psize .pv > .field-select { flex: 0 0 56px; }
+.prow.psize .field-select .tiny-input {
+  --tv-Input-suffix-padding-left: 5px;
+  --tv-Input-suffix-padding-right: 22px;
+  --tv-Input-suffix-right: 4px;
+}
 .prow.psize .tiny-input__inner { appearance: textfield; }
 .prow.psize input::-webkit-inner-spin-button, .prow.psize input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .prow.psize .pv b { font-weight: normal; color: var(--muted); font-size: 12px; }

@@ -1,6 +1,6 @@
 import { getScene } from './scene.ts';
 import { V3, shared } from './core.ts';
-import { show, P, limits } from './config.ts';
+import { show, P, limits, MODULE_THICKNESSES } from './config.ts';
 import { getCamera } from './view.ts';
 import * as THREE from 'three';
 
@@ -65,6 +65,7 @@ function closeEdit(commit: boolean) {
 
 function setParam(key: NumericParameterKey, v: number) {
   const P = params;
+  if (key === 'modT' && !MODULE_THICKNESSES.includes(v)) return;
   const [lo, hi, step] = limits(key);
   v = Math.min(hi, Math.max(lo, Math.round(v / step) * step));
   v = Math.round(v * 10) / 10;

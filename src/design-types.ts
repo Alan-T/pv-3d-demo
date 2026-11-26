@@ -64,6 +64,7 @@ interface FieldBase {
 export type ParameterDefinition = FieldBase & (
   | { type: 'size'; keys: ['modL', 'modW', 'modT']; key?: never }
   | { type: 'select'; key: ParameterKey; options: [string, string][]; keys?: never }
+  | { type: 'select'; key: NumericParameterKey; numericOptions: readonly number[]; keys?: never }
   | { type: 'bool'; key: 'serratedWasher' | 'outer'; keys?: never }
   | { type?: 'number'; key: NumericParameterKey; keys?: never }
 );

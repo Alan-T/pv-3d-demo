@@ -6,6 +6,8 @@ export type * from './design-types.ts';
 export { isSurfaceFinishKey } from './design-types.ts';
 
 // ---------- 选型规格库与选项 ----------
+export const MODULE_THICKNESSES: readonly number[] = [30, 33, 35]; // 组件厚度（mm）
+export const CLAMP_LENGTHS: readonly number[] = [40, 50, 60, 80]; // 中压块、边压块沿坡长度（mm）
 // 常规 C 型构件规格（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，mm），由 section-spec.ts 解析尺寸。
 const SECTION_LIB: string[] = [
   'C50*30*10*1.8', 'C50*30*10*2.0',
@@ -406,8 +408,10 @@ const PARAMS: ParameterDefinition[] = [
     hint: '螺栓固定：组件安装孔 M8×22，檩条两端各伸出组件 50；压块：缝上中压块、两端边压块，M8×35 内六角，檩条两端各伸出 100' },
   { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
     hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
-  { key: 'clampL', label: '压块长度',        unit: 'mm', min: 30,   max: 200,  step: 5, when: (P) => P.fix === 'clamp' },
-  { key: 'maxPurlin', label: '檩条最大长度', type: 'select', options: [['5700', '5700 mm'], ['7200', '7200 mm'], ['9000', '9000 mm']] },
+  { key: 'clampL', label: '压块长度', type: 'select', unit: 'mm', when: (P) => P.fix === 'clamp',
+    numericOptions: CLAMP_LENGTHS },
+  { key: 'maxPurlin', label: '檩条最大长度', type: 'select', unit: 'mm',
+    options: ['5700', '7200', '9000'].map(length => [length, length]) },
   { key: 'purlinCutMode', label: '分段方式', type: 'select', options: [['auto', '自动'], ['custom', '自定义']] },
   { key: 'purlinConnector', label: '檩条连接件', type: 'select',
     options: PURLIN_CONNECTOR_SPECS.map(name => [name, name]),
@@ -427,7 +431,8 @@ const PARAMS: ParameterDefinition[] = [
 const EXTRA_LIMITS: Record<string, [number, number]> = {
   braceHF: [100, 800], braceHR: [100, 1200], braceTopF: [600, 5000], braceTopR: [600, 5000],
   braceOutF: [100, 3000], braceOutR: [100, 3000],
-  embed: [800, 3000], modL: [1600, 2600], modW: [900, 1400], modT: [25, 50], hole: [600, 2400],
+  embed: [800, 3000], modL: [1600, 2600], modW: [900, 1400], hole: [600, 2400],
+  modT: [Math.min(...MODULE_THICKNESSES), Math.max(...MODULE_THICKNESSES)],
 };
 // 返回 [最小, 最大, 步长]；安装孔距不能超过组件长度 − 200
 function limits(key: string): [number, number, number] {

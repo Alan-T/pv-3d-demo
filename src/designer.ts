@@ -211,7 +211,10 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     }
     const definition = PARAMS.find(item => item.key === key);
     if (definition?.type === 'select') {
-      if (!definition.options.some(([option]) => option === value)) return P[key];
+      const selected = 'numericOptions' in definition
+        ? definition.numericOptions.find(option => String(option) === value)
+        : definition.options.find(([option]) => option === value)?.[0];
+      if (selected === undefined) return P[key];
       if (key === 'purlinCutMode' && value === 'custom' && !P.purlinCutLengths?.length) {
         P.purlinCutLengths = getAutomaticPurlinCutLengths() ?? [];
       }
@@ -220,7 +223,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
         const installed = new Set(layout.purlinTies.rods.map(rod => rod.bay));
         P.purlinTieSpans = Array.from({ length: layout.zs.length - 1 }, (_, index) => Number(installed.has(index)));
       }
-      Object.assign(P, { [key]: value });
+      Object.assign(P, { [key]: selected });
       scheduleBuild();
     } else if (definition?.type === 'bool') {
       Object.assign(P, { [key]: Number(value) });
