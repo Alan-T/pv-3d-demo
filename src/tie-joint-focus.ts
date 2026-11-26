@@ -13,7 +13,6 @@ interface FocusOptions {
 
 const CONTEXT_COLOR = new Color(0xc4cbd3);
 const CONTEXT_OPACITY = 0.22;
-const SUPPORT_OPACITY = 0.85;
 
 /** 拉杆节点专用外观：按构件归属替换材质，避免共享螺栓材质连带淡化拉杆紧固件。 */
 export function createTieJointFocus(groups: FocusGroups, { track = resource => resource, supportMaterials = {} }: FocusOptions = {}) {
@@ -54,12 +53,10 @@ export function createTieJointFocus(groups: FocusGroups, { track = resource => r
     }
     if ('roughness' in source) material.roughness = muted ? 0.9 : source.roughness;
     if ('metalness' in source) material.metalness = muted ? 0.05 : source.metalness;
-    // 固定拉杆的立柱/檩条保留当前配色和材质质感，仅略透明。
-    material.opacity = subdued
-      ? (support ? SUPPORT_OPACITY : CONTEXT_OPACITY)
-      : source.opacity;
-    material.depthWrite = subdued ? false : source.depthWrite;
-    compileProperty(material, 'transparent', subdued || source.transparent);
+    // 固定拉杆的立柱/檩条保留当前配色、不透明度和深度写入，避免半透明排序穿插。
+    material.opacity = muted ? CONTEXT_OPACITY : source.opacity;
+    material.depthWrite = muted ? false : source.depthWrite;
+    compileProperty(material, 'transparent', muted || source.transparent);
     compileProperty(material, 'side', cap ? DoubleSide : source.side);
     // 封口没有原构件的 UV；背景组件也去掉电池片纹理，保留浅色外形。
     compileProperty(material, 'map', null);

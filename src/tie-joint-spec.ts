@@ -36,8 +36,8 @@ function postTieSpec(row: PostTieRow | undefined, sections: TieSections, rearSid
   const ax = -side * (rod.end.z - rod.start.z) / holeLength;
   const ay = (rod.end.y - rod.start.y) / holeLength;
   const endX = ax * allowance, endY = ay * allowance;
-  const halfWidth = Math.max(185, Math.abs(endX) + tie.d / 2 + 12);
-  const halfHeight = Math.max(155, Math.abs(endY) + tie.d / 2 + 18);
+  const halfWidth = Math.max(210, Math.abs(endX) + tie.d / 2 + 18);
+  const halfHeight = Math.max(175, Math.abs(endY) + tie.d / 2 + 22);
   const labelSide = -side, anchorX = labelSide * (halfWidth + 15);
   // 标注杆端这一小段的腹板，按杆端在螺栓上方或下方安排引线，避免两条线交叉。
   const rodAboveBolt = endY > 0;
@@ -45,7 +45,7 @@ function postTieSpec(row: PostTieRow | undefined, sections: TieSections, rearSid
   // +z 看向选中拉杆贴柱的一面；深度保留整个柱截面及拉杆翼缘、螺栓。
   return {
     matrix, labelSide, anchorX, z: 0, zl: tie.f,
-    isoDirection: [labelSide * 0.45, 0.3, 1],
+    isoDirection: [labelSide * 0.72, 0.38, 1],
     bay, endAllowance: allowance,
     leaders: [
       [0, halfHeight - 35, halfHeight + (rodAboveBolt ? 10 : -15), `后立柱 ${sectionName(post)} · 第${bay + 1}跨东端`, 0],
@@ -74,7 +74,7 @@ function purlinTieSpec(solution: Solution, layout: TieLayout, sections: TieSecti
   const labelSide = rear ? 1 : -1, anchorX = labelSide * (allowance + 65);
   return {
     matrix, labelSide, anchorX, z: 0, zl: flangeZ,
-    isoDirection: [labelSide * 0.7, -1.5, 0.7],
+    isoDirection: [labelSide * 0.9, -0.55, 0.95],
     bay: rod.bay, endAllowance: allowance,
     leaders: [
       [-purlin.f / 2, purlin.d * .65, purlin.d + 32, `檩条 ${sectionName(purlin)} · 第${rod.bay + 1}跨`, 55],
@@ -83,8 +83,8 @@ function purlinTieSpec(solution: Solution, layout: TieLayout, sections: TieSecti
       [endX * .45, -depth + tie.t, -depth - 18, `檩条拉杆 ${sectionName(tie)}，Ø14 通孔`, flangeZ],
     ],
     lines: [[0, -depth - 12, 0, purlin.d + 8, 0], [rear ? -145 : endX - 10, 0, rear ? endX + 10 : 145, 0, 0]],
-    dims: [[0, 0, endX, 0, 0, -depth - 32, number(allowance)]],
-    clipBox: [rear ? -150 : endX - 18, rear ? endX + 18 : 150, -depth - 18, purlin.d + 5, -72, 72],
+    dims: [[0, 0, endX, 0, 0, -depth - 38, number(allowance)]],
+    clipBox: [rear ? -150 : endX - 18, rear ? endX + 18 : 150, -depth - 18, purlin.d + 5, -140, 140],
   };
 }
 

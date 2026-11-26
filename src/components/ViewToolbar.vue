@@ -35,14 +35,33 @@ function sideAvailable(side: number) {
   return !['postTie', 'purlinTie'].includes(type) || !!props.snapshot.tieJointAvailable?.[type]?.[side];
 }
 
+/** 按节点类型给前后侧按钮显示不同的短标签，与其他节点的"前侧/后侧"保持一致的位置。 */
+function sideLabel(side: number) {
+  if (props.snapshot.jointType === 'postTie') return side ? '后翼缘' : '前翼缘';
+  if (props.snapshot.jointType === 'purlinTie') return side ? '高檩条' : '低檩条';
+  return side ? '后侧' : '前侧';
+}
+
 function sideTitle(side: number) {
   if (props.snapshot.jointType === 'postTie') {
-    return `后排立柱拉杆${side ? '后侧' : '前侧'}连接${sideAvailable(side) ? '' : '：当前后排未生成有效拉杆'}`;
+    return `后排立柱拉杆${side ? '后翼缘' : '前翼缘'}连接${sideAvailable(side) ? '' : '：当前后排未生成有效拉杆'}`;
   }
   if (props.snapshot.jointType === 'purlinTie') {
     return `檩条拉杆与${side ? '最高' : '最低'}一根檩条连接${sideAvailable(side) ? '' : '：当前未布置拉杆'}`;
   }
   return `${side ? '后' : '前'}立柱一侧（檩条-斜梁、檩条-组件：${side ? '最高' : '最低'}一根檩条）`;
+}
+
+function elevTitle() {
+  if (props.snapshot.jointType === 'postTie') return '正对立柱翼缘，查看拉杆连接位置和尺寸';
+  if (props.snapshot.jointType === 'purlinTie') return '正视查看檩条槽内的螺栓头';
+  return '正对当前节点连接面，查看连接位置和尺寸';
+}
+
+function isoTitle() {
+  if (props.snapshot.jointType === 'postTie') return '略偏一侧看，查看拉杆贴柱翼缘的螺栓和垫圈';
+  if (props.snapshot.jointType === 'purlinTie') return '从下方轴测查看拉杆螺母和杆端';
+  return '略偏一侧、偏上看，看得出螺栓和板厚';
 }
 </script>
 
@@ -80,14 +99,14 @@ function sideTitle(side: number) {
       </template>
       <span class="sep"></span>
       <button class="chip" data-joint="0" :disabled="!ready || !sideAvailable(0)" :class="{ on: snapshot.jointSel === 0 }"
-        :title="sideTitle(0)" @click="$emit('joint', 'side', 0)">前侧</button>
+        :title="sideTitle(0)" @click="$emit('joint', 'side', 0)">{{ sideLabel(0) }}</button>
       <button class="chip" data-joint="1" :disabled="!ready || !sideAvailable(1)" :class="{ on: snapshot.jointSel === 1 }"
-        :title="sideTitle(1)" @click="$emit('joint', 'side', 1)">后侧</button>
+        :title="sideTitle(1)" @click="$emit('joint', 'side', 1)">{{ sideLabel(1) }}</button>
       <span class="sep"></span>
       <button data-view="joint-elev" :disabled="!ready" :class="{ on: snapshot.view === 'joint-elev' }"
-        title="正对当前节点连接面，查看连接位置和尺寸" @click="$emit('view', 'joint-elev')">正视</button>
+        :title="elevTitle()" @click="$emit('view', 'joint-elev')">正视</button>
       <button data-view="joint-iso" :disabled="!ready" :class="{ on: snapshot.view === 'joint-iso' }"
-        title="略偏一侧、偏上看，看得出螺栓和板厚" @click="$emit('view', 'joint-iso')">轴测</button>
+        :title="isoTitle()" @click="$emit('view', 'joint-iso')">轴测</button>
     </nav>
   </header>
 </template>
