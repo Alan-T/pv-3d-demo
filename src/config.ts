@@ -11,15 +11,15 @@ const FIX = {
   postF: { ...frameDefaults }, postR: { ...frameDefaults },
   braceF: { ...frameDefaults }, braceR: { ...frameDefaults },
   braceOF: { ...frameDefaults }, braceOR: { ...frameDefaults },
+  beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
+  purlin: { d: 100, f: 55, l: 15, t: 1.8 },
+  postTie: { d: 59, f: 39, l: 8, t: 1.6 } as Section,
+  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 } as Section,
   beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
   modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
   // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
   purlinExt: { bolt: 50, clamp: 100 },
   maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
-  beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
-  purlin: { d: 100, f: 55, l: 15, t: 1.8 },
-  postTie: { d: 59, f: 39, l: 8, t: 1.6 } as Section,
-  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 } as Section,
 };
 // ---------- 构件截面选型库 ----------
 // 常规 C 型构件共用这一份数据（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）；拉杆使用专用库。

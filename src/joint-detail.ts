@@ -84,10 +84,10 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       specs.foot.push({
         labelSide: -J.side, anchorX: J.xc - J.side * (section('post', !!fr).d / 2 + 50),
         leaders: [
-          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 70, `立柱 ${sec(section('post', !!fr))}`],
-          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 15, `斜撑 ${sec(section('brace', !!fr))}`],
+          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 70, `斜撑 ${sec(section('brace', !!fr))}`],
+          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 15, `立柱 ${sec(section('post', !!fr))}`],
           [J.xc, J.yc + JOINT.boltPitch / 2, J.yc + 40, 'M12×35 外六角螺栓及螺母 ×3'],
-          [J.B.x - J.side * 25, J.yc - J.hh + 22, J.yc - 20, `斜撑连接板 ${J.spec}`],
+          [J.xc + J.side * 45, J.yc + 10, J.yc - 20, `斜撑连接板 ${J.spec}`],
           [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${JOINT.braceEdge}`],
           [J.xc, J.yc - JOINT.boltPitch / 2, J.yc - 130, '两面平垫，螺母侧弹垫；长圆孔'],
         ],
@@ -121,8 +121,8 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       specs.btop.push({
         labelSide: ls, anchorX: ax,
         leaders: [
-          [end.x, end.y, y0, `斜撑端头平切，孔心到端头 ${JOINT.braceEdge}`],
-          [bp.x, bp.y, y0 - 65, `斜梁 ${sec(FIX.beam)}`],
+          [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
+          [end.x, end.y, y0 - 65, `斜撑端头平切，孔心到端头 ${JOINT.braceEdge}`],
           [T.x, T.y, y0 - 130, 'M12×35 外六角螺栓（平垫 + 弹垫）'],
           [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(section('brace', !!fr))}`],
         ],
@@ -195,7 +195,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
   for (const fr of (layout.purlinConnector ? [0,1] : [])) {
     const splice = layout.purlinConnector!;
     const p=S.along(S.purlins[fr?S.purlins.length-1:0]), z=layout.cuts.positions.at(-1)||0;
-    const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+100;
+    const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+210;
     // 截面标注共用接缝平面，各引线分别指向翼缘、接缝、连接件和下翼缘螺栓。
     const upperLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, FIX.purlin.d / 2 - FIX.purlin.l / 2);
     const lowerLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, -FIX.purlin.d / 2 + FIX.purlin.l / 2);

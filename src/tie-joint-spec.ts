@@ -79,8 +79,8 @@ function purlinTieSpec(solution: Solution, layout: TieLayout, sections: TieSecti
     leaders: [
       [-purlin.f / 2, purlin.d * .65, purlin.d + 32, `檩条 ${sectionName(purlin)} · 第${rod.bay + 1}跨`, 55],
       // 正视时螺母被槽边挡住，引线指向檩条上方的头部；从下方轴测时则指向螺母。
-      [0, -tie.t - 12, purlin.d * .35, tieBolt, 8, [0, purlin.t + 6, 0]],
-      [endX * .45, -depth + tie.t, -depth - 18, `檩条拉杆 ${sectionName(tie)}，Ø14 通孔`, flangeZ],
+      [0, -tie.t - 10, purlin.d * .28, tieBolt, 0, [0, purlin.t + 6, 0]],
+      [endX * .55, -depth + tie.t, -depth - 20, `檩条拉杆 ${sectionName(tie)}，Ø14 通孔`, 0],
     ],
     lines: [[0, -depth - 12, 0, purlin.d + 8, 0], [rear ? -145 : endX - 10, 0, rear ? endX + 10 : 145, 0, 0]],
     dims: [[0, 0, endX, 0, 0, -depth - 38, number(allowance)]],

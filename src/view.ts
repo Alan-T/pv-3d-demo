@@ -319,7 +319,7 @@ function framePose(name: ViewName): CameraPose {
     // 正视沿檩条轴线看截面；有东西坡度时相机随檩条方向倾斜。
     const dir = name === 'joint-elev' ? new V3(0,layout.ew.sa,layout.ew.ca) : new V3(-0.85,0.65,0.65).normalize();
     const [right, up] = screenAxes(dir), points = [];
-    for (const x of [xL,xR]) for (const y of [yB,yT]) for (const dz of [-280,280])
+    for (const x of [xL,xR]) for (const y of [yB,yT]) for (const dz of [-180,180])
       points.push(V(x,y,z+dz).applyMatrix4(W));
     for (const [x,y,ly,,pz] of sp.leaders) {
       points.push(V(x,y,pz ?? sp.zl ?? z).applyMatrix4(W));
@@ -327,7 +327,7 @@ function framePose(name: ViewName): CameraPose {
     }
     const xs=points.map(p=>p.dot(right)), ys=points.map(p=>p.dot(up));
     const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
-    const scale=Math.max(0.05,Math.min(2,(cw-labelPx-80)/((maxX-minX)/MM),(ch-240)/((maxY-minY)/MM)));
+    const scale=Math.max(0.05,Math.min(2.5,(cw-labelPx-40)/((maxX-minX)/MM),(ch-190)/((maxY-minY)/MM)));
     const center=points[0].clone().addScaledVector(right,(minX+maxX)/2-xs[0]+labelPx/2/scale*MM)
       .addScaledVector(up,(minY+maxY)/2-ys[0]);
     return {target:center,dir,zoom:1/(ch/2/scale*MM)};
