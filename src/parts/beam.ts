@@ -14,7 +14,7 @@ export class BeamPart {
     track,
   }: PartOptions['beam']) {
   /* 斜梁：每榀一根，搭在前后立柱上；立柱在斜梁上居中。
-   * 立柱-斜梁节点：斜梁腹板贴立柱腹板，1 颗 M16×40 在立柱中心线上、孔心距柱顶 50，立柱腹板上开竖向长圆孔；柱顶平切 */
+   * 立柱-斜梁节点：斜梁腹板贴立柱腹板，1 颗 M16×40 穿过立柱中心线上的竖向长圆孔；柱顶平切 */
 
   const geo = track(createSectionGeometry(beamSection));
 

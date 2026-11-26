@@ -5,8 +5,6 @@ export const BRACE_JOINT = {
   boltPitch: 70,     // 立柱两孔的竖向间距
   boltU: 120,        // 斜撑孔至立柱孔中心线的水平距离
   rise: 30,          // 斜撑孔高出连接板水平中线的距离
-  braceEdge: 35,     // 沿斜撑从孔心到端头的距离
-  postTopHole: 50,   // 立柱上端螺栓孔心到柱顶的距离
   singleBack: 20,    // 单面板背边至立柱孔中心线的距离
   singleBot: 30,     // 单面板下边在斜撑侧伸过立柱孔中心线的距离
   doubleBottomHalf: 30, // 对称双面板下边的半宽

@@ -1,8 +1,8 @@
-import type { ModelParameters } from './config.ts';
+import { FIX, type ModelParameters } from './config.ts';
 import type { Solution, EWLayout } from './solve.ts';
 
 // 立柱拉杆计算，尺寸单位 mm。对应二维 TopView.vue 的 calculateXY / postBraceFL / postBraceBL。
-// 当前支架为直埋 C 型立柱：抱箍孔距为 0，两端孔心到杆端各 135。
+// 当前支架为直埋 C 型立柱，抱箍孔距为 0。
 export function postTieHeights({ postLength, embed, strutHeight, slopeHeight = 0 }: {
   postLength: number; embed: number; strutHeight: number; slopeHeight?: number;
 }) {
@@ -29,7 +29,7 @@ export function enabledPostTieSpans(mode: string, selected: number[], count: num
 
 // 每一排、每一跨单独比较一对拉杆。边界±100mm包含在可共用平地料长的范围内。
 export function postTieLengths(span: number, holeRise: number, slope: number) {
-  const roundLength = (distance: number) => Math.round(distance / 10) * 10 + 270;
+  const roundLength = (distance: number) => Math.round(distance / 10) * 10 + 2 * FIX.postTieEdge;
   const levelLength = roundLength(Math.hypot(span, holeRise));
   const horizontalSpan = span / Math.hypot(1, slope);
   const actualLengths = [1, -1].map(direction =>

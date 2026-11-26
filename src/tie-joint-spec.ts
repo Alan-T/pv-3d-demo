@@ -31,7 +31,7 @@ function postTieSpec(row: PostTieRow | undefined, sections: TieSections, rearSid
   const right = new Vector3(0, 0, -side), up = new Vector3(0, 1, 0), outward = new Vector3(side, 0, 0);
   const matrix = new Matrix4().makeBasis(right, up, outward).setPosition(origin);
   const holeLength = Math.hypot(rod.end.y - rod.start.y, rod.end.z - rod.start.z);
-  // 与 PostTiePart 相同：下料取整余量平分到两端，不能把图纸的 135 当作实际端距。
+  // 与 PostTiePart 相同，按选定料长和实际孔距平分两端余量。
   const allowance = (rod.length - holeLength) / 2;
   const ax = -side * (rod.end.z - rod.start.z) / holeLength;
   const ay = (rod.end.y - rod.start.y) / holeLength;

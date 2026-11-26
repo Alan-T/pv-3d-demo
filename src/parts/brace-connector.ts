@@ -1,6 +1,7 @@
 import type { PartOptions, BuildContext } from '../part-types.ts';
 import { braceMember, type braceConnection, type FramePoint } from '../brace-layout.ts';
 import { BRACE_JOINT, getBraceConnectorPlate } from '../brace-connector-spec.ts';
+import { FIX } from '../config.ts';
 import { NZ, EY, V, MM } from '../core.ts';
 import * as THREE from 'three';
 
@@ -33,10 +34,10 @@ export class BraceConnectorPart {
     const doublePlate = dbl && !split;
     const plate = getBraceConnectorPlate(dbl, split, plates);
     const hh = plate.height / 2, yTop = yc + hh;
-    const { singleBack, singleBot, doubleBottomHalf, chamferY, boltPitch, braceEdge } = BRACE_JOINT;
+    const { singleBack, singleBot, doubleBottomHalf, chamferY, boltPitch } = BRACE_JOINT;
     const reach = doublePlate ? plate.width / 2 : plate.width - singleBack;
-    const inner = braceMember(Q, T, braceEdge);
-    const o = Qo && To ? braceMember(Qo, To, braceEdge) : null;
+    const inner = braceMember(Q, T, FIX.braceEdge);
+    const o = Qo && To ? braceMember(Qo, To, FIX.braceEdge) : null;
     const shapes: THREE.Shape[] = [], bolts: [number, number][] = [], boltRoles: string[] = [];
     const addPlate = (center: number, direction: number) => {
       const U = (u: number) => center + direction * u;

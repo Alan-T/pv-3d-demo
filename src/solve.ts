@@ -29,7 +29,7 @@ export function solve(p: ModelParameters) {
   const nodeR = nodeF + L * s / c;
   // 连接孔位于立柱中心线与斜梁腹板中心线的交点；柱顶水平切，孔心向上留边。
   const holeF = nodeF, holeR = nodeR;
-  const topF = holeF + BRACE_JOINT.postTopHole, topR = holeR + BRACE_JOINT.postTopHole;
+  const topF = holeF + FIX.postTopHole, topR = holeR + FIX.postTopHole;
   // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
   // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
   // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
@@ -61,7 +61,7 @@ export function solve(p: ModelParameters) {
   }
   const bF = connections[0].Q, bR = connections[1].Q;
   const tFp = along(tF), tRp = along(tR);
-  const braceMembers = [braceMember(bF, tFp, BRACE_JOINT.braceEdge), braceMember(bR, tRp, BRACE_JOINT.braceEdge)];
+  const braceMembers = [braceMember(bF, tFp, FIX.braceEdge), braceMember(bR, tRp, FIX.braceEdge)];
   const braceF = braceMembers[0].len, braceR = braceMembers[1].len;
 
   // 外斜撑：下节点在立柱外侧面（与内斜撑同高、同一块连接板），上节点在斜梁悬挑段
@@ -73,7 +73,7 @@ export function solve(p: ModelParameters) {
     const toFp = along(toF), toRp = along(toR);
     outer = {
       oF, oR, toF, toR, toFp, toRp,
-      braceOF: braceMember(oF, toFp, BRACE_JOINT.braceEdge).len, braceOR: braceMember(oR, toRp, BRACE_JOINT.braceEdge).len,
+      braceOF: braceMember(oF, toFp, FIX.braceEdge).len, braceOR: braceMember(oR, toRp, FIX.braceEdge).len,
     };
   }
 
@@ -104,7 +104,7 @@ export function getPurlinDimensions({ cols, modW, fix }: Pick<ModelParameters, '
 }
 
 // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
-// 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。榀数取檩条两端悬挑不超过 maxOverhang × 首末跨榀距的最少榀数；
+// 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。逐榀增加支撑，直到两端悬挑满足要求；
 // 榀距比阵列还宽时少放一榀
 export function layoutEW(p: ModelParameters) {
   const { cols } = p;
@@ -112,8 +112,9 @@ export function layoutEW(p: ModelParameters) {
   const bayAt = (i: number, n: number) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
   const spanOf = (n: number) => { let s = 0; for (let i = 0; i < n - 1; i++) s += bayAt(i, n); return s; };
   const warn = [];
+  const maxEndOverhang = 0.4 * p.pitchEnd;
   let frames = 1;
-  while ((purlinLen - spanOf(frames)) / 2 > FIX.maxOverhang * p.pitchEnd) frames++;
+  while ((purlinLen - spanOf(frames)) / 2 > maxEndOverhang) frames++;
   if (frames > 1 && spanOf(frames) > purlinLen - FIX.purlin.f) {
     frames--;
     warn.push(`组件列数太少：檩条两端悬挑 ${Math.round((purlinLen - spanOf(frames)) / 2)}，再加一榀又放不下`);
