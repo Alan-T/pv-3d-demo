@@ -1,5 +1,5 @@
 import type { BufferGeometry, Material } from 'three';
-import { FIX, type CLAMP } from './config.ts';
+import { FIX } from './config.ts';
 import type { MemberSections } from './design-types.ts';
 import type { braceConnectorPlates } from './brace-connector-spec.ts';
 import type { createSectionGeometry, createSectionCapGeometry } from './section-geometry.ts';
@@ -9,7 +9,7 @@ import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledC
 interface PartDependencies {
   sections: MemberSections;
   materials: Record<'purlinTie' | 'postTie' | 'post' | 'buried' | 'beam' | 'brace' | 'bracket' | 'purlin' | 'purlinCap' | 'purlinConnector' | 'clip' | 'moduleCap' | 'clamp' | 'boltSteel' | 'boltNut' | 'boltWasher' | 'boltSpring' | 'slot', Material>;
-  connections: { plates: typeof braceConnectorPlates; CLAMP: typeof CLAMP };
+  connections: { plates: typeof braceConnectorPlates };
   geometry: {
     createSectionGeometry: typeof createSectionGeometry;
     createSectionCapGeometry: typeof createSectionCapGeometry;
@@ -19,7 +19,7 @@ interface PartDependencies {
 }
 
 export function createPartOptions({ sections, materials, connections, geometry, track }: PartDependencies) {
-  const { plates, CLAMP } = connections;
+  const { plates } = connections;
   const { createSectionGeometry, createSectionCapGeometry, modMats } = geometry;
   return {
     purlinTie: { section: sections.purlinTie, purlinSection: sections.purlin, material: materials.purlinTie, createSectionGeometry, createDrilledAngleGeometry, createDrilledChannelWebGeometry, track },
@@ -76,7 +76,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
     clamp: { modGapEWSection: FIX.modGapEW,
       purlinSection: sections.purlin,
       clampMaterial: materials.clamp,
-      CLAMP,
       track },
     bolts: {
       beamSection: sections.beam,
@@ -86,7 +85,6 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       washerMaterial: materials.boltWasher,
       springMaterial: materials.boltSpring,
       slotMaterial: materials.slot,
-      CLAMP,
       track },
   };
 }

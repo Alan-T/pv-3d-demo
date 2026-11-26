@@ -238,7 +238,7 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
               </tbody>
             </table>
           </section>
-          <design-notes />
+          <design-notes :module-thickness="snapshot.parameters.modT" :clamp-length="snapshot.parameters.clampL" />
         </div>
       </div>
     </div>

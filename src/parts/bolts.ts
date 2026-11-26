@@ -1,5 +1,6 @@
 import type { PartOptions, ClipSpec } from '../part-types.ts';
 import { BRACE_JOINT } from '../brace-connector-spec.ts';
+import { CLAMP_PROFILE, getClampBoltSpec } from '../clamp-spec.ts';
 import { V3, MM, instanced } from '../core.ts';
 import { createSerratedWasherGeometry } from '../serrated-washer-geometry.ts';
 import * as THREE from 'three';
@@ -16,7 +17,6 @@ export class BoltsPart {
     washerMaterial = boltSteelMaterial,
     springMaterial = boltSteelMaterial,
     slotMaterial,
-    CLAMP,
     CLIP,
     track,
   }: PartOptions['bolts'] & { CLIP: ClipSpec }) {
@@ -41,6 +41,30 @@ export class BoltsPart {
     g.translate(0, 0, z0 * MM);
     return g;
   }
+  // 内六角头的前半段：六角孔对边为 s，负 z 端为螺栓头顶面，外沿倒角 0.6 mm。
+  function socketRim(diameter: number, s: number, depth: number, z0: number) {
+    const radius = diameter * MM / 2, hexRadius = s * MM / Math.sqrt(3);
+    const outline = new THREE.Shape(), recess = new THREE.Path();
+    outline.absarc(0, 0, radius, 0, 2 * Math.PI, false);
+    for (let i = 0; i < 6; i++) {
+      const angle = -i * Math.PI / 3, x = hexRadius * Math.cos(angle), y = hexRadius * Math.sin(angle);
+      if (i === 0) recess.moveTo(x, y);
+      else recess.lineTo(x, y);
+    }
+    recess.closePath();
+    outline.holes.push(recess);
+    const rim = track(new THREE.ExtrudeGeometry(outline, { depth: depth * MM, steps: 2, curveSegments: 12, bevelEnabled: false }));
+    const vertices = rim.getAttribute('position');
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
+      if (z === 0 && Math.hypot(x, y) > hexRadius + 1e-8) {
+        const scale = (radius - 0.6 * MM) / radius;
+        vertices.setXY(i, x * scale, y * scale);
+      } else if (Math.abs(z - depth * MM / 2) < 1e-8) vertices.setZ(i, 0.6 * MM);
+    }
+    rim.computeVertexNormals();
+    return rim.translate(0, 0, z0 * MM);
+  }
   function boltKind(size: keyof typeof BOLT_SIZE, stack: number, slot: { at: number[]; len: number; width?: number } | null,
     opt: { len?: number; headWasher?: boolean; socket?: boolean; spring?: boolean; serratedHeadWasher?: boolean; nutWasher?: { radius: number; thickness: number } }) {
     const o = opt, b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3);
@@ -53,6 +77,7 @@ export class BoltsPart {
     const back = -stack - (o.headWasher ? headWasherHeight : 0);    // 螺栓头支承面
     const socket = o.socket ? BOLT_SIZE[8].sk : null;
     const hh = socket ? socket.k : b.hh;
+    const recessDepth = 4;
     const cyl = (r: number, z0: number, z1: number, seg: number, r1?: number) => {   // r1：z1 一端的半径（倒角用），不给就是圆柱
       const g = track(new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg));
       g.rotateX(Math.PI / 2);
@@ -62,8 +87,8 @@ export class BoltsPart {
     const parts: [THREE.BufferGeometry, THREE.Material][] = [
       [cyl(washer.radius, 0, washer.thickness, 24), washerMaterial],
       [cyl(hexR, nut, top, 6), nutMaterial],
-      [cyl(b.r, back - hh, o.len ? back + o.len : top + b.out, 16), boltSteelMaterial],
-      socket ? [cyl(socket.d / 2, back - hh + 0.6, back, 24), boltSteelMaterial] : [cyl(hexR, back - hh, back, 6), boltSteelMaterial],
+      [cyl(b.r, socket ? back : back - hh, o.len ? back + o.len : top + b.out, 16), boltSteelMaterial],
+      socket ? [cyl(socket.d / 2, back - hh + recessDepth, back, 24), boltSteelMaterial] : [cyl(hexR, back - hh, back, 6), boltSteelMaterial],
     ];
     if (o.headWasher) {
       // 锯齿垫圈仅替换头下普通平垫，上下齿尖贴合螺栓头与组件。
@@ -80,8 +105,7 @@ export class BoltsPart {
     }
     if (o.spring) parts.push([springWasher(b.sw, washer.thickness), springMaterial]);
     if (socket) {
-      parts.push([cyl(socket.d / 2 - 0.6, back - hh, back - hh + 0.6, 24, socket.d / 2), boltSteelMaterial]);   // 头顶倒角
-      parts.push([cyl(socket.s / Math.sqrt(3), back - hh - 0.2, back - hh + 4, 6), slotMaterial]);           // 内六角孔
+      parts.push([socketRim(socket.d, socket.s, recessDepth, back - hh), boltSteelMaterial]);
     }
     if (slot) {
       const width = slot.width ?? BRACE_JOINT.slotW;
@@ -111,15 +135,17 @@ export class BoltsPart {
     // 组件上方：普通平垫 Ø16×1.6；檩条下方：大平垫（图未标尺寸，暂按 Ø24×2）。
     module: boltKind(8, purlinSection.t + 2, null, { len: 22, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
   };
-  // 压块：M8×35 内六角（压块节点图），螺栓头坐在压块槽底，杆往下穿过檩条上翼缘；中压块、边压块槽底高度不同。
+  // 压块用 M8 内六角螺栓，公称长度由组件厚度选定，头下平垫落在各自槽底。
   // 叠层厚度跟组件厚度 H 走，按厚度缓存
   const clampKinds: Record<number, Record<string, ReturnType<typeof boltKind>>> = {};
   function kinds(H: number): Record<string, ReturnType<typeof boltKind>> {
     if (!clampKinds[H]) {
+      const { length } = getClampBoltSpec(H);
+      const options = { len: length, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } };
       clampKinds[H] = {
         // 头部普通平垫 Ø16×1.6，螺母侧大平垫暂按 Ø24×2，上叠弹垫。
-        clampMid: boltKind(8, purlinSection.t + H - CLAMP.mid.floor, null, { len: CLAMP.bolt, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
-        clampSide: boltKind(8, purlinSection.t + H - CLAMP.side.floor, null, { len: CLAMP.bolt, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
+        clampMid: boltKind(8, purlinSection.t + H - CLAMP_PROFILE.mid.floor, null, options),
+        clampSide: boltKind(8, purlinSection.t + H - CLAMP_PROFILE.side.floor, null, options),
       };
     }
     return Object.assign({}, BOLTS, clampKinds[H]);

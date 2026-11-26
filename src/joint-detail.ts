@@ -1,5 +1,6 @@
 import { mats, DimSet } from './dims.ts';
-import { CLAMP, FIX, P } from './config.ts';
+import { FIX, P } from './config.ts';
+import { CLAMP_PROFILE, getClampSpec } from './clamp-spec.ts';
 import { BRACE_JOINT } from './brace-connector-spec.ts';
 import { V, V3, MM, DEG, ewPlace, track } from './core.ts';
 
@@ -48,7 +49,7 @@ function addLeader(segments: DimSet, tip: THREE.Vector3, anchor: THREE.Vector3) 
 
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
 function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) {
-  const P = params, clamp = P.fix === 'clamp';
+  const P = params, clamp = P.fix === 'clamp' ? getClampSpec(P.modT, P.clampL) : null;
   const { sections } = S;
   const { beam, purlin } = sections;
   const CLIP = layout.purlinClip;
@@ -157,7 +158,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
     }
     { // 檩条-组件：在 layout.gapZ 那道组件缝处；前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面。
       // 螺栓固定：缝两侧组件各 1 颗 M8×22，引线画在缝西侧那颗螺栓的平面里；
-      // 压块固定：缝上 1 个中压块 + M8×35，引线画在缝中线平面里，压块那根指到西侧翼板
+      // 压块固定：引线画在缝中线平面里，压块那根指到西侧翼板
       const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
       const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * (clamp ? 3 : 2);
       const zl = clamp ? layout.gapZ : layout.gapZ - FIX.modGapEW / 2 - 18, top = S.hModBot + P.modT;
@@ -165,8 +166,8 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       const parts: LeaderPart[] = [
         [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}，缝 ${FIX.modGapEW}`],
         ...(clamp ? [
-          [mv(P0, 0, top + CLAMP.mid.top), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.mid.press / 2],
-          [mv(P0, 0, top - CLAMP.mid.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
+          [mv(P0, 0, top + CLAMP_PROFILE.mid.top), `中压块 ${clamp.mid.name}`, layout.gapZ - clamp.mid.width / 2 - CLAMP_PROFILE.mid.press / 2],
+          [mv(P0, 0, top - CLAMP_PROFILE.mid.floor + 8), `${clamp.bolt.name} 内六角螺栓 + 螺母`],
         ] satisfies LeaderPart[] : [[mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母']] satisfies LeaderPart[]),
         [mv(P0, -purlin.f / 2, S.hBeamTop + 50), `檩条 ${purlin.name}`],
       ];
@@ -177,15 +178,16 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         box: [P0.x - 130, ax, yLow - 30, P0.y + (S.hModBot + P.modT + 70) / cosT],
       });
     }
-    { // 边压块（只在压块固定时有）：阵列东边，前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面，
+    if (clamp) { // 边压块：阵列东边，前侧取最低一根檩条、后侧取最高一根。文字放在右侧檩条下面，
       // 引线画在螺栓所在平面里；组件、压块那两根指到组件边里面一点和压块上沿
       const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 70;
       const yLow = beamY(P0, ax, S.hBeamTop) - 35 - 45 * 3;
-      const e = layout.arrW / 2, zb = e + (CLAMP.side.wall + CLAMP.side.w - (CLAMP.side.foot + CLAMP.side.stem) / 2 + CLAMP.side.stem) / 2, top = S.hModBot + P.modT, Sd = CLAMP.side;
+      const Sd = CLAMP_PROFILE.side, e = layout.arrW / 2, top = S.hModBot + P.modT;
+      const zb = e + (Sd.wall + Sd.w - (Sd.foot + Sd.stem) / 2 + Sd.stem) / 2;
       const parts: LeaderPart[] = [
         [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
-        [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
-        [mv(P0, 0, top - Sd.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
+        [mv(P0, 0, S.hModBot + clamp.edge.height), `边压块 ${clamp.edge.name}`, e + Sd.wall / 2],
+        [mv(P0, 0, top - Sd.floor + 8), `${clamp.bolt.name} 内六角螺栓 + 螺母`],
         [mv(P0, -purlin.f / 2, S.hBeamTop + 50), `檩条 ${purlin.name}，伸出组件 ${layout.purlinExt}`],
       ];
       specs.side.push({

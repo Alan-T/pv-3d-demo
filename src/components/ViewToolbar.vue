@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { TinyOption } from '@opentiny/vue';
+import { computed } from 'vue';
+import { getClampSpec } from '../clamp-spec.ts';
 import FieldSelect from './FieldSelect.vue';
 import type { DesignerSnapshot } from '../designer.ts';
 import type { PresetId } from '../config.ts';
 import type { JointType, ViewName } from '../joint-view-types.ts';
 const props = defineProps<{ snapshot: DesignerSnapshot; ready?: boolean }>();
+const clampSpec = computed(() => getClampSpec(props.snapshot.parameters.modT, props.snapshot.parameters.clampL));
 defineEmits<{ view: [name: ViewName]; joint: [kind: 'side' | 'type', value: JointType | number]; preset: [id: PresetId] }>();
 
 const views: [ViewName, string, string?][] = [
@@ -16,7 +19,7 @@ const joints: [JointType, string, string][] = [
   ['top', '立柱-斜梁', '柱顶：斜梁腹板贴立柱腹板，1 颗 M16×40，立柱上竖向长圆孔'],
   ['btop', '斜撑-斜梁', '斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12×35'],
   ['clip', '檩条-斜梁', 'L 形檩托 + 2 颗 M12×35；组件 M8×22 安装螺栓'],
-  ['mod', '檩条-组件', '相邻两块组件之间（最东一跨中部的一道组件缝）：螺栓固定时缝两侧各 1 颗 M8×22；压块固定时 1 个中压块 + M8×35 内六角螺栓'],
+  ['mod', '檩条-组件', '查看相邻组件与檩条的连接。螺栓固定时缝两侧各用 1 颗 M8×22，压块固定时缝上用 1 个中压块和 1 颗内六角螺栓。'],
   ['splice', '檩条-檩条', '预览实际檩条切割接头'],
   ['postTie', '立柱拉杆', '查看后排拉杆与立柱前后翼缘的连接。M12×35 外六角螺栓，两面平垫，螺母侧加弹垫。'],
   ['purlinTie', '檩条拉杆', '正视查看檩条槽内的螺栓头，轴测查看拉杆下方的螺母。Ø14 通孔，M12×35 外六角螺栓，两面平垫，螺母侧加弹垫。'],
@@ -92,9 +95,9 @@ function isoTitle() {
       <template v-if="snapshot.parameters.fix === 'clamp' && ['mod', 'side'].includes(snapshot.jointType)">
         <span class="sep" data-clampopt></span>
         <button class="chip" data-clamp="mod" data-clampopt :disabled="!ready" :class="{ on: snapshot.jointType === 'mod' }"
-          title="组件缝上的中压块，1 颗 M8×35 内六角螺栓" @click="$emit('joint', 'type', 'mod')">中压块</button>
+          :title="`组件缝上的中压块 ${clampSpec.mid.name}，配 1 颗 ${clampSpec.bolt.name} 内六角螺栓`" @click="$emit('joint', 'type', 'mod')">中压块</button>
         <button class="chip" data-clamp="side" data-clampopt :disabled="!ready" :class="{ on: snapshot.jointType === 'side' }"
-          title="阵列东边：边压块勾住组件边框、立在檩条伸出组件的 100 上，1 颗 M8×35 内六角螺栓"
+          :title="`阵列东端的边压块 ${clampSpec.edge.name}，配 1 颗 ${clampSpec.bolt.name} 内六角螺栓`"
           @click="$emit('joint', 'type', 'side')">边压块</button>
       </template>
       <span class="sep"></span>

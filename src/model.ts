@@ -5,7 +5,7 @@ import { createSectionGeometry, createSectionCapGeometry } from './section-geome
 import { createBracket } from './bracket.ts';
 import { getScene, tryGetScene } from './scene.ts';
 import { M } from './materials.ts';
-import { CLAMP, P } from './config.ts';
+import { P } from './config.ts';
 import type { MemberSections } from './design-types.ts';
 import { MM, track, ewPlace, shared } from './core.ts';
 import { solve, layoutEW } from './solve.ts';
@@ -76,7 +76,7 @@ export function build(sections: MemberSections) {
   const partOptions = createPartOptions({
     sections,
     materials: M,
-    connections: { plates: braceConnectorPlates, CLAMP },
+    connections: { plates: braceConnectorPlates },
     geometry: { createSectionGeometry, createSectionCapGeometry, modMats },
     track,
   });

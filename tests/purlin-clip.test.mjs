@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 import { PurlinClipPart } from '../src/parts/purlin-clip.ts';
 import { BoltsPart } from '../src/parts/bolts.ts';
-import { CLAMP, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
+import { PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 
@@ -51,7 +51,7 @@ test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴�
         const mesh = new THREE.Mesh(instance.geometry, material);
         mesh.matrixAutoUpdate = false; mesh.matrix.copy(matrix); mesh.updateMatrixWorld(true);
         const boltPart = new BoltsPart({ beamSection: sections.beam, purlinSection: sections.purlin,
-          boltSteelMaterial: material, washerMaterial, slotMaterial: material, CLAMP, CLIP, track });
+          boltSteelMaterial: material, washerMaterial, slotMaterial: material, CLIP, track });
         for (const kind of ['clip', 'clipWeb']) {
           const call = calls.find(item => item.kind === kind);
           const matingThickness = kind === 'clip' ? sections.beam.t : sections.purlin.t;

@@ -6,8 +6,31 @@ export type * from './design-types.ts';
 export { isSurfaceFinishKey } from './design-types.ts';
 
 // ---------- 选型规格库与选项 ----------
-export const MODULE_THICKNESSES: readonly number[] = [30, 33, 35]; // 组件厚度（mm）
-export const CLAMP_LENGTHS: readonly number[] = [40, 50, 60, 80]; // 中压块、边压块沿坡长度（mm）
+// 压块规格（mm）：中压块槽外宽或边压块总高 - L长度 × Φ孔径。
+type ClampSpecsByLength = Readonly<Record<number, `${number}-L${number}×Φ${number}`>>;
+export const CLAMP_SPECS: {
+  mid: ClampSpecsByLength;
+  byThickness: Readonly<Record<number, { edge: ClampSpecsByLength; bolt: `M8×${number}` }>>;
+} = {
+  mid: { 40: '20-L40×Φ9', 50: '20-L50×Φ9', 60: '20-L60×Φ9', 80: '20-L80×Φ9' },
+  // 按组件厚度确定螺栓，在该组内按压块长度选边压块。
+  byThickness: {
+    30: {
+      edge: { 40: '35-L40×Φ9', 50: '35-L50×Φ9', 60: '35-L60×Φ9', 80: '35-L80×Φ9' },
+      bolt: 'M8×30',
+    },
+    33: {
+      edge: { 40: '38-L40×Φ9', 50: '38-L50×Φ9', 60: '38-L60×Φ9', 80: '38-L80×Φ9' },
+      bolt: 'M8×35',
+    },
+    35: {
+      edge: { 40: '40-L40×Φ9', 50: '40-L50×Φ9', 60: '40-L60×Φ9', 80: '40-L80×Φ9' },
+      bolt: 'M8×35',
+    },
+  },
+};
+export const MODULE_THICKNESSES: readonly number[] = Object.keys(CLAMP_SPECS.byThickness).map(Number);
+export const CLAMP_LENGTHS: readonly number[] = Object.keys(CLAMP_SPECS.mid).map(Number);
 // 常规 C 型构件规格（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，mm），由 section-spec.ts 解析尺寸。
 const SECTION_LIB: string[] = [
   'C50*30*10*1.8', 'C50*30*10*2.0',
@@ -135,12 +158,6 @@ const FIX = {
   modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
   // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
   purlinExt: { bolt: 50, clamp: 100 },
-};
-// 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
-const CLAMP = {
-  bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
-  mid: { press: 12, top: 3.2, tip: 2, wall: 2.5, floor: 14, plate: 3 },
-  side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 25, plate: 3.5, foot: 8.5, stem: 3.7, pad: 1.6 },
 };
 
 // ---------- 图纸预设参数 ----------
@@ -430,7 +447,7 @@ const PARAMS: ParameterDefinition[] = [
   { key: 'modPower', label: '组件功率', type: 'number', unit: 'Wp', min: 1, step: 1 },
   { key: 'modWeight', label: '组件重量', type: 'number', unit: 'kg', min: 0.1, step: 0.1 },
   { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
-    hint: '螺栓固定：组件安装孔 M8×22，檩条两端各伸出组件 50；压块：缝上中压块、两端边压块，M8×35 内六角，檩条两端各伸出 100' },
+    hint: '使用安装孔时配 M8×22 螺栓，檩条两端各伸出组件 50 mm。使用压块时，组件缝装中压块，两端装边压块，内六角螺栓按组件厚度选型，檩条两端各伸出 100 mm。' },
   { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
     hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
   { key: 'clampL', label: '压块长度', type: 'select', unit: 'mm', when: (P) => P.fix === 'clamp',
@@ -486,4 +503,4 @@ function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: Draw
 const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
 export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, BRACE_CONNECTOR_SPECS, PURLIN_CONNECTOR_SPECS };
-export { getPresetParameters, FIX, PRESETS, DEFAULTS, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show };
+export { getPresetParameters, FIX, PRESETS, DEFAULTS, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show };

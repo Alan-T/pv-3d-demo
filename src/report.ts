@@ -2,6 +2,7 @@ import type { ModelParameters, Section, PresetId } from './config.ts';
 import type { EWLayout, Solution } from './solve.ts';
 import type { PostTieRow } from './post-tie-layout.ts';
 import type { PurlinTies } from './purlin-tie-layout.ts';
+import { getClampSpec } from './clamp-spec.ts';
 
 type ReportLayout = EWLayout & {
   postTies: PostTieRow[]; purlinTies: PurlinTies;
@@ -23,6 +24,8 @@ export function createReport(P: ModelParameters, S: Solution, L: ReportLayout, p
   const { sections } = S;
   const r = Math.round, h1 = (x: number) => Math.round(x * 10) / 10, n = L.frames, O = S.outer, np = S.purlins.length;
   const moduleCount = P.rows * L.cols;
+  const clamps = L.counts.clamps;
+  const clampSpec = clamps ? getClampSpec(P.modT, P.clampL) : null;
   const title =
     `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
   const warnings = [...S.warn, ...L.warn];
@@ -56,9 +59,10 @@ export function createReport(P: ModelParameters, S: Solution, L: ReportLayout, p
     ['M12 螺栓', `${L.counts.m12} 套`],
     ['其中立柱拉杆 M12×35', `${L.counts.postTieBolts} 套（两面平垫，螺母侧弹垫）`],
     ['其中檩条拉杆 M12×35', `${L.counts.purlinTieBolts} 套（Ø14通孔）`],
-    ...(L.counts.clamps ? [
-      ['中压块 / 边压块', `${L.counts.clamps.mid} / ${L.counts.clamps.side} 个（长 ${P.clampL}）`],
-      ['M8×35 内六角螺栓', `${L.counts.m8c} 套`],
+    ...(clamps && clampSpec ? [
+      ['中压块', `${clampSpec.mid.name} × ${clamps.mid} 个`],
+      ['边压块', `${clampSpec.edge.name} × ${clamps.side} 个`],
+      [`${clampSpec.bolt.name} 内六角螺栓`, `${L.counts.m8c} 套`],
     ] : [['M8×22 组件安装螺栓', `${L.counts.m8} 套`]]),
     ['檩条切割（每根）', L.cuts.valid ? L.cuts.segments.map(s=>s.length).join(' / ') + ' mm（缝4）' : '无可行方案'],
     ['檩条连接件', L.purlinConnector ? L.purlinConnector.name + '，' + L.cuts.positions.length * np + ' 个；M12×35 ' + L.counts.spliceBolts + ' 套' : '未选择有效规格'],
