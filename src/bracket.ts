@@ -1,5 +1,4 @@
-import type { FIX } from './config.ts';
-import type { ModelParameters } from './design-types.ts';
+import type { MemberSections, ModelParameters } from './design-types.ts';
 import type { JointSpecs } from './joint-view-types.ts';
 import type { PartOptions, ConnectorSpec } from './part-types.ts';
 import type { solve as solveSupport, layoutEW as layoutSupport, EWLayout } from './solve.ts';
@@ -54,7 +53,7 @@ function liftFrames(obj: THREE.Object3D, layout: EWLayout) {
 
 export type SectionRangeLayout = EWLayout & { purlinConnector: ConnectorSpec | null };
 interface BracketDependencies {
-  sections: typeof FIX;
+  sections: MemberSections;
   partOptions: PartOptions;
   solvers: { solve: typeof solveSupport; layoutEW: typeof layoutSupport };
   sectionRange: (layout: SectionRangeLayout, key: string) => number[];
@@ -82,7 +81,7 @@ export function createBracket(parameters: ModelParameters, { sections, partOptio
   const boltPart = new BoltsPart({ ...partOptions.bolts, CLIP: clipSpec });
   const { solve, layoutEW } = solvers;
   const viewSectionRange = sectionRange;
-  const S = solve(P), frameLayout = layoutEW(P);
+  const S = solve(P, sections), frameLayout = layoutEW(P, sections);
   const connector = new BraceConnectorPart(partOptions.brace.braceConnector);
   const O = S.outer;
   const joints = [

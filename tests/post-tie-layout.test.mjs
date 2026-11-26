@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.ts';
-import { FIX, PRESETS, TIE_SECTION_LIB, applySection, applyPresetSections, getPresetParameters } from '../src/config.ts';
-import { getSectionLibrary } from '../src/section-spec.ts';
+import { PRESETS, TIE_SECTION_LIB, getPresetParameters } from '../src/config.ts';
+import { DrawingLayouts } from '../src/layout-variants.ts';
+import { resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { PostTiePart } from '../src/parts/post-tie.ts';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
@@ -35,14 +36,15 @@ test('±100mm含边界，整对选用平地长度；超出时使用两根实际�
 
 test('两方案及正负东西坡度：选用下料长度、真实安装孔、实体长度一致', () => {
   for (const preset of ['A','B']) for (const slopeEW of [-10,0,10]) for (const slopeNS of [-5,0,5]) {
-    applyPresetSections(preset);
+    const sections = resolveMemberSections(PRESETS[preset].layouts[0].sections);
     const p = { ...getPresetParameters(PRESETS[preset]), slopeEW, slopeNS };
-    const s = solve(p), layout = layoutEW(p);
+    const s = solve(p, sections), layout = layoutEW(p, sections);
     const rows=calculatePostTies(p,s,layout);
     for (const row of rows) {
       assert.equal(row.rods.length,4);
       const parent=new THREE.Group(), resources=[];
-      const part=new PostTiePart({section:FIX.postTie,postSection:row.rear?FIX.postR:FIX.postF,
+      const post = row.rear ? sections.postR : sections.postF;
+      const part=new PostTiePart({section:sections.postTie,postSection:post,
         material:new THREE.MeshBasicMaterial(),createSectionGeometry,track:g=>(resources.push(g),g)});
       const boltCalls=[];
       part.build({row,parent,bolts:{add:(kind,point,axis,up,thickness)=>
@@ -61,13 +63,12 @@ test('两方案及正负东西坡度：选用下料长度、真实安装孔、�
         const a=new THREE.Vector3(0,0,0).applyMatrix4(mesh.matrix);
         const b=new THREE.Vector3(0,0,1).applyMatrix4(mesh.matrix);
         assert.ok(Math.abs(a.distanceTo(b)*1000-rod.length)<1e-6);
-        const hole=new THREE.Vector3(row.x+rod.direction*(row.rear?FIX.postR:FIX.postF).d/2,rod.start.y,rod.start.z).multiplyScalar(.001);
+        const hole=new THREE.Vector3(row.x+rod.direction*post.d/2,rod.start.y,rod.start.z).multiplyScalar(.001);
         assert.ok(new THREE.Line3(a,b).closestPointToPoint(hole,true,new THREE.Vector3()).distanceTo(hole)<1e-8);
-        const post=row.rear?FIX.postR:FIX.postF;
         for (const [endIndex,point] of [rod.start,rod.end].entries()) {
           const bolt=boltCalls[index*2+endIndex];
           assert.equal(bolt.kind,'postTie');
-          assert.equal(bolt.thickness,post.t+FIX.postTie.t);
+          assert.equal(bolt.thickness,post.t+sections.postTie.t);
           assert.ok(Math.abs(bolt.point.x-(row.x+rod.direction*(post.d/2-post.t))*.001)<1e-8);
           assert.equal(bolt.point.y,point.y*.001);
           assert.equal(bolt.point.z,point.z*.001);
@@ -78,47 +79,43 @@ test('两方案及正负东西坡度：选用下料长度、真实安装孔、�
       resources.forEach(g=>g.dispose()); part.material.dispose();
     }
   }
-  applyPresetSections('A');
 });
 
-test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留引用且不污染规格库', () => {
+test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，各排布独立', () => {
   const libraryBefore = structuredClone(TIE_SECTION_LIB);
   const areas = { 'L35*35*1.6': 109.44, 'C59*39*8*1.6': 234.56, 'C60*40*10*1.6': 245.76 };
-  try {
-    for (const key of ['postTie', 'purlinTie']) {
-      const reference = FIX[key];
-      const area = () => Math.abs(THREE.ShapeUtils.area(createSectionShape(FIX[key]).getPoints())) * 1e6;
-      for (const name of ['L35*35*1.6', 'C59*39*8*1.6', 'L35*35*1.6', 'C60*40*10*1.6']) {
-        applySection(key, getSectionLibrary(key).find(section => section.name === name));
-        assert.equal(FIX[key], reference);
-        assert.ok(Math.abs(area() - areas[name]) < 1e-6, name);
-        if (name.startsWith('L')) assert.equal('l' in FIX[key], false);
-      }
-      for (const [preset, drawing] of Object.entries(PRESETS)) {
-        for (const { sections } of drawing.layouts) {
-          applySection(key, getSectionLibrary(key)[key === 'postTie' ? 0 : 1]);
-          applyPresetSections(preset, sections);
-          assert.equal(FIX[key], reference);
-          const defaultName = sections[key];
-          assert.equal(FIX[key].type, defaultName[0]);
-          assert.ok(Math.abs(area() - areas[defaultName]) < 1e-6);
+  for (const preset of Object.values(PRESETS)) {
+    const drawing = new DrawingLayouts(preset);
+    for (const [index, layout] of drawing.layouts.entries()) {
+      drawing.select(layout.id);
+      for (const key of ['postTie', 'purlinTie']) {
+        const original = resolveMemberSections(drawing.active.sections)[key];
+        for (const name of ['L35*35*1.6', 'C59*39*8*1.6', 'L35*35*1.6', 'C60*40*10*1.6']) {
+          drawing.setSection(key, name);
+          const section = resolveMemberSections(drawing.active.sections)[key];
+          const area = Math.abs(THREE.ShapeUtils.area(createSectionShape(section).getPoints())) * 1e6;
+          assert.equal(section.name, name);
+          assert.ok(Math.abs(area - areas[name]) < 1e-6, name);
+          if (section.type === 'L') assert.ok(!Object.hasOwn(section, 'l'));
+          assert.equal(original.name, preset.layouts[index].sections[key]);
         }
+        drawing.reset();
+        assert.deepEqual(resolveMemberSections(drawing.active.sections)[key], original);
       }
     }
-    assert.deepEqual(TIE_SECTION_LIB, libraryBefore);
-  } finally {
-    applyPresetSections('A');
   }
+  assert.deepEqual(TIE_SECTION_LIB, libraryBefore);
 });
 
 test('三种立柱拉杆截面：安装肢居中，前后排及正负坡度下螺栓轴线穿过实际板厚', () => {
-  applyPresetSections('A');
-  for (const section of getSectionLibrary('postTie')) for (const slopeEW of [-10, 0, 10]) {
+  for (const name of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
+    const sections = resolveMemberSections({ ...PRESETS.A.layouts[0].sections, postTie: name });
+    const section = sections.postTie;
     const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
-    const solution = solve(parameters), layout = layoutEW(parameters);
+    const solution = solve(parameters, sections), layout = layoutEW(parameters, sections);
     for (const row of calculatePostTies(parameters, solution, layout)) {
       const parent = new THREE.Group();
-      const postSection = row.rear ? FIX.postR : FIX.postF;
+      const postSection = row.rear ? sections.postR : sections.postF;
       const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
       const part = new PostTiePart({ section, postSection, material, createSectionGeometry, track: geometry => geometry });
       try {

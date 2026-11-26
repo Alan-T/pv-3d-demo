@@ -5,7 +5,8 @@ import { createSectionGeometry, createSectionCapGeometry } from './section-geome
 import { createBracket } from './bracket.ts';
 import { getScene, tryGetScene } from './scene.ts';
 import { M } from './materials.ts';
-import { CLAMP, FIX, P } from './config.ts';
+import { CLAMP, P } from './config.ts';
+import type { MemberSections } from './design-types.ts';
 import { MM, track, ewPlace, shared } from './core.ts';
 import { solve, layoutEW } from './solve.ts';
 import { build as dimsBuild } from './dims.ts';
@@ -65,7 +66,7 @@ function displayBracket(bracket: Bracket, state: typeof shared.state) {
   viewPlaceSun();
 }
 
-export function build() {
+export function build(sections: MemberSections) {
   const state = shared.state;
   // 先记下旧几何下的取景，重建后让垂直组件 / 节点视图跟着新几何走
   const oldPose = viewSavePose();
@@ -73,14 +74,14 @@ export function build() {
   if (P.fix !== 'clamp' && state.jointType === 'side') state.jointType = 'mod';   // 改回螺栓固定就没有边压块了
   clearDynamic();
   const partOptions = createPartOptions({
-    sections: FIX,
+    sections,
     materials: M,
     connections: { plates: braceConnectorPlates, CLAMP },
     geometry: { createSectionGeometry, createSectionCapGeometry, modMats },
     track,
   });
   const bracket = createBracket(P, {
-    sections: FIX,
+    sections,
     partOptions,
     solvers: { solve, layoutEW },
     sectionRange: viewSectionRange,

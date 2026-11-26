@@ -1,12 +1,13 @@
 import type { BufferGeometry, Material } from 'three';
-import type { FIX, CLAMP } from './config.ts';
+import { FIX, type CLAMP } from './config.ts';
+import type { MemberSections } from './design-types.ts';
 import type { braceConnectorPlates } from './brace-connector-spec.ts';
 import type { createSectionGeometry, createSectionCapGeometry } from './section-geometry.ts';
 import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledChannelWebGeometry } from './drilled-section-geometry.ts';
 
 /** Page-independent translation from section/material configuration to part options. */
 interface PartDependencies {
-  sections: typeof FIX;
+  sections: MemberSections;
   materials: Record<'purlinTie' | 'postTie' | 'post' | 'buried' | 'beam' | 'brace' | 'bracket' | 'purlin' | 'purlinCap' | 'purlinConnector' | 'clip' | 'moduleCap' | 'clamp' | 'boltSteel' | 'boltNut' | 'boltWasher' | 'boltSpring' | 'slot', Material>;
   connections: { plates: typeof braceConnectorPlates; CLAMP: typeof CLAMP };
   geometry: {
@@ -72,7 +73,7 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       moduleCapMaterial: materials.moduleCap,
       modMats,
       track },
-    clamp: { modGapEWSection: sections.modGapEW,
+    clamp: { modGapEWSection: FIX.modGapEW,
       purlinSection: sections.purlin,
       clampMaterial: materials.clamp,
       CLAMP,

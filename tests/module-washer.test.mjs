@@ -2,15 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { BoltsPart } from '../src/parts/bolts.ts';
-import { FIX, CLAMP, PARAMS, PRESETS } from '../src/config.ts';
+import { CLAMP, PARAMS, PRESETS } from '../src/config.ts';
+import { resolveMemberSections } from '../src/section-spec.ts';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 
 test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保持不变', () => {
   const geometries = [];
   const material = new THREE.MeshBasicMaterial();
+  const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
   const part = new BoltsPart({
-    beamSection: FIX.beam,
-    purlinSection: FIX.purlin, boltSteelMaterial: material, slotMaterial: material,
+    beamSection: sections.beam,
+    purlinSection: sections.purlin, boltSteelMaterial: material, slotMaterial: material,
     CLAMP, CLIP: getPurlinClipSpec(PRESETS.A.layouts[0].sections.purlinClip), track: g => (geometries.push(g), g),
   });
   function build(enabled, kind = 'module') {

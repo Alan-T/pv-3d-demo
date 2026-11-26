@@ -8,6 +8,9 @@ export type ChannelSection = { type?: 'C'; d: number; f: number; l: number; t: n
 export type AngleSection = { type: 'L'; d: number; f: number; t: number; l?: never };
 export type Section = ChannelSection | AngleSection;
 export type NamedSection = Section & { name: string };
+type TieKey = 'postTie' | 'purlinTie';
+export type MemberSections = Record<Exclude<MemberKey, TieKey>, ChannelSection & { name: string }>
+  & Record<TieKey, NamedSection>;
 
 export interface ProjectInfo {
   number: string; version: string; name: string; customer: string; productType: string;

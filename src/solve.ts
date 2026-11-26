@@ -1,4 +1,4 @@
-import type { ModelParameters } from './config.ts';
+import type { MemberSections, ModelParameters } from './design-types.ts';
 import { BRACE_JOINT, needsSplitBraceConnector } from './brace-connector-spec.ts';
 import { braceConnection, braceMember } from './brace-layout.ts';
 import { cutPurlin } from './purlin-cut.ts';
@@ -8,7 +8,7 @@ import { DEG } from './core.ts';
 /* 几何求解：由参数算出框架平面内的关键点和东西向布置，单位 mm。纯计算，不碰 three.js 场景 */
 
 // 框架平面 (x, y) 内的所有关键点
-export function solve(p: ModelParameters) {
+export function solve(p: ModelParameters, sections: MemberSections) {
   const th = p.tilt * DEG, c = Math.cos(th), s = Math.sin(th);
   const L = p.span;
   // 安装孔在每块组件上居中；首末孔距加下端 135、上端 85 后向上取整到 10。
@@ -21,8 +21,8 @@ export function solve(p: ModelParameters) {
   const ovh = (beamLen - L / c) / 2;                        // 斜梁两端伸出立柱中心（悬挑）
   const extLow = a - FIX.beamEndOffsets.low - endAllowance; // 组件下沿伸出斜梁下端
   const sLow = ovh + extLow;                                // 前柱节点 → 组件下沿（沿坡）
-  const hBeamTop = FIX.beam.d / 2;                          // 斜梁中心线 → 上表面
-  const hModBot = hBeamTop + FIX.purlin.d;                  // 斜梁中心线 → 组件底面
+  const hBeamTop = sections.beam.d / 2;                     // 斜梁中心线 → 上表面
+  const hModBot = hBeamTop + sections.purlin.d;             // 斜梁中心线 → 组件底面
   const xf = sLow * c + hModBot * s;                        // 前柱中心到原点
   const xr = xf + L;
   const nodeF = p.h0 + sLow * s - hModBot * c;              // 斜梁中心线在前柱中心处的高度
@@ -48,13 +48,13 @@ export function solve(p: ModelParameters) {
     warn.push('立柱间距太小：两根斜撑的上节点会重叠，暂时移到斜梁中部');
   }
   // 板型按同一榀的前、后柱共同选定；安装孔的横向位置按各自柱宽计算。
-  const connector = { outer: p.outer, split: needsSplitBraceConnector(p.outer, FIX.postF.d, FIX.postR.d) };
+  const connector = { outer: p.outer, split: needsSplitBraceConnector(p.outer, sections.postF.d, sections.postR.d) };
   const connections = [
-    braceConnection({ ...connector, x: xf, y: p.braceHF, side: 1, postWidth: FIX.postF.d }),
-    braceConnection({ ...connector, x: xr, y: p.braceHR, side: -1, postWidth: FIX.postR.d }),
+    braceConnection({ ...connector, x: xf, y: p.braceHF, side: 1, postWidth: sections.postF.d }),
+    braceConnection({ ...connector, x: xr, y: p.braceHR, side: -1, postWidth: sections.postR.d }),
   ];
   for (const joint of connections) {
-    const front = joint.side > 0, width = front ? FIX.postF.d : FIX.postR.d;
+    const front = joint.side > 0, width = front ? sections.postF.d : sections.postR.d;
     if (joint.split && joint.plateShift + BRACE_JOINT.slotW / 2 > width / 2) {
       warn.push(`${front ? '前' : '后'}立柱截面宽 ${width} mm，共用斜撑连接板分装时 Ø${BRACE_JOINT.slotW} 安装孔超出柱边，请调整立柱截面`);
     }
@@ -81,7 +81,7 @@ export function solve(p: ModelParameters) {
   for (let r = 0; r < p.rows; r++) modStarts.push(-extLow + r * (p.modL + FIX.modGap));
   const purlins = [];
   for (const m of modStarts) purlins.push(m + a, m + a + p.hole);
-  const pf = FIX.purlin.f / 2, pLast = purlins[purlins.length - 1];
+  const pf = sections.purlin.f / 2, pLast = purlins[purlins.length - 1];
   if (purlins[0] - pf < 0 || pLast + pf > beamLen) warn.push(`檩条（按组件安装孔距 ${p.hole} 布置）超出了斜梁端部`);
 
   const clearEdge = p.h0 - gy(0);
@@ -90,7 +90,7 @@ export function solve(p: ModelParameters) {
   if (clearEdge < 300) warn.push(`组件前沿实际离地只有 ${Math.round(clearEdge)}`);
 
   return {
-    c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
+    sections, c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
     lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
     connections, braceMembers, modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
   };
@@ -106,7 +106,7 @@ export function getPurlinDimensions({ cols, modW, fix }: Pick<ModelParameters, '
 // 东西向：组件列数 → 阵列宽、檩条长（两端各伸出 purlinExt，螺栓固定 50、压块 100）→ 榀数、榀位 zs（首末跨即第 1–2 榀、
 // 倒数第 2–1 榀用 pitchEnd，中间跨用 pitch，整排居中）。逐榀增加支撑，直到两端悬挑满足要求；
 // 榀距比阵列还宽时少放一榀
-export function layoutEW(p: ModelParameters) {
+export function layoutEW(p: ModelParameters, sections: MemberSections) {
   const { cols } = p;
   const { pitchEW, arrW, purlinExt, purlinLen } = getPurlinDimensions(p);
   const bayAt = (i: number, n: number) => (i === 0 || i === n - 2 ? p.pitchEnd : p.pitch);
@@ -115,7 +115,7 @@ export function layoutEW(p: ModelParameters) {
   const maxEndOverhang = 0.4 * p.pitchEnd;
   let frames = 1;
   while ((purlinLen - spanOf(frames)) / 2 > maxEndOverhang) frames++;
-  if (frames > 1 && spanOf(frames) > purlinLen - FIX.purlin.f) {
+  if (frames > 1 && spanOf(frames) > purlinLen - sections.purlin.f) {
     frames--;
     warn.push(`组件列数太少：檩条两端悬挑 ${Math.round((purlinLen - spanOf(frames)) / 2)}，再加一榀又放不下`);
   }

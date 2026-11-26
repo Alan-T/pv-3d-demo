@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
-import { getSectionLibrary } from '../src/section-spec.ts';
+import { PRESETS, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary, resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { calculatePostTies } from '../src/post-tie-layout.ts';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
@@ -15,9 +15,10 @@ import { ewMatrix } from '../src/core.ts';
 const mm = (x, y, z = 0) => new THREE.Vector3(x, y, z).multiplyScalar(.001);
 const near = (a, b, message) => assert.ok(a.distanceTo(b) < 1e-8, message);
 
-function fixture(overrides = {}) {
+function fixture(overrides = {}, sectionNames = {}) {
+  const sections = resolveMemberSections({ ...PRESETS.A.layouts[0].sections, ...sectionNames });
   const parameters = { ...getPresetParameters(PRESETS.A), ...overrides };
-  const solution = solve(parameters), layout = layoutEW(parameters);
+  const solution = solve(parameters, sections), layout = layoutEW(parameters, sections);
   layout.postTies = calculatePostTies(parameters, solution, layout);
   layout.purlinTies = calculatePurlinTies({ mode: parameters.purlinTies, selected: parameters.purlinTieSpans,
     purlins: solution.purlins, framePositions: layout.zs });
@@ -25,39 +26,36 @@ function fixture(overrides = {}) {
 }
 
 test('立柱拉杆两侧只取后排真实启用跨；后排无构件时不借用前排', () => {
-  applyPresetSections('A');
   let { solution, layout } = fixture({ postTieF: 'none', postTieR: 'none', purlinTies: 'none' });
-  assert.deepEqual(createTieJointSpecs(solution, layout, FIX), { postTie: [null, null], purlinTie: [null, null] });
+  assert.deepEqual(createTieJointSpecs(solution, layout, solution.sections), { postTie: [null, null], purlinTie: [null, null] });
   ({ solution, layout } = fixture({ postTieF: 'custom', postTieSpansF: [1, 0, 1], postTieR: 'none',
     purlinTies: 'custom', purlinTieSpans: [0, 1] }));
-  let specs = createTieJointSpecs(solution, layout, FIX);
+  let specs = createTieJointSpecs(solution, layout, solution.sections);
   assert.ok(layout.postTies[0].rods.length, '前排确有拉杆，仍不能代替后排节点');
   assert.deepEqual(specs.postTie, [null, null]);
   assert.deepEqual(specs.purlinTie.map(spec => spec.bay), [1, 1]);
   ({ solution, layout } = fixture({ postTieF: 'custom', postTieSpansF: [1, 0, 1],
     postTieR: 'custom', postTieSpansR: [0, 1, 0, 1] }));
-  specs = createTieJointSpecs(solution, layout, FIX);
+  specs = createTieJointSpecs(solution, layout, solution.sections);
   assert.deepEqual(specs.postTie.map(spec => spec.bay), [3, 3]);
   layout.postTies[0] = { ...layout.postTies[0], rods: [] };
-  assert.deepEqual(createTieJointSpecs(solution, layout, FIX).postTie.map(spec => spec.bay), [3, 3],
+  assert.deepEqual(createTieJointSpecs(solution, layout, solution.sections).postTie.map(spec => spec.bay), [3, 3],
     '前排关闭不影响后排两侧节点');
   // 柱高不足时实际 rods 为空，即使参数选择了该跨，也不能生成虚构节点。
   layout.postTies[1] = { ...layout.postTies[1], valid: false, rods: [] };
-  specs = createTieJointSpecs(solution, layout, FIX);
+  specs = createTieJointSpecs(solution, layout, solution.sections);
   assert.deepEqual(specs.postTie, [null, null]);
 });
 
 test('立柱拉杆两侧对齐后立柱前后翼缘的真实孔心和杆端，兼容 C/L 及正负坡度', () => {
-  applyPresetSections('A');
   for (const slopeEW of [-10, 0, 10]) for (const tie of getSectionLibrary('postTie')) {
-    const { solution, layout } = fixture({ slopeEW });
-    const sections = { ...FIX, postTie: tie };
-    const specs = createTieJointSpecs(solution, layout, sections);
+    const { solution, layout } = fixture({ slopeEW }, { postTie: tie.name });
+    const specs = createTieJointSpecs(solution, layout, solution.sections);
     const row = layout.postTies.find(item => item.rear);
     for (const [index, sp] of specs.postTie.entries()) {
       const side = index ? 1 : -1;
       const rodIndex = row.rods.findIndex(rod => rod.bay === sp.bay && rod.direction === side);
-      const post = FIX.postR;
+      const post = solution.sections.postR;
       const parent = new THREE.Group(), bolts = [];
       const material = new THREE.MeshBasicMaterial();
       const part = new PostTiePart({ section: tie, postSection: post, material,
@@ -83,26 +81,24 @@ test('立柱拉杆两侧对齐后立柱前后翼缘的真实孔心和杆端，�
 });
 
 test('后立柱水平拉杆只有一个方向时，两侧节点均使用实际已有拉杆', () => {
-  applyPresetSections('A');
   const { solution: base } = fixture();
   const { solution, layout } = fixture({ braceHR: Math.round(base.lenR) - PRESETS.A.embed - 400 });
   const row = layout.postTies.find(item => item.rear), rod = row.rods.at(-1);
   assert.equal(row.holeRise, 0);
   assert.ok(row.rods.length && row.rods.every(item => item.direction === 1));
-  for (const sp of createTieJointSpecs(solution, layout, FIX).postTie) {
+  for (const sp of createTieJointSpecs(solution, layout, solution.sections).postTie) {
     assert.ok(sp);
-    near(mm(0, 0).applyMatrix4(sp.matrix), mm(row.x + FIX.postR.d / 2, rod.end.y, rod.end.z));
+    near(mm(0, 0).applyMatrix4(sp.matrix), mm(row.x + solution.sections.postR.d / 2, rod.end.y, rod.end.z));
     assert.equal(sp.dims[0][3], 0);
   }
 });
 
 test('檩条拉杆节点与实体安装孔及两端对齐，坡度只施加一次，三种截面均可用', () => {
-  applyPresetSections('A');
-  for (const slopeEW of [-10, 0, 10]) for (const tie of getSectionLibrary('postTie')) {
-    const { solution, layout } = fixture({ slopeEW, purlinTies: 'custom', purlinTieSpans: [1, 0, 1] });
-    const specs = createTieJointSpecs(solution, layout, { ...FIX, purlinTie: tie });
+  for (const slopeEW of [-10, 0, 10]) for (const tie of getSectionLibrary('purlinTie')) {
+    const { solution, layout } = fixture({ slopeEW, purlinTies: 'custom', purlinTieSpans: [1, 0, 1] }, { purlinTie: tie.name });
+    const specs = createTieJointSpecs(solution, layout, solution.sections);
     const parent = new THREE.Group(), material = new THREE.MeshBasicMaterial(), bolts = [];
-    const part = new PurlinTiePart({ section: tie, purlinSection: FIX.purlin, material,
+    const part = new PurlinTiePart({ section: tie, purlinSection: solution.sections.purlin, material,
       createSectionGeometry, track: geometry => geometry });
     const u = new THREE.Vector3(solution.c, solution.s, 0), n = new THREE.Vector3(-solution.s, solution.c, 0);
     const transform = ewMatrix(layout.ew);

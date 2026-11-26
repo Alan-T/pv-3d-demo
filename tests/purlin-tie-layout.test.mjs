@@ -4,16 +4,16 @@ import * as THREE from 'three';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
 import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
-import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
-import { getSectionLibrary } from '../src/section-spec.ts';
+import { PRESETS, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary, resolveMemberSections } from '../src/section-spec.ts';
 import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { ewMatrix } from '../src/core.ts';
 
 test('图纸一：3974mm、12套，去掉首末跨为10套', () => {
-  applyPresetSections('A');
+  const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
   const parameters = getPresetParameters(PRESETS.A);
-  const s = solve(parameters), l = layoutEW(parameters);
+  const s = solve(parameters, sections), l = layoutEW(parameters, sections);
   const input={purlins:s.purlins,framePositions:l.zs};
   const all=calculatePurlinTies({...input,mode:'all'});
   assert.equal(all.length,3974); assert.equal(all.count,12);
@@ -29,11 +29,12 @@ test('图纸一：3974mm、12套，去掉首末跨为10套', () => {
 });
 
 test('角钢实体：截面积、右手坐标、长度、正负东西坡度位置', () => {
-  const section=FIX.purlinTie;
+  const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
+  const section = sections.purlinTie;
   assert.ok(Math.abs(Math.abs(THREE.ShapeUtils.area(createSectionShape(section).getPoints()))*1e6-1.6*(35+35-1.6))<1e-6);
   for (const slopeEW of [-10,0,10]) {
     const p = { ...getPresetParameters(PRESETS.A), slopeEW };
-    const s = solve(p), l = layoutEW(p);
+    const s = solve(p, sections), l = layoutEW(p, sections);
     const ties=calculatePurlinTies({mode:'all',purlins:s.purlins,framePositions:l.zs});
     const parent=new THREE.Group(), material=new THREE.MeshBasicMaterial();
     const part=new PurlinTiePart({section,material,createSectionGeometry,track:g=>g});
@@ -54,14 +55,14 @@ test('角钢实体：截面积、右手坐标、长度、正负东西坡度位�
 });
 
 test('三种檩条拉杆：安装面贴檩条，螺栓对应真实通孔，孔旁板厚正确', () => {
-  applyPresetSections('A');
   for (const section of getSectionLibrary('purlinTie')) for (const slopeEW of [-10, 0, 10]) {
+    const sections = resolveMemberSections({ ...PRESETS.A.layouts[0].sections, purlinTie: section.name });
     const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
-    const solution = solve(parameters), layout = layoutEW(parameters);
+    const solution = solve(parameters, sections), layout = layoutEW(parameters, sections);
     const ties = calculatePurlinTies({ mode: 'all', purlins: solution.purlins, framePositions: layout.zs });
     const parent = new THREE.Group(), resources = [];
     const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-    const part = new PurlinTiePart({ section, purlinSection: FIX.purlin, material, createSectionGeometry,
+    const part = new PurlinTiePart({ section, purlinSection: sections.purlin, material, createSectionGeometry,
       createDrilledAngleGeometry, createDrilledChannelWebGeometry, track: geometry => (resources.push(geometry), geometry) });
     try {
       const u = new THREE.Vector3(solution.c, solution.s, 0), n = new THREE.Vector3(-solution.s, solution.c, 0);
@@ -102,7 +103,7 @@ test('三种檩条拉杆：安装面贴檩条，螺栓对应真实通孔，孔�
         }
         const first = index * solution.purlins.length;
         for (const bolt of bolts.slice(first, first + solution.purlins.length)) {
-          assert.equal(bolt.thickness, FIX.purlin.t + section.t);
+          assert.equal(bolt.thickness, sections.purlin.t + section.t);
           const origin = bolt.point.clone().addScaledVector(n, section.t * .001 + .01).applyMatrix4(parent.matrix);
           const direction = n.clone().negate().transformDirection(parent.matrix);
           const ray = new THREE.Raycaster(origin, direction, 0, .01 + section.t * .001 + .001);

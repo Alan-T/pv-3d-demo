@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
-import { getSectionLibrary } from '../src/section-spec.ts';
+import { PRESETS, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary, resolveMemberSections } from '../src/section-spec.ts';
 import { ewMatrix } from '../src/core.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
@@ -40,19 +40,19 @@ function cutPlanes(spec) {
 }
 
 test('实际 C 型檩条拉杆前后节点：封口覆盖腹板、两翼及卷边，保留槽口', () => {
-  try {
-    for (const preset of ['A', 'B']) for (const slopeEW of [-10, 0, 10]) for (const section of getSectionLibrary('purlinTie').filter(item => item.type === 'C')) {
-      applyPresetSections(preset);
+  for (const preset of ['A', 'B']) {
+    for (const slopeEW of [-10, 0, 10]) for (const section of getSectionLibrary('purlinTie').filter(item => item.type === 'C')) {
+      const sections = resolveMemberSections({ ...PRESETS[preset].layouts[0].sections, purlinTie: section.name });
       const parameters = { ...getPresetParameters(PRESETS[preset]), slopeEW, purlinTies: 'all' };
-      const solution = solve(parameters), layout = layoutEW(parameters);
+      const solution = solve(parameters, sections), layout = layoutEW(parameters, sections);
       layout.purlinTies = calculatePurlinTies({ mode: parameters.purlinTies, purlins: solution.purlins, framePositions: layout.zs });
-      const specs = createTieJointSpecs(solution, layout, { ...FIX, purlinTie: section }).purlinTie;
+      const specs = createTieJointSpecs(solution, layout, sections).purlinTie;
       const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), resources = [];
       const track = resource => (resources.push(resource), resource);
       const parent = new THREE.Group();
       parent.matrixAutoUpdate = false;
       parent.matrix.copy(ewMatrix(layout.ew));
-      const part = new PurlinTiePart({ section, purlinSection: FIX.purlin, material,
+      const part = new PurlinTiePart({ section, purlinSection: sections.purlin, material,
         createSectionGeometry, createDrilledAngleGeometry, createDrilledChannelWebGeometry, track });
       try {
         part.build({ solution, ties: layout.purlinTies, parent,
@@ -84,7 +84,7 @@ test('实际 C 型檩条拉杆前后节点：封口覆盖腹板、两翼及卷�
         }
       } finally { resources.forEach(resource => resource.dispose()); material.dispose(); }
     }
-  } finally { applyPresetSections('A'); }
+  }
 });
 
 test('分片开孔型材在通孔中心剖切，仍保留真实孔洞且不丢钢板', () => {

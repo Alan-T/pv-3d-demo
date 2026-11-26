@@ -19,7 +19,7 @@ interface DesignerOptions {
 interface DesignerDebug {
   P: ModelParameters;
   show: typeof show;
-  solve: typeof solve;
+  solve(parameters: ModelParameters): ReturnType<typeof solve>;
   setView(name: ViewName, instant?: boolean): void;
   rebuild(refit?: boolean): void;
   controls: ReturnType<typeof getScene>['controls'];
@@ -31,8 +31,8 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { applyPresetSections, applySection, isSurfaceFinishKey, FIX, P, PARAMS, PRESETS, show } from './config.ts';
-import { findSection } from './section-spec.ts';
+import { isSurfaceFinishKey, P, PARAMS, PRESETS, show } from './config.ts';
+import { findSection, resolveMemberSections } from './section-spec.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
 import { initMaterials, disposeMaterials } from './materials.ts';
@@ -47,6 +47,7 @@ import { DrawingLayouts } from './layout-variants.ts';
 const state = shared.state;
 const drawings = Object.fromEntries(Object.entries(PRESETS).map(([id, preset]) => [id, new DrawingLayouts(preset)]));
 const currentDrawing = () => drawings[state.preset];
+const currentSections = () => resolveMemberSections(currentDrawing().active.sections);
 
 function describePostTieLengths({ rods, enabled }: ReturnType<typeof calculatePostTies>[number]) {
   const endSpans = new Set<number>();
@@ -95,7 +96,7 @@ export function getSnapshot() {
       enabled: [...row.enabled],
       lengthDescription: describePostTieLengths(row),
     })) ?? [],
-    report: state.S && layout ? createReport(P, FIX, state.S, layout, state.preset) : null,
+    report: state.S && layout ? createReport(P, state.S, layout, state.preset) : null,
   };
 }
 
@@ -126,7 +127,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     buildFrame = 0;
     closeEdit(false);
     syncParameters();
-    build();
+    build(currentSections());
     if (refit) setView(state.view);
     publish();
   }
@@ -195,7 +196,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   function getAutomaticPurlinCutLengths() {
-    const { cuts } = layoutEW({ ...P, purlinCutMode: 'auto' });
+    const { cuts } = layoutEW({ ...P, purlinCutMode: 'auto' }, currentSections());
     return cuts.valid ? cuts.segments.map(segment => segment.length) : null;
   }
 
@@ -233,7 +234,6 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   function changeSection(key: MemberKey, text: string) {
     const section = findSection(key, text);
     if (section) {
-      applySection(key, section);
       currentDrawing().setSection(key, section.name);
       scheduleBuild();
     }
@@ -249,7 +249,6 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   function loadActiveLayout() {
     const drawing = currentDrawing();
     Object.assign(P, drawing.getModelParameters());
-    applyPresetSections(state.preset, drawing.active.sections);
     rebuild(true);
   }
 
@@ -294,7 +293,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
 
   function changePurlinCutLengths(lengths: number[]) {
     if (P.purlinCutMode !== 'custom') return '请先选择自定义分段。';
-    const { cuts } = layoutEW({ ...P, purlinCutLengths: lengths });
+    const { cuts } = layoutEW({ ...P, purlinCutLengths: lengths }, currentSections());
     if (!cuts.valid) return cuts.error ?? '当前参数无法生成有效的檩条分段。';
     P.purlinCutLengths = [...lengths];
     scheduleBuild();
@@ -369,7 +368,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
       window.addEventListener('resize', fitCanvas);
     }
     debug = window.pvDemo = {
-      P, show, solve, setView: selectView, rebuild, controls,
+      P, show, solve: parameters => solve(parameters, currentSections()), setView: selectView, rebuild, controls,
       labels: shared.labels, pickLabel,
       get layouts() { return structuredClone(currentDrawing().layouts); },
       get camera() { return getCamera(); },

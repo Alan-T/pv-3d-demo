@@ -1,5 +1,5 @@
 import { mats, DimSet } from './dims.ts';
-import { CLAMP, FIX, P, section } from './config.ts';
+import { CLAMP, FIX, P } from './config.ts';
 import { BRACE_JOINT } from './brace-connector-spec.ts';
 import { V, V3, MM, DEG, ewPlace, track } from './core.ts';
 
@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { createTieJointSpecs } from './tie-joint-spec.ts';
 
 import type { Solution } from './solve.ts';
-import type { Section } from './config.ts';
 import type { getBuiltState } from './core.ts';
 import type { JointSpecs, JointType } from './joint-view-types.ts';
 
@@ -50,27 +49,31 @@ function addLeader(segments: DimSet, tip: THREE.Vector3, anchor: THREE.Vector3) 
 // 返回节点详图分组；各组规格写到 layout.jointSpecs
 function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) {
   const P = params, clamp = P.fix === 'clamp';
+  const { sections } = S;
+  const { beam, purlin } = sections;
   const CLIP = layout.purlinClip;
   const zLast = layout.zs[layout.zs.length - 1];
-  const zj = zLast + FIX.postF.f / 2 + FIX.beam.f + 20;      // 标注平面：在斜梁翼缘外侧
+  const zj = zLast + sections.postF.f / 2 + beam.f + 20;      // 标注平面：在斜梁翼缘外侧
   const tanT = Math.tan(P.tilt * DEG), cosT = Math.cos(P.tilt * DEG);
   const mv = (p: Point, du: number, dn: number) => ({ x: p.x + S.c * du - S.s * dn, y: p.y + S.s * du + S.c * dn });   // 沿坡 du、法向 dn
   const beamY = (p: Point, x: number, h: number) => p.y + (x - p.x) * tanT + h / cosT;   // 过 p 的斜梁中心线法向偏 h，在 x 处的高度
-  const sec = (s: Section) => s.l ? `C${s.d}*${s.f}*${s.l}*${s.t.toFixed(1)}` : `U${s.d}*${s.f}*${s.t.toFixed(1)}`;
   const seg2 = (a: Point, b: Point): [number, number, number, number] => [a.x, a.y, b.x, b.y];
-  const specs: JointSpecs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [], ...createTieJointSpecs(S, layout, FIX) };
+  const specs: JointSpecs = { foot: [], top: [], btop: [], clip: [], mod: [], side: [], splice: [], ...createTieJointSpecs(S, layout, sections) };
   for (const fr of [0, 1]) {
     const J = layout.joints[fr];
+    const post = fr ? sections.postR : sections.postF;
+    const brace = fr ? sections.braceR : sections.braceF;
     if (J.o) { // 斜撑-立柱（双面连接板）：立柱两侧都有斜撑，文字放到外斜撑一侧、连接板下面
+      const outerBrace = fr ? sections.braceOR : sections.braceOF;
       const o = J.o, yBot = J.yc - J.hh, ax = J.xc - J.side * (J.extent + 60);   // 文字挂在板外侧 60
       const outerPlateX = o.Q.x + J.side * BRACE_JOINT.boltU;
       const ly = (k: number) => yBot - 50 - 48 * k;
       specs.foot.push({
         labelSide: -J.side, anchorX: ax,
         leaders: [
-          [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${sec(section('brace', !!fr, true))}`],
-          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${sec(section('brace', !!fr))}`],
-          [J.xc, J.yTop + 45, ly(2), `立柱 ${sec(section('post', !!fr))}`],
+          [o.Q.x + o.ax * 170, o.Q.y + o.ay * 170, ly(0), `外斜撑 ${outerBrace.name}`],
+          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, ly(1), `斜撑 ${brace.name}`],
+          [J.xc, J.yTop + 45, ly(2), `立柱 ${post.name}`],
           [J.bolts[1][0], J.bolts[1][1], ly(3), 'M12×35 外六角螺栓及螺母 ×' + J.bolts.length],
           [outerPlateX - J.side * 30, J.yc - 25, ly(4), `${J.split ? '两侧单面斜撑连接板' : '双面斜撑连接板'} ${J.spec}`],
           [o.Q.x, o.Q.y, ly(5), `斜撑孔，孔心到斜撑端头 ${FIX.braceEdge}`],
@@ -83,10 +86,10 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       });
     } else { // 斜撑-立柱：文字放在立柱另一侧
       specs.foot.push({
-        labelSide: -J.side, anchorX: J.xc - J.side * (section('post', !!fr).d / 2 + 50),
+        labelSide: -J.side, anchorX: J.xc - J.side * (post.d / 2 + 50),
         leaders: [
-          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 70, `斜撑 ${sec(section('brace', !!fr))}`],
-          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 15, `立柱 ${sec(section('post', !!fr))}`],
+          [J.Q.x + J.ax * 170, J.Q.y + J.ay * 170, J.yc + J.hh + 70, `斜撑 ${brace.name}`],
+          [J.xc, J.yc + J.hh + 45, J.yc + J.hh + 15, `立柱 ${post.name}`],
           [J.xc, J.yc + BRACE_JOINT.boltPitch / 2, J.yc + 40, 'M12×35 外六角螺栓及螺母 ×3'],
           [J.xc + J.side * 45, J.yc + 10, J.yc - 20, `斜撑连接板 ${J.spec}`],
           [J.Q.x, J.Q.y, J.yc - 80, `斜撑孔，孔心到斜撑端头 ${FIX.braceEdge}`],
@@ -94,25 +97,25 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         ],
         lines: [[J.xc, J.yc - J.hh - 70, J.xc, J.yc + J.hh + 130],
           [J.E.x - J.ax * 40, J.E.y - J.ay * 40, J.Q.x + J.ax * 260, J.Q.y + J.ay * 260]],
-        box: [J.xc - J.side * (section('post', !!fr).d / 2 + 110), J.xc + J.side * (J.extent + 170),
+        box: [J.xc - J.side * (post.d / 2 + 110), J.xc + J.side * (J.extent + 170),
           J.yc - 160, J.yc + J.hh + 150],
       });
     }
     { // 立柱-斜梁：文字放在框架外侧、斜梁下面；螺栓在立柱中心线上，孔心距柱顶的尺寸标在框架内侧
       const node = { x: fr ? S.xr : S.xf, y: fr ? S.nodeR : S.nodeF }, ty = fr ? S.topR : S.topF, ls = fr ? 1 : -1;
       const hole = { x: node.x, y: fr ? S.holeR : S.holeF };
-      const ax = node.x + ls * (section('post', !!fr).d / 2 + 140), y0 = beamY(node, ax, -S.hBeamTop) - 45, bp = mv(node, ls * 130, 0);
+      const ax = node.x + ls * (post.d / 2 + 140), y0 = beamY(node, ax, -S.hBeamTop) - 45, bp = mv(node, ls * 130, 0);
       specs.top.push({
         labelSide: ls, anchorX: ax,
         leaders: [
-          [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
-          [node.x - section('post', !!fr).d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${FIX.postTopHole}`],
+          [bp.x, bp.y, y0, `斜梁 ${beam.name}`],
+          [node.x - post.d / 2 + 15, ty - 4, y0 - 65, `柱顶平切，孔心距柱顶 ${FIX.postTopHole}`],
           [hole.x, hole.y, y0 - 130, 'M16×40 外六角螺栓（平垫 + 弹垫）'],
           [hole.x, hole.y - 16, y0 - 195, '立柱上竖向长圆孔'],   // 长圆孔长 40，露在垫圈外的下端
-          [node.x, node.y - 190, y0 - 260, `立柱 ${sec(section('post', !!fr))}`],
+          [node.x, node.y - 190, y0 - 260, `立柱 ${post.name}`],
         ],
         lines: [[node.x, node.y - 280, node.x, ty + 70], seg2(mv(node, -320, 0), mv(node, 320, 0))],
-        dims: [[node.x, ty, hole.x, hole.y, -ls * (section('post', !!fr).d / 2 + 60), 0, `${FIX.postTopHole}`]],
+        dims: [[node.x, ty, hole.x, hole.y, -ls * (post.d / 2 + 60), 0, `${FIX.postTopHole}`]],
         box: [node.x - ls * 260, ax, y0 - 290, ty + 90],
       });
     }
@@ -122,10 +125,10 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       specs.btop.push({
         labelSide: ls, anchorX: ax,
         leaders: [
-          [bp.x, bp.y, y0, `斜梁 ${sec(FIX.beam)}`],
+          [bp.x, bp.y, y0, `斜梁 ${beam.name}`],
           [end.x, end.y, y0 - 65, `斜撑端头平切，孔心到端头 ${FIX.braceEdge}`],
           [T.x, T.y, y0 - 130, 'M12×35 外六角螺栓（平垫 + 弹垫）'],
-          [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${sec(section('brace', !!fr))}`],
+          [T.x - J.ax * 230, T.y - J.ay * 230, y0 - 195, `斜撑 ${brace.name}`],
         ],
         lines: [seg2(mv(T, -340, 0), mv(T, 340, 0)),
           [T.x + J.ax * 80, T.y + J.ay * 80, T.x - J.ax * 380, T.y - J.ay * 380]],
@@ -133,16 +136,16 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
       });
     }
     { // 檩条-斜梁：前侧取最低一根檩条、后侧取最高一根；文字放在右侧斜梁下面
-      const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 220, web = -FIX.purlin.f / 2;
+      const P0 = S.along(S.purlins[fr ? S.purlins.length - 1 : 0]), ax = P0.x + 220, web = -purlin.f / 2;
       // 压块固定时这里没有组件螺栓（压块在组件缝上，见檩条-组件节点）。檩托指到立边上部，M12 指到立边上那颗螺栓
       const parts: LeaderPart[] = [
         [mv(P0, 160, S.hModBot + P.modT / 2), `组件 ${P.modL}×${P.modW}×${P.modT}`],
-        ...(clamp ? [] : [[mv(P0, 0, S.hModBot - FIX.purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']] satisfies LeaderPart[]),
-        [mv(P0, web, S.hBeamTop + 92), `檩条 ${sec(FIX.purlin)}`],
+        ...(clamp ? [] : [[mv(P0, 0, S.hModBot - purlin.t - 4), 'M8×22 外六角螺栓 + 螺母']] satisfies LeaderPart[]),
+        [mv(P0, web, S.hBeamTop + 92), `檩条 ${purlin.name}`],
         [mv(P0, web - CLIP.t / 2, S.hBeamTop + CLIP.height - 8), `檩托 ${CLIP.name}`],
         [mv(P0, web - CLIP.t, S.hBeamTop + CLIP.webBolt), 'M12×35 螺栓 ×2（平垫 + 弹垫）'],
         ...(layout.ew.i === 0 ? [[mv(P0, 0, S.hBeamTop), 'M12×35：檩条下翼缘—斜梁上翼缘']] satisfies LeaderPart[] : []),
-        [mv(P0, -220, 0), `斜梁 ${sec(FIX.beam)}`],
+        [mv(P0, -220, 0), `斜梁 ${beam.name}`],
       ];
       const yLow = beamY(P0, ax, -S.hBeamTop) - 35 - 45 * (parts.length - 1);
       specs.clip.push({
@@ -165,7 +168,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
           [mv(P0, 0, top + CLAMP.mid.top), `中压块，长 ${P.clampL}`, layout.gapZ - FIX.modGapEW / 2 - CLAMP.mid.press / 2],
           [mv(P0, 0, top - CLAMP.mid.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
         ] satisfies LeaderPart[] : [[mv(P0, 0, S.hModBot + 2 + 4), 'M8×22 外六角螺栓 + 螺母']] satisfies LeaderPart[]),
-        [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}`],
+        [mv(P0, -purlin.f / 2, S.hBeamTop + 50), `檩条 ${purlin.name}`],
       ];
       specs.mod.push({
         labelSide: 1, anchorX: ax, z: layout.gapZ, zl, at: mv(P0, 0, S.hModBot),
@@ -183,7 +186,7 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
         [mv(P0, 60, top), `组件 ${P.modL}×${P.modW}×${P.modT}`, e - 60],
         [mv(P0, 0, top + Sd.top), `边压块，长 ${P.clampL}`, e + Sd.wall / 2],
         [mv(P0, 0, top - Sd.floor + 8), 'M8×35 内六角螺栓 + 螺母'],
-        [mv(P0, -FIX.purlin.f / 2, S.hBeamTop + 50), `檩条 ${sec(FIX.purlin)}，伸出组件 ${layout.purlinExt}`],
+        [mv(P0, -purlin.f / 2, S.hBeamTop + 50), `檩条 ${purlin.name}，伸出组件 ${layout.purlinExt}`],
       ];
       specs.side.push({
         labelSide: 1, anchorX: ax, z: zb, zl: zb, at: mv(P0, 0, S.hModBot),
@@ -196,23 +199,23 @@ function build(S: Solution, layout: ReturnType<typeof getBuiltState>['layout']) 
   for (const fr of (layout.purlinConnector ? [0,1] : [])) {
     const splice = layout.purlinConnector!;
     const p=S.along(S.purlins[fr?S.purlins.length-1:0]), z=layout.cuts.positions.at(-1)||0;
-    const q=mv(p,-FIX.purlin.f/2,S.hBeamTop+FIX.purlin.d/2), ax=q.x+210;
+    const q=mv(p,-purlin.f/2,S.hBeamTop+purlin.d/2), ax=q.x+210;
     // 截面标注共用接缝平面，各引线分别指向翼缘、接缝、连接件和下翼缘螺栓。
-    const upperLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, FIX.purlin.d / 2 - FIX.purlin.l / 2);
-    const lowerLip = mv(q, FIX.purlin.f - FIX.purlin.t / 2, -FIX.purlin.d / 2 + FIX.purlin.l / 2);
+    const upperLip = mv(q, purlin.f - purlin.t / 2, purlin.d / 2 - purlin.l / 2);
+    const lowerLip = mv(q, purlin.f - purlin.t / 2, -purlin.d / 2 + purlin.l / 2);
     const connectorBottom = mv(q, 8, -splice.d / 2);
     const lowerBolt = mv(q, splice.flangeHoleOffset - splice.t, -splice.d / 2 - 8);
     specs.splice.push({labelSide:1,anchorX:ax,z,zl:z,at:q,
       leaders:[
-        [upperLip.x,upperLip.y,q.y+100,'檩条 1 '+sec(FIX.purlin)],
+        [upperLip.x,upperLip.y,q.y+100,'檩条 1 '+purlin.name],
         [q.x,q.y,q.y+45,'檩条接缝 4 mm'],
-        [lowerLip.x,lowerLip.y,q.y-10,'檩条 2 '+sec(FIX.purlin)],
+        [lowerLip.x,lowerLip.y,q.y-10,'檩条 2 '+purlin.name],
         [connectorBottom.x,connectorBottom.y,q.y-65,splice.name + ' 连接件'],
         [lowerBolt.x,lowerBolt.y,q.y-120,'M12×35 ×8（两面平垫，螺母侧弹垫）']
       ],
       // 接缝中心处的法线，沿组件法向贯穿檩条截面，上下各伸出 40 mm。
       // 与其他节点共用红色虚线材质，放在接缝平面而不是文字所在平面。
-      lines: [[...seg2(mv(q, 0, -FIX.purlin.d / 2 - 40), mv(q, 0, FIX.purlin.d / 2 + 40)), z]],
+      lines: [[...seg2(mv(q, 0, -purlin.d / 2 - 40), mv(q, 0, purlin.d / 2 + 40)), z]],
       box:[q.x-160,ax,q.y-170,q.y+130]});
   }
   layout.jointSpecs = specs;

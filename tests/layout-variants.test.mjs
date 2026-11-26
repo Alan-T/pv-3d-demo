@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FIX, PRESETS, SECTION_LABEL, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { PRESETS, SECTION_LABEL, getPresetParameters } from '../src/config.ts';
+import { resolveMemberSections } from '../src/section-spec.ts';
 import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/brace-connector-spec.ts';
 import { braceConnection } from '../src/brace-layout.ts';
 import { MM } from '../src/core.ts';
@@ -143,21 +144,21 @@ test('旧排布连接规格迁入 sections，修改、复制、切换和恢复�
 });
 
 test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整', t => {
-  t.after(() => applyPresetSections('A'));
   const parameters = getPresetParameters(PRESETS.B);
+  const names = PRESETS.B.layouts[0].sections;
   const narrow = 'C80*40*15*3.0', wide = 'C200*80*30*3.0';
-  const connector = new BraceConnectorPart({
-    plates: braceConnectorPlates, postFSection: FIX.postF, postRSection: FIX.postR,
-    track(geometry) { t.after(() => geometry.dispose()); return geometry; },
-  });
   for (const [postF, postR, outer, split, offsets, expectedLabel] of [
     [narrow, narrow, 1, false, [120, 120], '双面 280×120×5.75'],
     [wide, narrow, 0, false, [160, 120], '单面 160×120×5.75'],
     [wide, narrow, 1, true, [170, 140], '单面 160×120×5.75（每柱两块）'],
     [narrow, wide, 1, true, [140, 170], '单面 160×120×5.75（每柱两块）'],
   ]) {
-    applyPresetSections('B', { postF, postR });
-    const s = solve({ ...parameters, outer });
+    const sections = resolveMemberSections({ ...names, postF, postR });
+    const s = solve({ ...parameters, outer }, sections);
+    const connector = new BraceConnectorPart({
+      plates: braceConnectorPlates, postFSection: sections.postF, postRSection: sections.postR,
+      track(geometry) { t.after(() => geometry.dispose()); return geometry; },
+    });
     assert.deepEqual(s.connections.map(c => c.offset), offsets);
     for (const [i, c] of s.connections.entries()) {
       const joint = connector.braceJoint(c, i ? s.tRp : s.tFp, i ? s.outer?.toRp : s.outer?.toFp);
@@ -175,8 +176,8 @@ test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整',
       }
     }
   }
-  applyPresetSections('B', { postF: 'C50*30*10*2.0', postR: wide });
-  const s = solve({ ...parameters, outer: 1 });
+  const sections = resolveMemberSections({ ...names, postF: 'C50*30*10*2.0', postR: wide });
+  const s = solve({ ...parameters, outer: 1 }, sections);
   assert.ok(s.connections.every(c => c.split));
   assert.ok(s.warn.some(w => w.includes('前立柱截面宽 50 mm') && w.includes('安装孔超出柱边')));
 });
@@ -184,7 +185,7 @@ test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整',
 test('双面板的模型与标注读取独立规格，宽柱分装仍使用两块单面板', t => {
   const connector = new BraceConnectorPart({
     plates: { ...braceConnectorPlates, double: parseBraceConnectorSpec('300*150*7.0') },
-    postFSection: FIX.postF,
+    postFSection: resolveMemberSections(PRESETS.A.layouts[0].sections).postF,
     track(geometry) { t.after(() => geometry.dispose()); return geometry; },
   });
   for (const [postWidth, dimensions, label] of [
@@ -249,12 +250,12 @@ test('旧前后斜撑连接件规格迁入共用规格，几何计算仍使用�
     assert.ok(!Object.hasOwn(drawing.active.sections, key));
     assert.ok(!Object.hasOwn(drawing.getModelParameters(), key));
   }
-  assert.doesNotThrow(() => applyPresetSections('A', sections));
+  assert.deepEqual(resolveMemberSections(sections), resolveMemberSections(drawing.active.sections));
 });
 
 function applyCustomCuts(drawing, id) {
   drawing.select(id);
-  const { cuts } = layoutEW(drawing.getModelParameters());
+  const { cuts } = layoutEW(drawing.getModelParameters(), resolveMemberSections(drawing.active.sections));
   assert.equal(cuts.valid, true);
   const lengths = cuts.segments.map(segment => segment.length);
   drawing.captureParameters({ purlinCutMode: 'custom', purlinCutLengths: lengths });
@@ -279,7 +280,8 @@ test('修改最大料长会让整张图纸按新上限重切，选择相同上�
   drawing.captureParameters({ purlinCutMode: 'auto' });
   drawing.captureParameters({ maxPurlin: '7200' });
   for (const layout of drawing.layouts) assertAutomaticCuts(layout);
-  assert.deepEqual(layoutEW(drawing.getModelParameters()).cuts.segments.map(s => s.length), [6150, 6100, 5021]);
+  const { cuts } = layoutEW(drawing.getModelParameters(), resolveMemberSections(drawing.active.sections));
+  assert.deepEqual(cuts.segments.map(s => s.length), [6150, 6100, 5021]);
 
   applyCustomCuts(drawing, '2');
   drawing.select('1');
@@ -401,6 +403,7 @@ test('新增独立复制当前排布；恢复只重置当前排布和共享参�
     cols: 11, pitchEnd: 2400, postTieR: 'custom', postTieSpansR: [1, 0], tilt: 18,
   });
   drawing.active.sections.postR = 'C80*40*15*3.0';
+  const original = solve(drawing.getModelParameters(), resolveMemberSections(drawing.active.sections));
   drawing.setQuantity('8');
   drawing.add();
   assert.equal(drawing.activeId, '3');
@@ -409,6 +412,9 @@ test('新增独立复制当前排布；恢复只重置当前排布和共享参�
   assert.deepEqual(drawing.active.postTieSpansR, [1, 0]);
   drawing.active.postTieSpansR[1] = 1;
   drawing.active.sections.postR = 'C80*40*15*2.0';
+  const copy = solve(drawing.getModelParameters(), resolveMemberSections(drawing.active.sections));
+  assert.equal(copy.sections.postR.t, 2);
+  assert.equal(original.sections.postR.t, 3);
 
   drawing.select('2');
   assert.deepEqual(drawing.active.postTieSpansR, [1, 0]);

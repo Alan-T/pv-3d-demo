@@ -1,4 +1,4 @@
-import type { FIX as fixedDimensions, ModelParameters, Section, PresetId } from './config.ts';
+import type { ModelParameters, Section, PresetId } from './config.ts';
 import type { EWLayout, Solution } from './solve.ts';
 import type { PostTieRow } from './post-tie-layout.ts';
 import type { PurlinTies } from './purlin-tie-layout.ts';
@@ -19,17 +19,18 @@ function kgPerM(sec: Section) {
   return area * 7.85 / 1000;
 }
 
-export function createReport(P: ModelParameters, FIX: typeof fixedDimensions, S: Solution, L: ReportLayout, preset: PresetId) {
+export function createReport(P: ModelParameters, S: Solution, L: ReportLayout, preset: PresetId) {
+  const { sections } = S;
   const r = Math.round, h1 = (x: number) => Math.round(x * 10) / 10, n = L.frames, O = S.outer, np = S.purlins.length;
   const moduleCount = P.rows * L.cols;
   const title =
     `固定倾角 · 双立柱 · 组件竖排 ${P.rows} 块${O ? ' · 带外斜撑' : ''}（单位 mm）`;
   const warnings = [...S.warn, ...L.warn];
   const steelKg =
-    n * (S.lenF * kgPerM(FIX.postF) + S.lenR * kgPerM(FIX.postR) + S.beamLen * kgPerM(FIX.beam) + S.braceF * kgPerM(FIX.braceF) + S.braceR * kgPerM(FIX.braceR) + (O ? O.braceOF * kgPerM(FIX.braceOF) + O.braceOR * kgPerM(FIX.braceOR) : 0)) / 1000 +
-    (np * L.purlinLen * kgPerM(FIX.purlin)) / 1000 +
-    L.postTies.flatMap(row => row.rods).reduce((sum, rod) => sum + rod.length * kgPerM(FIX.postTie) / 1000, 0) +
-    L.purlinTies.count * L.purlinTies.length * kgPerM(FIX.purlinTie) / 1000;
+    n * (S.lenF * kgPerM(sections.postF) + S.lenR * kgPerM(sections.postR) + S.beamLen * kgPerM(sections.beam) + S.braceF * kgPerM(sections.braceF) + S.braceR * kgPerM(sections.braceR) + (O ? O.braceOF * kgPerM(sections.braceOF) + O.braceOR * kgPerM(sections.braceOR) : 0)) / 1000 +
+    (np * L.purlinLen * kgPerM(sections.purlin)) / 1000 +
+    L.postTies.flatMap(row => row.rods).reduce((sum, rod) => sum + rod.length * kgPerM(sections.postTie) / 1000, 0) +
+    L.purlinTies.count * L.purlinTies.length * kgPerM(sections.purlinTie) / 1000;
   const rows = [
     ['榀数（按组件列数）', `${n} 榀（檩条两端悬挑 ${r((L.purlinLen - L.spanEW) / 2)}）`],
     ['榀距 首末跨 / 中间跨', `${P.pitchEnd} / ${P.pitch}（总 ${r(L.spanEW)}）`],

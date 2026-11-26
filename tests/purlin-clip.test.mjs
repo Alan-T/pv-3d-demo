@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 import { PurlinClipPart } from '../src/parts/purlin-clip.ts';
 import { BoltsPart } from '../src/parts/bolts.ts';
-import { FIX, CLAMP, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
+import { CLAMP, PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
+import { resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 
 // 实例矩阵使用 Float32，米制坐标允许 0.002 mm 的数值误差。
@@ -26,7 +27,8 @@ test('檩托规格保留四个尺寸，预设可用，未知名称不回退', ()
 
 test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴紧檩托', () => {
   const parameters = getPresetParameters(PRESETS.A);
-  const S = solve(parameters), layout = layoutEW(parameters);
+  const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
+  const S = solve(parameters, sections), layout = layoutEW(parameters, sections);
   const u = new THREE.Vector3(S.c, S.s, 0), n = new THREE.Vector3(-S.s, S.c, 0);
   const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   const washerMaterial = new THREE.MeshBasicMaterial();
@@ -35,8 +37,8 @@ test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴�
       const CLIP = getPurlinClipSpec(name), resources = [], calls = [], hw = new THREE.Group();
       const track = geometry => (resources.push(geometry), geometry);
       try {
-        const part = new PurlinClipPart({ beamSection: FIX.beam, purlinSection: FIX.purlin, clipMaterial: material, CLIP, track });
-        const count = part.build({ S, layout, zw: FIX.postF.f / 2, u, n, hw, bolts: { add: (kind, point, axis, up) => calls.push({ kind, point, axis, up }) } });
+        const part = new PurlinClipPart({ beamSection: sections.beam, purlinSection: sections.purlin, clipMaterial: material, CLIP, track });
+        const count = part.build({ S, layout, zw: sections.postF.f / 2, u, n, hw, bolts: { add: (kind, point, axis, up) => calls.push({ kind, point, axis, up }) } });
         assert.equal(count, layout.zs.length * S.purlins.length);
         const instance = hw.children[0];
         instance.geometry.computeBoundingBox();
@@ -48,11 +50,11 @@ test('三种檩托实体和安装位置正确，螺栓头下平垫随板厚贴�
         close(new THREE.Vector3(0, 0, 0).applyMatrix4(matrix).distanceTo(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix)), .05, '檩托长度');
         const mesh = new THREE.Mesh(instance.geometry, material);
         mesh.matrixAutoUpdate = false; mesh.matrix.copy(matrix); mesh.updateMatrixWorld(true);
-        const boltPart = new BoltsPart({ beamSection: FIX.beam, purlinSection: FIX.purlin,
+        const boltPart = new BoltsPart({ beamSection: sections.beam, purlinSection: sections.purlin,
           boltSteelMaterial: material, washerMaterial, slotMaterial: material, CLAMP, CLIP, track });
         for (const kind of ['clip', 'clipWeb']) {
           const call = calls.find(item => item.kind === kind);
-          const matingThickness = kind === 'clip' ? FIX.beam.t : FIX.purlin.t;
+          const matingThickness = kind === 'clip' ? sections.beam.t : sections.purlin.t;
           const point = call.point.clone().applyMatrix4(matrix.clone().invert());
           close(point.z * CLIP.width * .001, CLIP.width * .001 / 2, '螺栓位于长度中线');
           if (kind === 'clip') close(point.x, CLIP.base * .001 / 2, '底边螺栓居中');

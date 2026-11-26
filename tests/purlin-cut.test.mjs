@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
-import { FIX, PRESETS, getPresetParameters } from '../src/config.ts';
+import { PRESETS, getPresetParameters } from '../src/config.ts';
+import { resolveMemberSections } from '../src/section-spec.ts';
 import { PurlinConnectorPart } from '../src/parts/purlin-connector.ts';
 import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.ts';
 import { cutPurlin, PURLIN_CUT_GAP } from '../src/purlin-cut.ts';
 import { layoutEW } from '../src/solve.ts';
 
 const drawing = getPresetParameters(PRESETS.A);
+const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
 const netLengths = [5650, 3950, 4000, 3950, 4300, 4100, 4800, 3700];
 function custom(lengths, overrides = {}) {
-  return layoutEW({ ...drawing, purlinCutMode: 'custom', purlinCutLengths: lengths, ...overrides });
+  return layoutEW({ ...drawing, purlinCutMode: 'custom', purlinCutLengths: lengths, ...overrides }, sections);
 }
 
 test('自定义八段净长从西到东布置，每个接缝中心放置连接件和八套螺栓', (t) => {
@@ -30,7 +32,7 @@ test('自定义八段净长从西到东布置，每个接缝中心放置连接�
   const material = new MeshBasicMaterial();
   t.after(() => material.dispose());
   const connector = new PurlinConnectorPart({
-    purlinSection: FIX.purlin, connectorSpec: getPurlinConnectorSpec(drawing.purlinConnector),
+    purlinSection: sections.purlin, connectorSpec: getPurlinConnectorSpec(drawing.purlinConnector),
     purlinConnectorMaterial: material, track(geometry) { t.after(() => geometry.dispose()); return geometry; },
   });
   const hardware = new Group();
@@ -44,8 +46,8 @@ test('自定义八段净长从西到东布置，每个接缝中心放置连接�
 test('自定义段长保留输入精度，切换自动后沿用原切割算法', () => {
   const fractions = [5650.1, 3949.9, ...netLengths.slice(2)];
   assert.deepEqual(custom(fractions).cuts.segments.map(segment => segment.length), fractions);
-  const auto = layoutEW({ ...drawing, purlinCutMode: 'auto', purlinCutLengths: fractions });
-  assert.deepEqual(auto.cuts, layoutEW({ ...drawing, purlinCutMode: undefined }).cuts);
+  const auto = layoutEW({ ...drawing, purlinCutMode: 'auto', purlinCutLengths: fractions }, sections);
+  assert.deepEqual(auto.cuts, layoutEW({ ...drawing, purlinCutMode: undefined }, sections).cuts);
   assert.deepEqual(auto.cuts.segments.map(segment => segment.length), [7000, 6800, 6900, 8050, 5712]);
 });
 

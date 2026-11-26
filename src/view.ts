@@ -1,6 +1,6 @@
 import { getScene, tryGetScene } from './scene.ts';
 import { M, ghostModules, ghostMat, applyPalette } from './materials.ts';
-import { FIX, show, P } from './config.ts';
+import { show, P } from './config.ts';
 import { EY, V, V3, MM, DEG, ewMatrix, shared, track, getBuiltState } from './core.ts';
 import * as THREE from 'three';
 import { setFlatFrameDisplay } from './frame-projection.ts';
@@ -310,7 +310,7 @@ function framePose(name: ViewName): CameraPose {
     return lastTiePose;
   }
   const zLast = layout.zs[layout.zs.length - 1], frame = ['frame', 'clip'].includes(sectionKey(st.jointType));
-  const z = sp.z === undefined ? zLast + FIX.postF.f / 2 : sp.z;
+  const z = sp.z === undefined ? zLast + S.sections.postF.f / 2 : sp.z;
   const W = ewMatrix(layout.ew, frame ? zLast : undefined);   // 东西坡度：沿坡坐标 → 世界
   const xL = Math.min(sp.box[0], sp.box[1]), xR = Math.max(sp.box[0], sp.box[1]), yB = sp.box[2], yT = sp.box[3];
   const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1, labelPx = cw < 520 ? 170 : 230;

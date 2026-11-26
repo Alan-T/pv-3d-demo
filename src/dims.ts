@@ -1,6 +1,6 @@
 import { getScene } from './scene.ts';
 import { FONT, V, V3, MM, DEG, track, ewPlace, shared, getBuiltState } from './core.ts';
-import { FIX, P } from './config.ts';
+import { P } from './config.ts';
 import { build as jointDetailBuild } from './joint-detail.ts';
 import * as THREE from 'three';
 
@@ -180,8 +180,7 @@ function build() {
   const offZ = (k: number) => new V3(0, 0, k * MM);
   const halfL = layout.purlinLen / 2;
   const tLow = S.modStarts[0], tHigh = S.modStarts[S.modStarts.length - 1] + P.modL;
-  const pSec = `C${FIX.purlin.d}*${FIX.purlin.f}*${FIX.purlin.l}*${FIX.purlin.t.toFixed(1)}`;
-  nrm.dim(pS(tHigh, -halfL), pS(tHigh, halfL), offU(700), `檩条 ×${S.purlins.length}　${pSec}　总长 ${r(layout.purlinLen)}`, 'out', 13);
+  nrm.dim(pS(tHigh, -halfL), pS(tHigh, halfL), offU(700), `檩条 ×${S.purlins.length}　${S.sections.purlin.name}　总长 ${r(layout.purlinLen)}`, 'out', 13);
   // 每根檩条使用相同切割方案；标注材料净长，不含段间4 mm接缝。
   const topCuts = new DimSet();
   if (layout.cuts.valid) for (const seg of layout.cuts.segments) {

@@ -1,8 +1,7 @@
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
-import type { DrawingPreset, LayoutPreset, MemberKey, ModelParameters, NamedSection,
-  ParameterDefinition, PresetId, PurlinAccessory, Section } from './design-types.ts';
-import { getSectionLibrary } from './section-spec.ts';
+import type { DrawingPreset, LayoutPreset, MemberKey, ModelParameters,
+  ParameterDefinition, PresetId, PurlinAccessory } from './design-types.ts';
 export type * from './design-types.ts';
 export { isSurfaceFinishKey } from './design-types.ts';
 
@@ -76,9 +75,8 @@ const SECTION_LABEL = {
   postF: '前立柱', postR: '后立柱', beam: '斜梁',
   braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑',
   purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆',
-};
+} satisfies Record<MemberKey, string>;
 export const PURLIN_ACCESSORY_KEYS: PurlinAccessory[] = ['purlinClip', 'purlinConnector'];
-const ACCESSORY_SECTION_KEYS = [...PURLIN_ACCESSORY_KEYS, 'braceConnector', 'braceConnectorF', 'braceConnectorR'];
 export const MATERIAL_GRADE_OPTIONS = ['S350GD', 'S420GD', 'S450GD', 'S550GD', 'Q235B'];
 export const SURFACE_FINISH_OPTIONS = [
   { value: '20040', label: 'HDG Average ≥ 40μm' },
@@ -100,16 +98,8 @@ export const SURFACE_FINISH_OPTIONS = [
   { value: '40015', label: 'AA15μm' },
 ];
 
-// ---------- 运行时基准尺寸与连接件 ----------
-const frameDefaults = { d: 90, f: 55, l: 20, t: 3 };
+// ---------- 固定尺寸与连接件 ----------
 const FIX = {
-  postF: { ...frameDefaults }, postR: { ...frameDefaults },
-  braceF: { ...frameDefaults }, braceR: { ...frameDefaults },
-  braceOF: { ...frameDefaults }, braceOR: { ...frameDefaults },
-  beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
-  purlin: { d: 100, f: 55, l: 15, t: 1.8 },
-  postTie: { d: 59, f: 39, l: 8, t: 1.6 } as Section,
-  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 } as Section,
   beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
   braceEdge: 35, // 沿斜撑轴线，首末孔中心到各自端头的距离（mm）
   postTieEdge: 135, // 立柱拉杆端孔中心到杆端的基础距离（mm），前后排共用
@@ -119,16 +109,6 @@ const FIX = {
   // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
   purlinExt: { bolt: 50, clamp: 100 },
 };
-const section = (kind: 'post' | 'brace', rear = false, outer = false) =>
-  FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-
-function applySection(key: MemberKey, { name, ...dimensions }: NamedSection) {
-  const target = FIX[key];
-  // 保留对象引用，但清掉旧截面字段，避免 C/L 切换后残留 type、卷边或名称。
-  for (const field of Object.keys(target)) Reflect.deleteProperty(target, field);
-  Object.assign(target, dimensions);
-}
-
 // 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
 const CLAMP = {
   bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
@@ -405,19 +385,6 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
     ],
   },
 };
-// 应用截面时复制尺寸，保留运行时 FIX 引用，避免修改预设。
-function applyPresetSections(preset: PresetId, sectionNames: Partial<Record<MemberKey | PurlinAccessory | 'braceConnector', string>> = PRESETS[preset].layouts[0].sections) {
-  const members = Object.entries(sectionNames).filter(([key]) => !ACCESSORY_SECTION_KEYS.includes(key));
-  const sections = members.map(([key, name]) => {
-    const library = getSectionLibrary(key);
-    const value = library.find(item => item.name === name);
-    if (!value || !isMemberKey(key)) throw new Error(`图纸 ${preset} 的 ${isMemberKey(key) ? SECTION_LABEL[key] : key} 截面不存在：${name}`);
-    return [key, value] as const;
-  });
-  // 全部名称校验通过后再应用，复制尺寸，避免修改截面库或预设。
-  for (const [key, dimensions] of sections) applySection(key, dimensions);
-}
-applyPresetSections('A');
 const DEFAULTS = PRESETS.A;
 
 // ---------- 可调参数 ----------
@@ -488,5 +455,5 @@ function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: Draw
 }
 const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, BRACE_CONNECTOR_SPECS, PURLIN_CONNECTOR_SPECS, applySection };
-export { applyPresetSections, getPresetParameters, FIX, PRESETS, DEFAULTS, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };
+export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, BRACE_CONNECTOR_SPECS, PURLIN_CONNECTOR_SPECS };
+export { getPresetParameters, FIX, PRESETS, DEFAULTS, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show };

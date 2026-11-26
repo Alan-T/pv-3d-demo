@@ -1,5 +1,5 @@
-import type { MemberKey, NamedSection } from './design-types.ts';
-import { SECTION_LIB, TIE_SECTION_LIB } from './config.ts';
+import type { MemberKey, MemberSections, NamedSection } from './design-types.ts';
+import { SECTION_LABEL, SECTION_LIB, TIE_SECTION_LIB } from './config.ts';
 
 /** 从截面规格字符串（如 C90*55*20*3.0、L35*35*1.6）解析截面尺寸。 */
 export function parseSectionSpec(name: string): NamedSection {
@@ -16,15 +16,29 @@ export function parseSectionSpec(name: string): NamedSection {
   throw new Error(`无效的截面规格：${name}`);
 }
 
+const isTie = (key: string) => key === 'postTie' || key === 'purlinTie';
+
 export function getSectionSpec(name: string, key?: string): NamedSection | null {
-  const specs = key ? (key === 'postTie' || key === 'purlinTie' ? TIE_SECTION_LIB : SECTION_LIB) : null;
+  const specs = key ? (isTie(key) ? TIE_SECTION_LIB : SECTION_LIB) : null;
   if (specs ? !specs.includes(name) : !SECTION_LIB.includes(name) && !TIE_SECTION_LIB.includes(name)) return null;
   return parseSectionSpec(name);
 }
 
 export function getSectionLibrary(key: string): NamedSection[] {
-  const specs = key === 'postTie' || key === 'purlinTie' ? TIE_SECTION_LIB : SECTION_LIB;
+  const specs = isTie(key) ? TIE_SECTION_LIB : SECTION_LIB;
   return specs.map(parseSectionSpec);
+}
+
+/** 从本次排布的规格名取得建模尺寸，标准构件用 C 型截面，拉杆也可用 L 型。 */
+export function resolveMemberSections(names: Record<MemberKey, string>): MemberSections {
+  const keys = Object.keys(SECTION_LABEL) as MemberKey[];
+  return Object.fromEntries(keys.map(key => {
+    const spec = getSectionSpec(names[key], key);
+    if (!spec || (spec.type === 'L' && !isTie(key))) {
+      throw new Error(`${SECTION_LABEL[key]}截面不存在：${names[key]}`);
+    }
+    return [key, spec];
+  })) as MemberSections;
 }
 
 export function normalizeSection(name: string) {
