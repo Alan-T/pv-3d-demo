@@ -5,13 +5,14 @@ type StoredLayout = LayoutPreset & Partial<Record<PurlinAccessory, string>> & {
   sections: LayoutPreset['sections'] & { braceConnectorF?: string; braceConnectorR?: string };
 };
 
-import { DBL, getLayoutParameters, JOINT, PURLIN_ACCESSORY_KEYS, isMemberKey, SECTION_LIB } from './config.ts';
+import { DBL, getLayoutParameters, JOINT, PURLIN_ACCESSORY_KEYS, isMemberKey } from './config.ts';
+import { getSectionLibrary } from './section-spec.ts';
 import { braceConnectorSpec, needsSplitBraceConnector } from './brace-layout.ts';
 import { getPurlinDimensions } from './solve.ts';
 
 export { getLayoutParameters };
 
-const postWidths = new Map(SECTION_LIB.map(({ name, d }) => [name, d]));
+const postWidths = new Map(getSectionLibrary('postF').map(({ name, d }) => [name, d]));
 
 function updateBraceConnector(layout: LayoutPreset & { outer?: ModelParameters['outer'] }, sharedOuter: ModelParameters['outer']) {
   const { sections } = layout;

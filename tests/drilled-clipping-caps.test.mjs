@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary } from '../src/section-spec.ts';
 import { ewMatrix } from '../src/core.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
@@ -40,7 +41,7 @@ function cutPlanes(spec) {
 
 test('实际 C 型檩条拉杆前后节点：封口覆盖腹板、两翼及卷边，保留槽口', () => {
   try {
-    for (const preset of ['A', 'B']) for (const slopeEW of [-10, 0, 10]) for (const section of TIE_SECTION_LIB.filter(item => item.type === 'C')) {
+    for (const preset of ['A', 'B']) for (const slopeEW of [-10, 0, 10]) for (const section of getSectionLibrary('purlinTie').filter(item => item.type === 'C')) {
       applyPresetSections(preset);
       const parameters = { ...getPresetParameters(PRESETS[preset]), slopeEW, purlinTies: 'all' };
       const solution = solve(parameters), layout = layoutEW(parameters);

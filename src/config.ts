@@ -1,97 +1,80 @@
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
-// ---------- 图纸尺寸与假设 ----------
-import type { ChannelSection, DrawingPreset, LayoutPreset, MemberKey, ModelParameters, NamedSection,
+import type { DrawingPreset, LayoutPreset, MemberKey, ModelParameters, NamedSection,
   ParameterDefinition, PresetId, PurlinAccessory, Section } from './design-types.ts';
+import { getSectionLibrary } from './section-spec.ts';
 export type * from './design-types.ts';
 export { isSurfaceFinishKey } from './design-types.ts';
 
-const frameDefaults = { d: 90, f: 55, l: 20, t: 3 };
-const FIX = {
-  postF: { ...frameDefaults }, postR: { ...frameDefaults },
-  braceF: { ...frameDefaults }, braceR: { ...frameDefaults },
-  braceOF: { ...frameDefaults }, braceOR: { ...frameDefaults },
-  beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
-  purlin: { d: 100, f: 55, l: 15, t: 1.8 },
-  postTie: { d: 59, f: 39, l: 8, t: 1.6 } as Section,
-  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 } as Section,
-  beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
-  modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
-  // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
-  purlinExt: { bolt: 50, clamp: 100 },
-  maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
-};
-// ---------- 构件截面选型库 ----------
-// 常规 C 型构件共用这一份数据（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，单位 mm）；拉杆使用专用库。
-// 选中后把尺寸写进 FIX 同名对象并重建模型；加新规格往字符串里追加即可。
-const SECTION_LIB: (ChannelSection & { name: string })[] = `
-  C50*30*10*1.8    C50*30*10*2.0    C59*39*8*1.6     C59*39*8*1.8     C60*40*10*1.6
-  C60*40*10*1.8    C60*40*10*2.0    C70*40*10*1.8    C70*40*10*2.0    C75*40*10*1.85
-  C79*39*8*1.8     C79*39*8*2.0     C80*40*10*1.8    C80*40*10*2.0    C80*40*15*1.8
-  C80*40*15*2.0    C80*40*15*3.0    C80*45*15*1.8    C80*45*15*2.0    C80*45*15*3.0
-  C80*50*10*2.0    C80*50*15*1.8    C80*50*15*2.0    C80*50*15*3.0    C80*50*20*2.0
-  C80*55*15*1.8    C80*55*15*3.0    C80*55*20*1.8    C80*55*20*2.0    C80*60*15*1.8
-  C80*60*15*2.0    C80*60*15*3.0    C80*60*20*1.8    C80*60*20*2.0    C90*40*10*1.8
-  C90*40*10*2.0    C90*40*15*1.8    C90*40*15*3.0    C90*45*15*1.8    C90*45*15*2.0
-  C90*45*15*3.0    C90*50*10*2.0    C90*50*15*1.8    C90*50*15*2.0    C90*50*15*3.0
-  C90*50*20*1.8    C90*50*20*2.0    C90*55*15*1.8    C90*55*15*3.0    C90*55*20*1.8
-  C90*55*20*2.0    C90*55*20*3.0    C90*60*15*1.8    C90*60*15*2.0    C90*60*15*3.0
-  C90*60*20*1.8    C90*60*20*2.0    C90*60*20*3.0    C99*39*8*1.8     C99*39*8*2.0
-  C99*39*8*2.3     C99*49*8*1.8     C99*49*8*2.0     C99*49*8*2.3     C100*40*10*1.8
-  C100*40*10*2.0   C100*40*10*2.3   C100*40*15*1.8   C100*40*15*2.0   C100*40*15*2.3
-  C100*40*15*3.0   C100*45*10*1.8   C100*45*15*1.8   C100*50*10*1.8   C100*50*10*2.0
-  C100*50*10*2.3   C100*50*15*1.8   C100*50*15*2.0   C100*50*15*2.3   C100*50*15*3.0
-  C100*50*20*1.8   C100*50*20*2.0   C100*50*20*2.3   C100*50*20*3.0   C100*55*15*1.8
-  C100*55*15*2.0   C100*55*20*1.8   C100*55*20*2.0   C100*55*20*3.0   C100*60*15*1.8
-  C100*60*15*2.0   C100*60*20*1.8   C100*60*20*2.0   C100*60*20*3.0   C110*50*20*1.8
-  C110*50*20*2.0   C110*50*20*3.0   C110*55*20*1.8   C110*60*20*1.8   C110*60*20*2.3
-  C110*60*20*3.0   C120*50*15*1.8   C120*50*20*1.8   C120*50*20*2.0   C120*50*20*2.3
-  C120*50*20*3.0   C120*55*20*1.8   C120*60*20*1.8   C120*60*20*2.0   C120*60*20*2.3
-  C120*60*20*2.5   C120*60*20*3.0   C130*60*20*3.0   C130*60*25*2.0   C140*60*20*3.0
-  C150*60*20*3.0   C160*60*20*3.0   C160*70*20*3.0   C170*60*20*3.0   C170*70*20*3.0
-  C170*70*30*3.0   C180*70*20*3.0   C180*70*30*3.0   C180*70*30*3.5   C180*80*30*3.5
-  C200*80*30*3.0   C200*80*30*3.5   C200*100*30*3.5  C200*100*30*4.0  C220*100*30*3.5
-  C220*100*30*4.0  C230*100*30*3.5  C230*100*30*4.0  C250*100*30*3.5  C250*100*30*4.0
-`.split(/\s+/).filter(Boolean).map((s) => {
-  const m = s.match(/^C(\d+)\*(\d+)\*(\d+)\*([\d.]+)$/);
-  if (!m) throw new Error(`无效的截面规格：${s}`);
-  return { name: `C${m[1]}*${m[2]}*${m[3]}*${m[4]}`, d: +m[1], f: +m[2], l: +m[3], t: +m[4] };
-});
-const section = (kind: 'post' | 'brace', rear = false, outer = false) => FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
-// 立柱拉杆和檩条拉杆共用截面规格，材质牌号按排布中的构件分别设置。
-const TIE_SECTION_LIB: NamedSection[] = [
-  { type: 'L', name: 'L35*35*1.6', d: 35, f: 35, t: 1.6 },
-  { type: 'C', name: 'C59*39*8*1.6', d: 59, f: 39, l: 8, t: 1.6 },
-  { type: 'C', name: 'C60*40*10*1.6', d: 60, f: 40, l: 10, t: 1.6 },
+// ---------- 选型规格库与选项 ----------
+// 常规 C 型构件规格（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，mm），由 section-spec.ts 解析尺寸。
+const SECTION_LIB: string[] = [
+  'C50*30*10*1.8', 'C50*30*10*2.0',
+  'C59*39*8*1.6', 'C59*39*8*1.8',
+  'C60*40*10*1.6', 'C60*40*10*1.8', 'C60*40*10*2.0',
+  'C70*40*10*1.8', 'C70*40*10*2.0', 'C75*40*10*1.85',
+  'C79*39*8*1.8', 'C79*39*8*2.0',
+  'C80*40*10*1.8', 'C80*40*10*2.0', 'C80*40*15*1.8', 'C80*40*15*2.0', 'C80*40*15*3.0',
+  'C80*45*15*1.8', 'C80*45*15*2.0', 'C80*45*15*3.0',
+  'C80*50*10*2.0', 'C80*50*15*1.8', 'C80*50*15*2.0', 'C80*50*15*3.0', 'C80*50*20*2.0',
+  'C80*55*15*1.8', 'C80*55*15*3.0', 'C80*55*20*1.8', 'C80*55*20*2.0',
+  'C80*60*15*1.8', 'C80*60*15*2.0', 'C80*60*15*3.0', 'C80*60*20*1.8', 'C80*60*20*2.0',
+  'C90*40*10*1.8', 'C90*40*10*2.0', 'C90*40*15*1.8', 'C90*40*15*3.0',
+  'C90*45*15*1.8', 'C90*45*15*2.0', 'C90*45*15*3.0',
+  'C90*50*10*2.0', 'C90*50*15*1.8', 'C90*50*15*2.0', 'C90*50*15*3.0', 'C90*50*20*1.8', 'C90*50*20*2.0',
+  'C90*55*15*1.8', 'C90*55*15*3.0', 'C90*55*20*1.8', 'C90*55*20*2.0', 'C90*55*20*3.0',
+  'C90*60*15*1.8', 'C90*60*15*2.0', 'C90*60*15*3.0', 'C90*60*20*1.8', 'C90*60*20*2.0', 'C90*60*20*3.0',
+  'C99*39*8*1.8', 'C99*39*8*2.0', 'C99*39*8*2.3', 'C99*49*8*1.8', 'C99*49*8*2.0', 'C99*49*8*2.3',
+  'C100*40*10*1.8', 'C100*40*10*2.0', 'C100*40*10*2.3', 'C100*40*15*1.8', 'C100*40*15*2.0', 'C100*40*15*2.3', 'C100*40*15*3.0',
+  'C100*45*10*1.8', 'C100*45*15*1.8',
+  'C100*50*10*1.8', 'C100*50*10*2.0', 'C100*50*10*2.3', 'C100*50*15*1.8', 'C100*50*15*2.0', 'C100*50*15*2.3', 'C100*50*15*3.0',
+  'C100*50*20*1.8', 'C100*50*20*2.0', 'C100*50*20*2.3', 'C100*50*20*3.0',
+  'C100*55*15*1.8', 'C100*55*15*2.0', 'C100*55*20*1.8', 'C100*55*20*2.0', 'C100*55*20*3.0',
+  'C100*60*15*1.8', 'C100*60*15*2.0', 'C100*60*20*1.8', 'C100*60*20*2.0', 'C100*60*20*3.0',
+  'C110*50*20*1.8', 'C110*50*20*2.0', 'C110*50*20*3.0', 'C110*55*20*1.8', 'C110*60*20*1.8', 'C110*60*20*2.3', 'C110*60*20*3.0',
+  'C120*50*15*1.8', 'C120*50*20*1.8', 'C120*50*20*2.0', 'C120*50*20*2.3', 'C120*50*20*3.0',
+  'C120*55*20*1.8', 'C120*60*20*1.8', 'C120*60*20*2.0', 'C120*60*20*2.3', 'C120*60*20*2.5', 'C120*60*20*3.0',
+  'C130*60*20*3.0', 'C130*60*25*2.0', 'C140*60*20*3.0', 'C150*60*20*3.0',
+  'C160*60*20*3.0', 'C160*70*20*3.0', 'C170*60*20*3.0', 'C170*70*20*3.0', 'C170*70*30*3.0',
+  'C180*70*20*3.0', 'C180*70*30*3.0', 'C180*70*30*3.5', 'C180*80*30*3.5',
+  'C200*80*30*3.0', 'C200*80*30*3.5', 'C200*100*30*3.5', 'C200*100*30*4.0',
+  'C220*100*30*3.5', 'C220*100*30*4.0', 'C230*100*30*3.5', 'C230*100*30*4.0',
+  'C250*100*30*3.5', 'C250*100*30*4.0',
+];
+// 立柱拉杆和檩条拉杆共用截面规格名称，材质牌号按排布中的构件分别设置。
+const TIE_SECTION_LIB: string[] = [
+  'L35*35*1.6',
+  'C59*39*8*1.6',
+  'C60*40*10*1.6',
+];
+// 檩托：立边高*底边宽*厚度*长度（mm）。
+const PURLIN_CLIP_SPECS = ['L100*63*6.0*50', 'L90*56*5.0*50', 'L75*50*5.0*50'];
+// 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
+const PURLIN_CONNECTOR_SPECS = [
+  'U88*45*2.75*220',
+  'U88*55*2.75*220',
+  'U88*55*3.0*220',
+  'U98*45*2.75*220',
+  'U98*45*3.0*220',
+  'U98*55*2.75*220',
+  'U98*55*3.0*220',
+  'U108*45*2.75*240',
+  'U108*45*3.0*240',
+  'U108*55*3.0*240',
+  'U118*45*3.0*240',
+  'U118*55*3.0*240',
+  'U128*45*3.0*240',
+  'U128*53*3.0*240',
 ];
 
-function getSectionLibrary(key: string): NamedSection[] {
-  return key === 'postTie' || key === 'purlinTie' ? TIE_SECTION_LIB : SECTION_LIB;
-}
-
-export function normalizeSection(name: string) {
-  return name.toLowerCase().replace(/[×＊*]/g, 'x').replace(/\s+/g, '');
-}
-
-export function findSection(key: MemberKey, text: string) {
-  const query = normalizeSection(text);
-  if (!query) return undefined;
-  const library = getSectionLibrary(key);
-  return library.find(section => normalizeSection(section.name) === query)
-    ?? library.find(section => normalizeSection(section.name).includes(query));
-}
-
-function applySection(key: MemberKey, { name, ...dimensions }: NamedSection) {
-  const target = FIX[key];
-  // 保留对象引用，但清掉旧截面字段，避免 C/L 切换后残留 type、卷边或名称。
-  for (const field of Object.keys(target)) Reflect.deleteProperty(target, field);
-  Object.assign(target, dimensions);
-}
-
-const SECTION_LABEL = { postF: '前立柱', postR: '后立柱', beam: '斜梁', braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑', purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆' };
-
+const SECTION_LABEL = {
+  postF: '前立柱', postR: '后立柱', beam: '斜梁',
+  braceF: '前斜撑', braceR: '后斜撑', braceOF: '前外斜撑', braceOR: '后外斜撑',
+  purlin: '檩条', postTie: '立柱拉杆', purlinTie: '檩条拉杆',
+};
+export const PURLIN_ACCESSORY_KEYS: PurlinAccessory[] = ['purlinClip', 'purlinConnector'];
+const ACCESSORY_SECTION_KEYS = [...PURLIN_ACCESSORY_KEYS, 'braceConnector', 'braceConnectorF', 'braceConnectorR'];
 export const MATERIAL_GRADE_OPTIONS = ['S350GD', 'S420GD', 'S450GD', 'S550GD', 'Q235B'];
-
 export const SURFACE_FINISH_OPTIONS = [
   { value: '20040', label: 'HDG Average ≥ 40μm' },
   { value: '20045', label: 'HDG Average ≥ 45μm' },
@@ -112,27 +95,56 @@ export const SURFACE_FINISH_OPTIONS = [
   { value: '40015', label: 'AA15μm' },
 ];
 
-export const PURLIN_ACCESSORY_KEYS: PurlinAccessory[] = ['purlinClip', 'purlinConnector'];
-const ACCESSORY_SECTION_KEYS = [...PURLIN_ACCESSORY_KEYS, 'braceConnector', 'braceConnectorF', 'braceConnectorR'];
-// 檩托：立边高*底边宽*厚度*长度（mm）。
-const PURLIN_CLIP_SPECS = ['L100*63*6.0*50', 'L90*56*5.0*50', 'L75*50*5.0*50'];
-// 檩条连接件规格名称：高度*翼缘宽*板厚*长度（mm），按高度、宽度、板厚升序维护。
-const PURLIN_CONNECTOR_SPECS = [
-  'U88*45*2.75*220',
-  'U88*55*2.75*220',
-  'U88*55*3.0*220',
-  'U98*45*2.75*220',
-  'U98*45*3.0*220',
-  'U98*55*2.75*220',
-  'U98*55*3.0*220',
-  'U108*45*2.75*240',
-  'U108*45*3.0*240',
-  'U108*55*3.0*240',
-  'U118*45*3.0*240',
-  'U118*55*3.0*240',
-  'U128*45*3.0*240',
-  'U128*53*3.0*240',
-];
+// ---------- 运行时基准尺寸与连接件 ----------
+const frameDefaults = { d: 90, f: 55, l: 20, t: 3 };
+const FIX = {
+  postF: { ...frameDefaults }, postR: { ...frameDefaults },
+  braceF: { ...frameDefaults }, braceR: { ...frameDefaults },
+  braceOF: { ...frameDefaults }, braceOR: { ...frameDefaults },
+  beam:   { d: 80,  f: 40, l: 15, t: 2.0 },
+  purlin: { d: 100, f: 55, l: 15, t: 1.8 },
+  postTie: { d: 59, f: 39, l: 8, t: 1.6 } as Section,
+  purlinTie: { type: 'L', d: 35, f: 35, t: 1.6 } as Section,
+  beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
+  modGap: 20, modGapEW: 20,   // 组件间隙固定 20（沿坡、东西向）
+  // 檩条伸出组件阵列边：螺栓固定两端各 50（檩条图：32392 = 28 列组件 32292 + 2×50），压块固定各 100（放边压块）
+  purlinExt: { bolt: 50, clamp: 100 },
+  maxOverhang: 0.4,     // 榀数按组件列数算：取檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数（两张图都是 12 / 10 榀）
+};
+const section = (kind: 'post' | 'brace', rear = false, outer = false) =>
+  FIX[kind === 'post' ? (rear ? 'postR' : 'postF') : (outer ? (rear ? 'braceOR' : 'braceOF') : (rear ? 'braceR' : 'braceF'))];
+
+function applySection(key: MemberKey, { name, ...dimensions }: NamedSection) {
+  const target = FIX[key];
+  // 保留对象引用，但清掉旧截面字段，避免 C/L 切换后残留 type、卷边或名称。
+  for (const field of Object.keys(target)) Reflect.deleteProperty(target, field);
+  Object.assign(target, dimensions);
+}
+
+// 斜撑连接板只有两种规格：单面 160×120×5.75、双面 280×120×5.75（按连接板详图）。坐标原点在立柱中心线、板竖向中点
+const JOINT = {
+  plateT: 5.75,
+  plateH: 120,
+  boltPitch: 70,    // 立柱中心线上两孔间距（孔心距板上、下边各 25）
+  boltU: 120,       // 斜撑孔离立柱中心线（水平），斜撑孔 (±120, 30)
+  rise: 30,         // 斜撑孔比板竖向中点高（孔心距板上边 30）
+  braceEdge: 35,    // 斜撑两端孔心到斜撑端头（沿斜撑）
+  postTopHole: 50,  // 立柱-斜梁螺栓孔心到柱顶（立柱中心线上）
+  singleW: 160,     // 单面板宽
+  singleBack: 20,   // 单面板从立柱中心线往背离斜撑一侧伸出 20（往斜撑一侧伸出 140，斜撑孔距板边 20）
+  singleBot: 30,    // 单面板下边从背侧板边到立柱中心线往斜撑一侧 30（下边宽 50）
+  chamferY: 5,      // 斜撑一侧竖直板边高 55（到板竖向中点 +5），再斜切到下边
+  slotW: 14, slotL: 28,
+};
+// 带外斜撑时的双面连接板 280×120×5.75：左右对称，上边 ±half，两侧竖直板边高 55，再斜切到下边 ±botHalf（下边宽 60）。
+// 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
+const DBL = { half: 140, botHalf: 30 };
+// 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
+const CLAMP = {
+  bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
+  mid: { press: 12, top: 3.2, tip: 2, wall: 2.5, floor: 14, plate: 3 },
+  side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 25, plate: 3.5, foot: 8.5, stem: 3.7, pad: 1.6 },
+};
 
 // ---------- 图纸预设参数 ----------
 // 两套预设使用相同字段和分组顺序；长度单位 mm，角度单位 °，坡度单位 %。
@@ -418,37 +430,6 @@ function applyPresetSections(preset: PresetId, sectionNames: Partial<Record<Memb
 applyPresetSections('A');
 const DEFAULTS = PRESETS.A;
 
-// ---------- 连接件尺寸 ----------
-// 斜撑连接板只有两种规格：单面 160×120×5.75、双面 280×120×5.75（按连接板详图）。坐标原点在立柱中心线、板竖向中点
-const JOINT = {
-  plateT: 5.75,
-  plateH: 120,
-  boltPitch: 70,    // 立柱中心线上两孔间距（孔心距板上、下边各 25）
-  boltU: 120,       // 斜撑孔离立柱中心线（水平），斜撑孔 (±120, 30)
-  rise: 30,         // 斜撑孔比板竖向中点高（孔心距板上边 30）
-  braceEdge: 35,    // 斜撑两端孔心到斜撑端头（沿斜撑）
-  postTopHole: 50,  // 立柱-斜梁螺栓孔心到柱顶（立柱中心线上）
-  singleW: 160,     // 单面板宽
-  singleBack: 20,   // 单面板从立柱中心线往背离斜撑一侧伸出 20（往斜撑一侧伸出 140，斜撑孔距板边 20）
-  singleBot: 30,    // 单面板下边从背侧板边到立柱中心线往斜撑一侧 30（下边宽 50）
-  chamferY: 5,      // 斜撑一侧竖直板边高 55（到板竖向中点 +5），再斜切到下边
-  slotW: 14, slotL: 28,
-};
-// 带外斜撑时的双面连接板 280×120×5.75：左右对称，上边 ±half，两侧竖直板边高 55，再斜切到下边 ±botHalf（下边宽 60）。
-// 孔位见 JOINT（与单面板相同）；板竖向中点在 braceHF / braceHR
-const DBL = { half: 140, botHalf: 30 };
-// 压块（按压块节点图的比例量取，图上没标尺寸；螺栓 M8×35 内六角）。高度都从组件上表面算，向下为正：
-// 中压块：U 形槽外宽 = 组件缝，两翼压住两侧组件边框 press，翼板上表面根部高 top、翼尖高 tip，翼板底面带齿；
-//   槽壁厚 wall，槽底上表面（螺栓头支承面）在 floor，槽底板厚 plate
-// 边压块：从组件边往外共宽 w（檩条伸出组件 100，放得下）。上沿勾住边框 press、底面带齿；内立板厚 wall，
-//   底板上表面（螺栓头支承面）在 floor、厚 plate。外端一只倒 T 形的脚：底板外端大圆角转下来成宽 stem 的短立柱，
-//   下面是宽 foot、厚 pad 的脚垫（两边各比立柱宽出一截，底面带齿）落在檩条上；螺栓在立板和底板外端之间居中
-const CLAMP = {
-  bolt: 35, teeth: { h: 0.6, pitch: 1.2 },
-  mid: { press: 12, top: 3.2, tip: 2, wall: 2.5, floor: 14, plate: 3 },
-  side: { w: 30, press: 11, top: 3.6, tip: 2.2, wall: 3.5, floor: 25, plate: 3.5, foot: 8.5, stem: 3.7, pad: 1.6 },
-};
-
 // ---------- 可调参数 ----------
 // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
 const PARAMS: ParameterDefinition[] = [
@@ -517,5 +498,5 @@ function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: Draw
 }
 const P = getPresetParameters(DEFAULTS);
 const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
-export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, PURLIN_CONNECTOR_SPECS, getSectionLibrary, applySection };
+export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, PURLIN_CONNECTOR_SPECS, applySection };
 export { applyPresetSections, getPresetParameters, FIX, PRESETS, DEFAULTS, JOINT, DBL, CLAMP, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show, section };

@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
 import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary } from '../src/section-spec.ts';
 import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { ewMatrix } from '../src/core.ts';
@@ -54,7 +55,7 @@ test('角钢实体：截面积、右手坐标、长度、正负东西坡度位�
 
 test('三种檩条拉杆：安装面贴檩条，螺栓对应真实通孔，孔旁板厚正确', () => {
   applyPresetSections('A');
-  for (const section of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
+  for (const section of getSectionLibrary('purlinTie')) for (const slopeEW of [-10, 0, 10]) {
     const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
     const solution = solve(parameters), layout = layoutEW(parameters);
     const ties = calculatePurlinTies({ mode: 'all', purlins: solution.purlins, framePositions: layout.zs });

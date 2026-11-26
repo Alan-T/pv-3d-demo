@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { FIX, PRESETS, TIE_SECTION_LIB, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { FIX, PRESETS, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { calculatePostTies } from '../src/post-tie-layout.ts';
 import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
@@ -48,7 +49,7 @@ test('立柱拉杆两侧只取后排真实启用跨；后排无构件时不借�
 
 test('立柱拉杆两侧对齐后立柱前后翼缘的真实孔心和杆端，兼容 C/L 及正负坡度', () => {
   applyPresetSections('A');
-  for (const slopeEW of [-10, 0, 10]) for (const tie of TIE_SECTION_LIB) {
+  for (const slopeEW of [-10, 0, 10]) for (const tie of getSectionLibrary('postTie')) {
     const { solution, layout } = fixture({ slopeEW });
     const sections = { ...FIX, postTie: tie };
     const specs = createTieJointSpecs(solution, layout, sections);
@@ -97,7 +98,7 @@ test('后立柱水平拉杆只有一个方向时，两侧节点均使用实际�
 
 test('檩条拉杆节点与实体安装孔及两端对齐，坡度只施加一次，三种截面均可用', () => {
   applyPresetSections('A');
-  for (const slopeEW of [-10, 0, 10]) for (const tie of TIE_SECTION_LIB) {
+  for (const slopeEW of [-10, 0, 10]) for (const tie of getSectionLibrary('postTie')) {
     const { solution, layout } = fixture({ slopeEW, purlinTies: 'custom', purlinTieSpans: [1, 0, 1] });
     const specs = createTieJointSpecs(solution, layout, { ...FIX, purlinTie: tie });
     const parent = new THREE.Group(), material = new THREE.MeshBasicMaterial(), bolts = [];

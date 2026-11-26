@@ -31,7 +31,8 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { applyPresetSections, applySection, findSection, isSurfaceFinishKey, FIX, P, PARAMS, PRESETS, show } from './config.ts';
+import { applyPresetSections, applySection, isSurfaceFinishKey, FIX, P, PARAMS, PRESETS, show } from './config.ts';
+import { findSection } from './section-spec.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
 import { initMaterials, disposeMaterials } from './materials.ts';

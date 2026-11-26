@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.ts';
-import { FIX, PRESETS, TIE_SECTION_LIB, getSectionLibrary, applySection, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { FIX, PRESETS, TIE_SECTION_LIB, applySection, applyPresetSections, getPresetParameters } from '../src/config.ts';
+import { getSectionLibrary } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 import { PostTiePart } from '../src/parts/post-tie.ts';
 import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
@@ -95,7 +96,7 @@ test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留
       }
       for (const [preset, drawing] of Object.entries(PRESETS)) {
         for (const { sections } of drawing.layouts) {
-          applySection(key, TIE_SECTION_LIB[key === 'postTie' ? 0 : 1]);
+          applySection(key, getSectionLibrary(key)[key === 'postTie' ? 0 : 1]);
           applyPresetSections(preset, sections);
           assert.equal(FIX[key], reference);
           const defaultName = sections[key];
@@ -112,7 +113,7 @@ test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，保留
 
 test('三种立柱拉杆截面：安装肢居中，前后排及正负坡度下螺栓轴线穿过实际板厚', () => {
   applyPresetSections('A');
-  for (const section of TIE_SECTION_LIB) for (const slopeEW of [-10, 0, 10]) {
+  for (const section of getSectionLibrary('postTie')) for (const slopeEW of [-10, 0, 10]) {
     const parameters = { ...getPresetParameters(PRESETS.A), slopeEW };
     const solution = solve(parameters), layout = layoutEW(parameters);
     for (const row of calculatePostTies(parameters, solution, layout)) {
