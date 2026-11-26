@@ -5,7 +5,7 @@ import { createSectionGeometry, createSectionCapGeometry } from './section-geome
 import { createBracket } from './bracket.ts';
 import { getScene, tryGetScene } from './scene.ts';
 import { M } from './materials.ts';
-import { P } from './config.ts';
+import { P } from './model-parameters.ts';
 import type { MemberSections } from './design-types.ts';
 import { MM, track, ewPlace, shared } from './core.ts';
 import { solve, layoutEW } from './solve.ts';

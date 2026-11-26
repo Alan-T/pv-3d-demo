@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { BoltsPart } from '../src/parts/bolts.ts';
-import { PARAMS, PRESETS } from '../src/config.ts';
+import { PRESETS } from '../src/config.ts';
+import { PARAMS } from '../src/parameter-fields.ts';
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { PRESETS, getPresetParameters } from '../src/config.ts';
+import { PRESETS } from '../src/config.ts';
+import { getPresetParameters } from '../src/model-parameters.ts';
 import { getSectionLibrary, resolveMemberSections } from '../src/section-spec.ts';
 import { ewMatrix } from '../src/core.ts';
 import { solve, layoutEW } from '../src/solve.ts';

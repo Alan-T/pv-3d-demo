@@ -1,5 +1,5 @@
 import { getScene } from './scene.ts';
-import { show } from './config.ts';
+import { show } from './model-parameters.ts';
 import * as THREE from 'three';
 
 /* 材质、贴图、配色 */

@@ -4,7 +4,7 @@ import { computed } from 'vue';
 import { getClampSpec } from '../clamp-spec.ts';
 import FieldSelect from './FieldSelect.vue';
 import type { DesignerSnapshot } from '../designer.ts';
-import type { PresetId } from '../config.ts';
+import type { PresetId } from '../design-types.ts';
 import type { JointType, ViewName } from '../joint-view-types.ts';
 const props = defineProps<{ snapshot: DesignerSnapshot; ready?: boolean }>();
 const clampSpec = computed(() => getClampSpec(props.snapshot.parameters.modT, props.snapshot.parameters.clampL));

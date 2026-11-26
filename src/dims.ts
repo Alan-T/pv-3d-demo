@@ -1,6 +1,6 @@
 import { getScene } from './scene.ts';
 import { FONT, V, V3, MM, DEG, track, ewPlace, shared, getBuiltState } from './core.ts';
-import { P } from './config.ts';
+import { P } from './model-parameters.ts';
 import { build as jointDetailBuild } from './joint-detail.ts';
 import * as THREE from 'three';
 

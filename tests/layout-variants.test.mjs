@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRESETS, SECTION_LABEL, getPresetParameters } from '../src/config.ts';
+import { PRESETS, SECTION_LABEL } from '../src/config.ts';
+import { getPresetParameters } from '../src/model-parameters.ts';
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/brace-connector-spec.ts';
 import { braceConnection } from '../src/brace-layout.ts';

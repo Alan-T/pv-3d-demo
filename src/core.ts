@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import type { createTieJointFocus } from './tie-joint-focus.ts';
 import type { createBracket } from './bracket.ts';
-import type { PresetId } from './config.ts';
+import type { PresetId } from './design-types.ts';
 import type { JointType, ViewName } from './joint-view-types.ts';
 import type { Solution } from './solve.ts';
 

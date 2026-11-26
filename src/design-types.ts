@@ -3,6 +3,11 @@ export type ToggleValue = boolean | 0 | 1;
 export type MemberKey = 'postF' | 'postR' | 'beam' | 'purlin' | 'braceF' | 'braceR'
   | 'braceOF' | 'braceOR' | 'postTie' | 'purlinTie';
 export type PurlinAccessory = 'purlinClip' | 'purlinConnector';
+type ClampSpecsByLength = Readonly<Record<number, `${number}-L${number}×Φ${number}`>>;
+export interface ClampCatalog {
+  mid: ClampSpecsByLength;
+  byThickness: Readonly<Record<number, { edge: ClampSpecsByLength; bolt: `M8×${number}` }>>;
+}
 export type MaterialKey = MemberKey | PurlinAccessory | 'braceConnector';
 export type ChannelSection = { type?: 'C'; d: number; f: number; l: number; t: number };
 export type AngleSection = { type: 'L'; d: number; f: number; t: number; l?: never };
@@ -61,12 +66,17 @@ export type ParameterKey = keyof ModelParameters;
 export type NumericParameterKey = { [K in ParameterKey]: ModelParameters[K] extends number ? K : never }[ParameterKey];
 interface FieldBase {
   label: string; hint?: string; unit?: string; min?: number; max?: number; step?: number;
-  when?: (parameters: ModelParameters) => boolean;
 }
-export type ParameterDefinition = FieldBase & (
+type ParameterField<Options, NumericOptions> = FieldBase & (
   | { type: 'size'; keys: ['modL', 'modW', 'modT']; key?: never }
-  | { type: 'select'; key: ParameterKey; options: [string, string][]; keys?: never }
-  | { type: 'select'; key: NumericParameterKey; numericOptions: readonly number[]; keys?: never }
+  | { type: 'select'; key: ParameterKey; options: Options; keys?: never }
+  | { type: 'select'; key: NumericParameterKey; numericOptions: NumericOptions; keys?: never }
   | { type: 'bool'; key: 'serratedWasher' | 'outer'; keys?: never }
   | { type?: 'number'; key: NumericParameterKey; keys?: never }
 );
+export type ParameterFieldConfig = ParameterField<(string | [string, string])[], 'clampLengths'> & {
+  whenFix?: ModelParameters['fix'];
+};
+export type ParameterDefinition = ParameterField<[string, string][], readonly number[]> & {
+  when?: (parameters: ModelParameters) => boolean;
+};

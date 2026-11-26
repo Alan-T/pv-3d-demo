@@ -1,4 +1,4 @@
-import type { ModelParameters } from './config.ts';
+import type { ModelParameters } from './design-types.ts';
 
 type CutParameters = Pick<ModelParameters, 'modW' | 'cols' | 'maxPurlin' | 'purlinCutLengths' | 'purlinCutMode'>;
 export interface PurlinCut {

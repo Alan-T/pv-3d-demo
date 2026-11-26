@@ -1,5 +1,8 @@
 import { CLAMP_SPECS } from './config.ts';
 
+export const MODULE_THICKNESSES: readonly number[] = Object.keys(CLAMP_SPECS.byThickness).map(Number);
+export const CLAMP_LENGTHS: readonly number[] = Object.keys(CLAMP_SPECS.mid).map(Number);
+
 // 规格名称以外的截面细部按节点图比例量取，槽底深度从组件上表面向下算（mm）。
 export const CLAMP_PROFILE = {
   teeth: { h: 0.6, pitch: 1.2 },

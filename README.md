@@ -170,7 +170,9 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/report.ts` | 计算结果、提示和图纸核对数据 |
 | `启动预览.bat` | Windows 本地预览入口 |
 | `src/core.ts` | 单位、向量、矩阵工具、实例化及共享状态 |
-| `src/config.ts` | 图纸预设、默认截面、截面库、连接尺寸与参数范围 |
+| `src/config.ts` | 图纸预设、构件规格、固定尺寸、参数字段与显示默认值 |
+| `src/model-parameters.ts` | 从图纸及排布生成独立的模型参数，保存当前参数和显示状态 |
+| `src/parameter-fields.ts` | 解析参数字段的下拉选项、显示条件和编辑范围 |
 | `src/solve.ts` | 框架几何、东西布置与榀数 |
 | `src/purlin-cut.ts` | 接头避让、切割方案搜索及分段长度 |
 | `src/scene.ts` / `src/materials.ts` | 场景、相机、渲染器、材质、配色及透明显示 |

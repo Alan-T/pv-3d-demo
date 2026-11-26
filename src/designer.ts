@@ -1,4 +1,4 @@
-import type { CorrosivityCategory, MaterialKey, MemberKey, ModelParameters, NumericParameterKey, PresetId } from './config.ts';
+import type { CorrosivityCategory, MaterialKey, MemberKey, ModelParameters, NumericParameterKey, PresetId } from './design-types.ts';
 import type { ViewName, JointType } from './joint-view-types.ts';
 import type { DrawingLayout } from './layout-variants.ts';
 import type { calculatePostTies } from './post-tie-layout.ts';
@@ -31,7 +31,10 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { isSurfaceFinishKey, P, PARAMS, PRESETS, show, SURFACE_FINISH_BY_CORROSIVITY } from './config.ts';
+import { isSurfaceFinishKey } from './design-types.ts';
+import { PRESETS, SURFACE_FINISH_BY_CORROSIVITY } from './config.ts';
+import { P, show } from './model-parameters.ts';
+import { PARAMS } from './parameter-fields.ts';
 import { findSection, resolveMemberSections } from './section-spec.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';

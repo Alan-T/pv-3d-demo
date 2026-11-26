@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { ParameterDefinition, ParameterKey, ModelParameters } from '../config.ts';
-import { limits, MODULE_THICKNESSES } from '../config.ts';
+import type { ParameterDefinition, ParameterKey, ModelParameters } from '../design-types.ts';
+import { MODULE_THICKNESSES } from '../clamp-spec.ts';
+import { limits } from '../parameter-fields.ts';
 import { TinyOption } from '@opentiny/vue';
 import HelpHint from './HelpHint.vue';
 import FieldInput from './FieldInput.vue';

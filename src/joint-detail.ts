@@ -1,5 +1,6 @@
 import { mats, DimSet } from './dims.ts';
-import { FIX, P } from './config.ts';
+import { FIX } from './config.ts';
+import { P } from './model-parameters.ts';
 import { CLAMP_PROFILE, getClampSpec } from './clamp-spec.ts';
 import { BRACE_JOINT } from './brace-connector-spec.ts';
 import { V, V3, MM, DEG, ewPlace, track } from './core.ts';

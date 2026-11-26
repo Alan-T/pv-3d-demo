@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../config.ts';
-import { isSurfaceFinishKey, limits, SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
+import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../design-types.ts';
+import { isSurfaceFinishKey } from '../design-types.ts';
+import { SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
+import { limits } from '../parameter-fields.ts';
 import { useEditableSelects, type SelectChoice } from '../select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';

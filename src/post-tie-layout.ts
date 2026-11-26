@@ -1,4 +1,5 @@
-import { FIX, type ModelParameters } from './config.ts';
+import { FIX } from './config.ts';
+import type { ModelParameters } from './design-types.ts';
 import type { Solution, EWLayout } from './solve.ts';
 
 // 立柱拉杆计算，尺寸单位 mm。对应二维 TopView.vue 的 calculateXY / postBraceFL / postBraceBL。

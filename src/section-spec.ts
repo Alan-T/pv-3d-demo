@@ -1,6 +1,10 @@
 import type { MemberKey, MemberSections, NamedSection } from './design-types.ts';
 import { SECTION_LABEL, SECTION_LIB, TIE_SECTION_LIB } from './config.ts';
 
+export function isMemberKey(key: string): key is MemberKey {
+  return Object.hasOwn(SECTION_LABEL, key);
+}
+
 /** 从截面规格字符串（如 C90*55*20*3.0、L35*35*1.6）解析截面尺寸。 */
 export function parseSectionSpec(name: string): NamedSection {
   const cMatch = /^C(\d+)\*(\d+)\*(\d+)\*([\d.]+)$/.exec(name);

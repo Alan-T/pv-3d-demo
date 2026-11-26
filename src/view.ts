@@ -1,6 +1,6 @@
 import { getScene, tryGetScene } from './scene.ts';
 import { M, ghostModules, ghostMat, applyPalette } from './materials.ts';
-import { show, P } from './config.ts';
+import { show, P } from './model-parameters.ts';
 import { EY, V, V3, MM, DEG, ewMatrix, shared, track, getBuiltState } from './core.ts';
 import * as THREE from 'three';
 import { setFlatFrameDisplay } from './frame-projection.ts';

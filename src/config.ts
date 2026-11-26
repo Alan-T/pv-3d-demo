@@ -1,17 +1,11 @@
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
-import type { CorrosivityCategory, DrawingPreset, LayoutPreset, MemberKey, ModelParameters,
-  ParameterDefinition, PresetId, PurlinAccessory, SurfaceFinishKey } from './design-types.ts';
-export type * from './design-types.ts';
-export { isSurfaceFinishKey } from './design-types.ts';
+import type { ClampCatalog, CorrosivityCategory, DrawingPreset, MemberKey, ParameterFieldConfig,
+  PresetId, PurlinAccessory, SurfaceFinishKey } from './design-types.ts';
 
 // ---------- 选型规格库与选项 ----------
 // 压块规格（mm）：中压块槽外宽或边压块总高 - L长度 × Φ孔径。
-type ClampSpecsByLength = Readonly<Record<number, `${number}-L${number}×Φ${number}`>>;
-export const CLAMP_SPECS: {
-  mid: ClampSpecsByLength;
-  byThickness: Readonly<Record<number, { edge: ClampSpecsByLength; bolt: `M8×${number}` }>>;
-} = {
+export const CLAMP_SPECS: ClampCatalog = {
   mid: { 40: '20-L40×Φ9', 50: '20-L50×Φ9', 60: '20-L60×Φ9', 80: '20-L80×Φ9' },
   // 按组件厚度确定螺栓，在该组内按压块长度选边压块。
   byThickness: {
@@ -29,8 +23,6 @@ export const CLAMP_SPECS: {
     },
   },
 };
-export const MODULE_THICKNESSES: readonly number[] = Object.keys(CLAMP_SPECS.byThickness).map(Number);
-export const CLAMP_LENGTHS: readonly number[] = Object.keys(CLAMP_SPECS.mid).map(Number);
 // 常规 C 型构件规格（C d*f*l*t：截面高 × 翼缘宽 × 卷边 × 板厚，mm），由 section-spec.ts 解析尺寸。
 const SECTION_LIB: string[] = [
   'C50*30*10*1.8', 'C50*30*10*2.0',
@@ -433,9 +425,9 @@ const DEFAULTS = PRESETS.A;
 
 // ---------- 可调参数 ----------
 // 面板里放常用的几个；其余蓝字参数在尺寸标注上点击修改，取值范围在 EXTRA_LIMITS
-const PARAMS: ParameterDefinition[] = [
+export const PARAMETER_FIELDS: ParameterFieldConfig[] = [
   { key: 'purlinClip', label: '檩托规格', type: 'select',
-    options: PURLIN_CLIP_SPECS.map(name => [name, name]),
+    options: PURLIN_CLIP_SPECS,
     hint: '立边高 × 底边宽 × 厚度 × 长度（mm）' },
   { key: 'purlinTies', label: '檩条拉杆布置', type: 'select', options: [['none', '无'], ['all', '全部跨'], ['inner', '剔除首末跨'], ['custom', '自定义']],
     hint: '每跨中间一套，贯通所有檩条，两端各伸出85 mm；自定义可逐跨勾选' },
@@ -448,15 +440,15 @@ const PARAMS: ParameterDefinition[] = [
   { key: 'modWeight', label: '组件重量', type: 'number', unit: 'kg', min: 0.1, step: 0.1 },
   { key: 'fix',   label: '固定方式',        type: 'select', options: [['bolt', '螺栓固定'], ['clamp', '压块']],
     hint: '使用安装孔时配 M8×22 螺栓，檩条两端各伸出组件 50 mm。使用压块时，组件缝装中压块，两端装边压块，内六角螺栓按组件厚度选型，檩条两端各伸出 100 mm。' },
-  { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', when: (P) => P.fix === 'bolt',
+  { key: 'serratedWasher', label: '包含锯齿垫圈', type: 'bool', whenFix: 'bolt',
     hint: '替换组件螺栓头下的普通平垫，螺母侧大平垫和弹垫不变' },
-  { key: 'clampL', label: '压块长度', type: 'select', unit: 'mm', when: (P) => P.fix === 'clamp',
-    numericOptions: CLAMP_LENGTHS },
+  { key: 'clampL', label: '压块长度', type: 'select', unit: 'mm', whenFix: 'clamp',
+    numericOptions: 'clampLengths' },
   { key: 'maxPurlin', label: '檩条最大长度', type: 'select', unit: 'mm',
-    options: ['5700', '7200', '9000'].map(length => [length, length]) },
+    options: ['5700', '7200', '9000'] },
   { key: 'purlinCutMode', label: '分段方式', type: 'select', options: [['auto', '自动'], ['custom', '自定义']] },
   { key: 'purlinConnector', label: '檩条连接件', type: 'select',
-    options: PURLIN_CONNECTOR_SPECS.map(name => [name, name]),
+    options: PURLIN_CONNECTOR_SPECS,
     hint: '手动选择 U 型连接件规格（高度*翼缘宽*板厚*长度），不随檩条截面自动切换' },
   { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
   { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },
@@ -470,37 +462,12 @@ const PARAMS: ParameterDefinition[] = [
   { key: 'slopeEW', label: '地面东西坡度',  unit: '%',  min: -10,  max: 10,   step: 0.5,
     hint: '正 = 东高西低，负 = 东低西高。各榀立柱竖直、跟着地面抬高，檩条顺坡；榀距、阵列宽、檩条长都是沿檩条量的长度，水平距离 = 长度 ÷ √(1 + 坡度²)' },
 ];
-const EXTRA_LIMITS: Record<string, [number, number]> = {
+export const EXTRA_LIMITS: Record<string, [number, number]> = {
   braceHF: [100, 800], braceHR: [100, 1200], braceTopF: [600, 5000], braceTopR: [600, 5000],
   braceOutF: [100, 3000], braceOutR: [100, 3000],
   embed: [800, 3000], modL: [1600, 2600], modW: [900, 1400], hole: [600, 2400],
-  modT: [Math.min(...MODULE_THICKNESSES), Math.max(...MODULE_THICKNESSES)],
 };
-// 返回 [最小, 最大, 步长]；安装孔距不能超过组件长度 − 200
-function limits(key: string): [number, number, number] {
-  const d = PARAMS.find((q) => q.key === key);
-  if (d) return [d.min ?? -Infinity, d.max ?? Infinity, key === 'tilt' || d.unit === '%' ? 0.1 : Math.min(d.step ?? 1, 1)];
-  const [lo, hi] = EXTRA_LIMITS[key];
-  return [lo, key === 'hole' ? Math.min(hi, P.modL - 200) : hi, 1];
-}
 
-export function isMemberKey(key: string): key is MemberKey {
-  return Object.hasOwn(SECTION_LABEL, key);
-}
-
-export function getLayoutParameters({ id, label, quantity, sections, materials, ...parameters }:
-  LayoutPreset & { id?: string; label?: string } & Partial<Record<PurlinAccessory, string>>) {
-  for (const key of PURLIN_ACCESSORY_KEYS) {
-    if (sections && Object.hasOwn(sections, key)) parameters[key] = sections[key];
-  }
-  return parameters as Omit<LayoutPreset, 'quantity' | 'sections' | 'materials'> & Record<PurlinAccessory, string>;
-}
-
-// 三维模型使用图纸共用参数和当前排布参数的独立副本。
-function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: DrawingPreset, layout = layouts[0]): ModelParameters {
-  return structuredClone({ ...sharedParameters, ...getLayoutParameters(layout) });
-}
-const P = getPresetParameters(DEFAULTS);
-const show = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
+export const DISPLAY_DEFAULTS = { dims: true, buried: true, modules: true, bolts: true, drawingColors: true, postTies: true, purlinTies: true, shadows: true };
 export { TIE_SECTION_LIB, PURLIN_CLIP_SPECS, BRACE_CONNECTOR_SPECS, PURLIN_CONNECTOR_SPECS };
-export { getPresetParameters, FIX, PRESETS, DEFAULTS, PARAMS, limits, SECTION_LIB, SECTION_LABEL, P, show };
+export { FIX, PRESETS, DEFAULTS, SECTION_LIB, SECTION_LABEL };

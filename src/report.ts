@@ -1,4 +1,4 @@
-import type { ModelParameters, Section, PresetId } from './config.ts';
+import type { ModelParameters, Section, PresetId } from './design-types.ts';
 import type { EWLayout, Solution } from './solve.ts';
 import type { PostTieRow } from './post-tie-layout.ts';
 import type { PurlinTies } from './purlin-tie-layout.ts';

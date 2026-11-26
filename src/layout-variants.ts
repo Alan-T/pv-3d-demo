@@ -1,12 +1,13 @@
-import type { DrawingPreset, LayoutPreset, ModelParameters, SharedParameters, PurlinAccessory, MaterialKey } from './config.ts';
+import type { DrawingPreset, LayoutPreset, ModelParameters, SharedParameters, PurlinAccessory, MaterialKey } from './design-types.ts';
 export type DrawingLayout = LayoutPreset & { id: string; label: string };
 type StoredLayout = LayoutPreset & Partial<Record<PurlinAccessory, string>> & {
   outer?: ModelParameters['outer'];
   sections: LayoutPreset['sections'] & { braceConnectorF?: string; braceConnectorR?: string };
 };
 
-import { getLayoutParameters, PURLIN_ACCESSORY_KEYS, isMemberKey } from './config.ts';
-import { getSectionLibrary } from './section-spec.ts';
+import { PURLIN_ACCESSORY_KEYS } from './config.ts';
+import { getLayoutParameters } from './model-parameters.ts';
+import { getSectionLibrary, isMemberKey } from './section-spec.ts';
 import { getBraceConnectorPlate, needsSplitBraceConnector } from './brace-connector-spec.ts';
 import { getPurlinDimensions } from './solve.ts';
 

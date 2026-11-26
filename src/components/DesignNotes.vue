@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { BRACE_JOINT, braceConnectorPlates } from '../brace-connector-spec.ts';
-import { getClampSpec } from '../clamp-spec.ts';
-import { CLAMP_LENGTHS, FIX, MODULE_THICKNESSES } from '../config.ts';
+import { CLAMP_LENGTHS, getClampSpec, MODULE_THICKNESSES } from '../clamp-spec.ts';
+import { FIX } from '../config.ts';
 
 const props = defineProps<{ moduleThickness: number; clampLength: number }>();
 const clampSpec = computed(() => getClampSpec(props.moduleThickness, props.clampLength));

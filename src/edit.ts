@@ -1,10 +1,12 @@
 import { getScene } from './scene.ts';
 import { V3, shared } from './core.ts';
-import { show, P, limits, MODULE_THICKNESSES } from './config.ts';
+import { show, P } from './model-parameters.ts';
+import { limits } from './parameter-fields.ts';
+import { MODULE_THICKNESSES } from './clamp-spec.ts';
 import { getCamera } from './view.ts';
 import * as THREE from 'three';
 
-import type { NumericParameterKey } from './config.ts';
+import type { NumericParameterKey } from './design-types.ts';
 
 const params = P;
 

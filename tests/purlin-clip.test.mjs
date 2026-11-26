@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
 import { PurlinClipPart } from '../src/parts/purlin-clip.ts';
 import { BoltsPart } from '../src/parts/bolts.ts';
-import { PRESETS, PURLIN_CLIP_SPECS, getPresetParameters } from '../src/config.ts';
+import { PRESETS, PURLIN_CLIP_SPECS } from '../src/config.ts';
+import { getPresetParameters } from '../src/model-parameters.ts';
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 

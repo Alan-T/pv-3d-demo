@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Designer } from './designer.ts';
-import type { ParameterKey, ProjectInfo } from './config.ts';
+import type { ParameterKey, ProjectInfo } from './design-types.ts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { TinyInput } from '@opentiny/vue';
 import { createDesigner, getSnapshot } from './designer.ts';

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Designer, DesignerSnapshot } from '../designer.ts';
-import type { MaterialKey, MemberKey, ParameterDefinition, ParameterKey, ProjectInfo as ProjectData } from '../config.ts';
+import type { MaterialKey, MemberKey, ParameterDefinition, ParameterKey, ProjectInfo as ProjectData } from '../design-types.ts';
 import { computed, ref } from 'vue';
 import { TinyButton, TinyOption, TinySelect } from '@opentiny/vue';
-import { MATERIAL_GRADE_OPTIONS, PARAMS, SECTION_LABEL } from '../config.ts';
+import { MATERIAL_GRADE_OPTIONS, SECTION_LABEL } from '../config.ts';
+import { PARAMS } from '../parameter-fields.ts';
 import { useEditableSelects } from '../select-input.ts';
 import ParameterField from './ParameterField.vue';
 import FieldInput from './FieldInput.vue';

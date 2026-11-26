@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { TinyOption } from '@opentiny/vue';
-import { type MemberKey } from '../config.ts';
+import type { MemberKey } from '../design-types.ts';
 import { findSection, getSectionLibrary, normalizeSection } from '../section-spec.ts';
 import FieldSelect from './FieldSelect.vue';
 
