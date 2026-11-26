@@ -1,4 +1,4 @@
-import type { MaterialKey, MemberKey, ModelParameters, NumericParameterKey, PresetId } from './config.ts';
+import type { CorrosivityCategory, MaterialKey, MemberKey, ModelParameters, NumericParameterKey, PresetId } from './config.ts';
 import type { ViewName, JointType } from './joint-view-types.ts';
 import type { DrawingLayout } from './layout-variants.ts';
 import type { calculatePostTies } from './post-tie-layout.ts';
@@ -31,7 +31,7 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { isSurfaceFinishKey, P, PARAMS, PRESETS, show } from './config.ts';
+import { isSurfaceFinishKey, P, PARAMS, PRESETS, show, SURFACE_FINISH_BY_CORROSIVITY } from './config.ts';
 import { findSection, resolveMemberSections } from './section-spec.ts';
 import { getBuiltState, shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
@@ -262,9 +262,18 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     loadActiveLayout();
   }
 
-  function resetPreset() {
+  function applyCorrosivityCategory(category: CorrosivityCategory) {
+    const finishes = SURFACE_FINISH_BY_CORROSIVITY[category];
+    for (const drawing of Object.values(drawings)) Object.assign(drawing.sharedParameters, finishes);
+    Object.assign(P, finishes);
+    publish();
+  }
+
+  function resetPreset(category: CorrosivityCategory) {
     closeEdit(false);
-    currentDrawing().reset();
+    const drawing = currentDrawing();
+    drawing.reset();
+    Object.assign(drawing.sharedParameters, SURFACE_FINISH_BY_CORROSIVITY[category]);
     loadActiveLayout();
   }
 
@@ -384,7 +393,7 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   return {
-    changeParameter, changeSection, changeMaterialGrade, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
+    changeParameter, changeSection, changeMaterialGrade, applyCorrosivityCategory, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
     changePostTieMode, changePostTieBay,
     changePurlinTieBay, changePurlinCutLengths, resetPurlinCutLengths, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
   };

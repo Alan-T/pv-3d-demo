@@ -12,12 +12,14 @@ type TieKey = 'postTie' | 'purlinTie';
 export type MemberSections = Record<Exclude<MemberKey, TieKey>, ChannelSection & { name: string }>
   & Record<TieKey, NamedSection>;
 
+export type CorrosivityCategory = 'C1' | 'C2' | 'C3' | 'C4' | 'C5';
+
 export interface ProjectInfo {
   number: string; version: string; name: string; customer: string; productType: string;
   tradeTerm: string; country: string; longitude: number; latitude: number;
   designStandard: string; designMethod: string; terrainCategory: string; buildingCategory: string;
   windSpeed: number; snowPressure: number; elevation: number; airDensity: number; designLife: number;
-  corrosivityCategory: string;
+  corrosivityCategory: CorrosivityCategory;
 }
 
 const surfaceFinishKeys = [

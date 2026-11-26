@@ -1,7 +1,7 @@
 /* 图纸尺寸、两套图纸参数、可调参数的范围（单位 mm）。改尺寸、加参数基本都在这里 */
 
-import type { DrawingPreset, LayoutPreset, MemberKey, ModelParameters,
-  ParameterDefinition, PresetId, PurlinAccessory } from './design-types.ts';
+import type { CorrosivityCategory, DrawingPreset, LayoutPreset, MemberKey, ModelParameters,
+  ParameterDefinition, PresetId, PurlinAccessory, SurfaceFinishKey } from './design-types.ts';
 export type * from './design-types.ts';
 export { isSurfaceFinishKey } from './design-types.ts';
 
@@ -99,6 +99,31 @@ export const SURFACE_FINISH_OPTIONS = [
   { value: '30316', label: 'SUS316(A4-70)' },
   { value: '40015', label: 'AA15μm' },
 ];
+
+// C1、C2、C3 对应相同的表面处理，编码与上方下拉选项一致。
+const c1ToC3Finishes = {
+  moduleFastenerFinish: '30304', otherFastenerFinish: '20045',
+  postFinish: '20065', otherFinish: '10275',
+  smallPartFinish: '20065', zamSmallPartFinish: '10275',
+  pileFinish: '20085', roundRodFinish: '20045',
+};
+export const SURFACE_FINISH_BY_CORROSIVITY = {
+  C1: c1ToC3Finishes,
+  C2: c1ToC3Finishes,
+  C3: c1ToC3Finishes,
+  C4: {
+    moduleFastenerFinish: '30304', otherFastenerFinish: '30304',
+    postFinish: '20085', otherFinish: '10310',
+    smallPartFinish: '20085', zamSmallPartFinish: '10310',
+    pileFinish: '20085', roundRodFinish: '20045',
+  },
+  C5: {
+    moduleFastenerFinish: '30304', otherFastenerFinish: '30304',
+    postFinish: '20120', otherFinish: '10450',
+    smallPartFinish: '20120', zamSmallPartFinish: '10450',
+    pileFinish: '20120', roundRodFinish: '20065',
+  },
+} satisfies Record<CorrosivityCategory, Record<SurfaceFinishKey, string>>;
 
 // ---------- 固定尺寸与连接件 ----------
 const FIX = {

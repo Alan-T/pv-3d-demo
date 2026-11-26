@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../config.ts';
-import { isSurfaceFinishKey, limits, SURFACE_FINISH_OPTIONS } from '../config.ts';
+import { isSurfaceFinishKey, limits, SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
 import { useEditableSelects, type SelectChoice } from '../select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';
@@ -68,7 +68,7 @@ const environmentFields: Field[] = [
   { key: 'designLife', label: '设计年限', type: 'number', min: 1, step: 1, unit: '年' },
 ];
 const corrosionFields: Field[] = [
-  { key: 'corrosivityCategory', label: '大气腐蚀等级', options: ['C1', 'C2', 'C3', 'C4', 'C5', 'CX'], fixedOptions: true },
+  { key: 'corrosivityCategory', label: '大气腐蚀等级', options: Object.keys(SURFACE_FINISH_BY_CORROSIVITY), fixedOptions: true },
 ];
 const surfaceFinishFields: SurfaceFinishField[] = [
   { key: 'moduleFastenerFinish', label: '组件紧固件', options: SURFACE_FINISH_OPTIONS },

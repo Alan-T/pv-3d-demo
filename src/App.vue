@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Designer } from './designer.ts';
-import type { ParameterKey } from './config.ts';
+import type { ParameterKey, ProjectInfo } from './config.ts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { TinyInput } from '@opentiny/vue';
 import { createDesigner, getSnapshot } from './designer.ts';
@@ -60,6 +60,13 @@ onBeforeUnmount(() => {
   ready.value = false;
 });
 
+function updateProjectInfo(info: ProjectInfo) {
+  if (info.corrosivityCategory !== projectInfo.value.corrosivityCategory) {
+    designer.applyCorrosivityCategory(info.corrosivityCategory);
+  }
+  projectInfo.value = info;
+}
+
 function changeParameter(key: ParameterKey, value: string | boolean, input?: HTMLInputElement) {
   const normalized = designer.changeParameter(key, value);
   if (input?.type === 'checkbox') input.checked = !!normalized;
@@ -117,8 +124,8 @@ async function toggleSheet() {
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </div>
-    <parameter-panel v-model:project-info="projectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
-      @parameter="changeParameter" @section="(key, value) => designer.changeSection(key, value)" @material-grade="(key, value) => designer.changeMaterialGrade(key, value)" @reset-preset="designer.resetPreset()"
+    <parameter-panel :project-info="projectInfo" @update:project-info="updateProjectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
+      @parameter="changeParameter" @section="(key, value) => designer.changeSection(key, value)" @material-grade="(key, value) => designer.changeMaterialGrade(key, value)" @reset-preset="designer.resetPreset(projectInfo.corrosivityCategory)"
       @layout-quantity="changeLayoutQuantity"
       @purlin-cut-lengths="(lengths, done) => done(designer.changePurlinCutLengths(lengths))"
       @reset-purlin-cut="done => done(designer.resetPurlinCutLengths())"
