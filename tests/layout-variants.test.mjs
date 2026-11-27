@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PRESETS, SECTION_LABEL } from '../src/config.ts';
-import { getPresetParameters, splitDrawingPreset } from '../src/model-parameters.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/brace-connector-spec.ts';
-import { braceConnection } from '../src/brace-layout.ts';
-import { MM } from '../src/core.ts';
-import { DrawingLayouts } from '../src/layout-variants.ts';
-import { BraceConnectorPart } from '../src/parts/brace-connector.ts';
-import { layoutEW, solve } from '../src/solve.ts';
+import { getPresetParameters, splitDrawingPreset } from '../src/domain/model-parameters.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/domain/specs/brace-connector-spec.ts';
+import { braceConnection } from '../src/domain/brace-layout.ts';
+import { MM } from '../src/model/geometry/core.ts';
+import { DrawingLayouts } from '../src/domain/layout-variants.ts';
+import { BraceConnectorPart } from '../src/model/parts/brace-connector.ts';
+import { layoutEW, solve } from '../src/domain/solve.ts';
 
 test('图纸顶层的项目资料供表单独立编辑，初始化和重置模型只读取设计参数', () => {
   for (const preset of Object.values(PRESETS)) {

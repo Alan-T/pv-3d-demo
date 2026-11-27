@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { calculatePurlinTies } from '../src/purlin-tie-layout.ts';
-import { PurlinTiePart } from '../src/parts/purlin-tie.ts';
-import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
+import { calculatePurlinTies } from '../src/domain/purlin-tie-layout.ts';
+import { PurlinTiePart } from '../src/model/parts/purlin-tie.ts';
+import { createSectionGeometry, createSectionShape } from '../src/model/geometry/section-geometry.ts';
 import { PRESETS } from '../src/config.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
-import { getSectionLibrary, resolveMemberSections } from '../src/section-spec.ts';
-import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.ts';
-import { solve, layoutEW } from '../src/solve.ts';
-import { ewMatrix } from '../src/core.ts';
+import { getPresetParameters } from '../src/domain/model-parameters.ts';
+import { getSectionLibrary, resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { createDrilledAngleGeometry, createDrilledChannelWebGeometry } from '../src/model/geometry/drilled-section-geometry.ts';
+import { solve, layoutEW } from '../src/domain/solve.ts';
+import { ewMatrix } from '../src/model/geometry/core.ts';
 
 test('图纸一：3974mm、12套，去掉首末跨为10套', () => {
   const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);

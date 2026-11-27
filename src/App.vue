@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Designer } from './designer.ts';
-import type { ParameterKey, ProjectInfo } from './design-types.ts';
+import type { Designer } from './app/designer.ts';
+import type { ParameterKey, ProjectInfo } from './domain/design-types.ts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { TinyInput } from '@opentiny/vue';
-import { createDesigner, getSnapshot } from './designer.ts';
-import { PRESETS } from './config.ts';
-import { splitDrawingPreset } from './model-parameters.ts';
+import { createDesigner } from './app/designer.ts';
+import { initialSnapshot } from './app/designer-snapshot.ts';
+import { PRESETS } from './config/presets.ts';
+import { splitDrawingPreset } from './domain/model-parameters.ts';
 import ParameterPanel from './components/ParameterPanel.vue';
 import ViewToolbar from './components/ViewToolbar.vue';
 import TabList from './components/TabList.vue';
@@ -14,7 +15,7 @@ const canvas = ref<HTMLCanvasElement | null>(null);
 const stage = ref<HTMLElement | null>(null);
 const editor = ref<{ getInput(): HTMLInputElement } | null>(null);
 const dimensionDraft = ref('');
-const snapshot = shallowRef(getSnapshot());
+const snapshot = shallowRef(initialSnapshot());
 const projectInfo = ref(splitDrawingPreset(PRESETS[snapshot.value.preset]).projectInfo);
 const ready = ref(false);
 const rendered = ref(false);

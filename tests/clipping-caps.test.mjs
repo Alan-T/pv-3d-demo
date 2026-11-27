@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { createClippingCaps } from '../src/clipping-caps.ts';
-import { createSectionGeometry } from '../src/section-geometry.ts';
+import { createClippingCaps } from '../src/viewer/clipping-caps.ts';
+import { createSectionGeometry } from '../src/model/geometry/section-geometry.ts';
 
 const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
 const zCut = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.5);

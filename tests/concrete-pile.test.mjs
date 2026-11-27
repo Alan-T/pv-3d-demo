@@ -1,18 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Box3, Vector3 } from 'three';
-import { createBracket } from '../src/bracket.ts';
-import { braceConnectorPlates } from '../src/brace-connector-spec.ts';
+import { createBracket } from '../src/model/bracket.ts';
+import { braceConnectorPlates } from '../src/domain/specs/brace-connector-spec.ts';
 import { FIX, PRESETS } from '../src/config.ts';
-import { MM } from '../src/core.ts';
-import { M, modMats } from '../src/materials.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
-import { createPartOptions } from '../src/part-options.ts';
-import { createSectionGeometry, createSectionCapGeometry } from '../src/section-geometry.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { solve, layoutEW } from '../src/solve.ts';
+import { MM } from '../src/model/geometry/core.ts';
+import { createMaterials } from '../src/viewer/materials.ts';
+import { createRuntimeContext } from '../src/viewer/runtime-context.ts';
+import { createSceneController } from '../src/viewer/scene.ts';
+import { getPresetParameters } from '../src/domain/model-parameters.ts';
+import { createPartOptions } from '../src/model/part-options.ts';
+import { createSectionGeometry, createSectionCapGeometry } from '../src/model/geometry/section-geometry.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { solve, layoutEW } from '../src/domain/solve.ts';
 
 function bracketBuilder(t) {
+  const { M, modMats, disposeMaterials } = createMaterials(createRuntimeContext(), createSceneController());
+  t.after(disposeMaterials);
   const parameters = { ...getPresetParameters(PRESETS.A), cols: 8, embed: 1800 };
   // 两排截面不同，分别验证各自桩径的增量。
   const sections = resolveMemberSections({ ...PRESETS.A.layouts[0].sections, postR: 'C220*100*30*4.0' });
@@ -23,15 +27,16 @@ function bracketBuilder(t) {
     track: geometry => { geometries.push(geometry); return geometry; },
   });
   t.after(() => geometries.forEach(geometry => geometry.dispose()));
-  return overrides => createBracket({ ...parameters, ...overrides }, {
+  const build = overrides => createBracket({ ...parameters, ...overrides }, {
     sections, partOptions, solvers: { solve, layoutEW }, sectionRange: () => [0, 0],
   });
+  return { build, M };
 }
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} ≠ ${expected}`);
 
 test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有支架', t => {
-  const build = bracketBuilder(t);
+  const { build, M } = bracketBuilder(t);
   const driven = build({ pileFoundationType: '锤入桩', slopeEW: 5 });
   driven.model.updateMatrixWorld(true);
   const bounds = mesh => new Box3().setFromObject(mesh);
@@ -70,7 +75,7 @@ test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有�
 });
 
 test('南北坡度下前后灌注桩的实体上下标高覆盖所选坡向', t => {
-  const build = bracketBuilder(t);
+  const { build, M } = bracketBuilder(t);
   // 柱距 3000、埋深 1800，桩顶、桩底分别外伸 50 mm。
   for (const [slopeNS, alongSlope, rearMin, rearMax] of [
     [-10, 0, -2150, 350], [0, 0, -1850, 50], [10, 0, -2150, 350],

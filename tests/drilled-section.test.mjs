@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledChannelWebGeometry } from '../src/drilled-section-geometry.ts';
+import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledChannelWebGeometry } from '../src/model/geometry/drilled-section-geometry.ts';
 
 test('Ø14孔贯通水平肢及檩条下翼缘，孔旁仍有实体',()=>{
   const length=3974, hole=85;

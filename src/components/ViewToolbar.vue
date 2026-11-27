@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { fastenerLabel } from '../domain/specs/fastener-spec.ts';
+import { TIE_RULES } from '../config/engineering-rules.ts';
 import { TinyOption } from '@opentiny/vue';
 import { computed } from 'vue';
-import { getClampSpec } from '../clamp-spec.ts';
+import { getClampSpec } from '../domain/specs/clamp-spec.ts';
 import FieldSelect from './FieldSelect.vue';
-import type { DesignerSnapshot } from '../designer.ts';
-import type { PresetId } from '../design-types.ts';
-import type { JointType, ViewName } from '../joint-view-types.ts';
+import type { DesignerSnapshot } from '../app/designer-snapshot.ts';
+import type { PresetId } from '../domain/design-types.ts';
+import type { JointType, ViewName } from '../model/joint-view-types.ts';
 const props = defineProps<{ snapshot: DesignerSnapshot; ready?: boolean }>();
 const clampSpec = computed(() => getClampSpec(props.snapshot.parameters.modT, props.snapshot.parameters.clampL));
 defineEmits<{ view: [name: ViewName]; joint: [kind: 'side' | 'type', value: JointType | number]; preset: [id: PresetId] }>();
@@ -15,14 +17,14 @@ const views: [ViewName, string, string?][] = [
   ['normal', '垂直组件', '垂直于组件面看，组件半透明，便于看檩条'],
 ];
 const joints: [JointType, string, string][] = [
-  ['foot', '斜撑-立柱', '斜撑下端：连接板 + 3 颗 M12×35'],
-  ['top', '立柱-斜梁', '柱顶：斜梁腹板贴立柱腹板，1 颗 M16×40，立柱上竖向长圆孔'],
-  ['btop', '斜撑-斜梁', '斜撑上端：斜撑腹板贴斜梁腹板，1 颗 M12×35'],
-  ['clip', '檩条-斜梁', 'L 形檩托 + 2 颗 M12×35；组件 M8×22 安装螺栓'],
-  ['mod', '檩条-组件', '查看相邻组件与檩条的连接。螺栓固定时缝两侧各用 1 颗 M8×22，压块固定时缝上用 1 个中压块和 1 颗内六角螺栓。'],
+  ['foot', '斜撑-立柱', `斜撑下端：连接板 + 3 颗 ${fastenerLabel('foot')}`],
+  ['top', '立柱-斜梁', `柱顶：斜梁腹板贴立柱腹板，1 颗 ${fastenerLabel('top')}，立柱上竖向长圆孔`],
+  ['btop', '斜撑-斜梁', `斜撑上端：斜撑腹板贴斜梁腹板，1 颗 ${fastenerLabel('btop')}`],
+  ['clip', '檩条-斜梁', `L 形檩托 + 2 颗 ${fastenerLabel('clip')}；组件 ${fastenerLabel('module')} 安装螺栓`],
+  ['mod', '檩条-组件', `查看相邻组件与檩条的连接。螺栓固定时缝两侧各用 1 颗 ${fastenerLabel('module')}，压块固定时缝上用 1 个中压块和 1 颗内六角螺栓。`],
   ['splice', '檩条-檩条', '预览实际檩条切割接头'],
-  ['postTie', '立柱拉杆', '查看后排拉杆与立柱前后翼缘的连接。M12×35 外六角螺栓，两面平垫，螺母侧加弹垫。'],
-  ['purlinTie', '檩条拉杆', '正视查看檩条槽内的螺栓头，轴测查看拉杆下方的螺母。Ø14 通孔，M12×35 外六角螺栓，两面平垫，螺母侧加弹垫。'],
+  ['postTie', '立柱拉杆', `查看后排拉杆与立柱前后翼缘的连接。${fastenerLabel('postTie')} 外六角螺栓，两面平垫，螺母侧加弹垫。`],
+  ['purlinTie', '檩条拉杆', `正视查看檩条槽内的螺栓头，轴测查看拉杆下方的螺母。Ø${TIE_RULES.purlinTie.holeRadius * 2} 通孔，${fastenerLabel('purlinTie')} 外六角螺栓，两面平垫，螺母侧加弹垫。`],
 ];
 
 function unavailableReason(type: JointType) {

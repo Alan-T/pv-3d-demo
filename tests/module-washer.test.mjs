@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BoltsPart } from '../src/parts/bolts.ts';
+import { BoltsPart } from '../src/model/parts/bolts.ts';
 import { PRESETS } from '../src/config.ts';
-import { PARAMS } from '../src/parameter-fields.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
+import { PARAMS } from '../src/domain/parameter-fields.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { getPurlinClipSpec } from '../src/domain/specs/purlin-clip-spec.ts';
 
 test('锯齿垫圈只替换组件头下平垫，大平垫、弹垫及压块保持不变', () => {
   const geometries = [];

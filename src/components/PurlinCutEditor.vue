@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, watchPostEffect } from 'vue';
 import { TinyInput } from '@opentiny/vue';
-import { PURLIN_CUT_GAP } from '../purlin-cut.ts';
+import { PURLIN_CUT_GAP } from '../domain/purlin-cut.ts';
 import HelpHint from './HelpHint.vue';
 
 const props = defineProps<{ lengths: number[]; total: number; error?: string }>();

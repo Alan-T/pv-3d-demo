@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
-import { PurlinClipPart } from '../src/parts/purlin-clip.ts';
-import { BoltsPart } from '../src/parts/bolts.ts';
+import { getPurlinClipSpec } from '../src/domain/specs/purlin-clip-spec.ts';
+import { PurlinClipPart } from '../src/model/parts/purlin-clip.ts';
+import { BoltsPart } from '../src/model/parts/bolts.ts';
 import { PRESETS, PURLIN_CLIP_SPECS } from '../src/config.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { solve, layoutEW } from '../src/solve.ts';
+import { getPresetParameters } from '../src/domain/model-parameters.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { solve, layoutEW } from '../src/domain/solve.ts';
 
 // 实例矩阵使用 Float32，米制坐标允许 0.002 mm 的数值误差。
 const close = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 2e-6, `${message}: ${actual} / ${expected}`);

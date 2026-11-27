@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ParameterDefinition, ParameterKey, ModelParameters } from '../design-types.ts';
-import { MODULE_THICKNESSES } from '../clamp-spec.ts';
-import { limits } from '../parameter-fields.ts';
+import type { ParameterDefinition, ParameterKey, ModelParameters } from '../domain/design-types.ts';
+import { MODULE_THICKNESSES } from '../domain/specs/clamp-spec.ts';
+import { limits } from '../domain/parameter-fields.ts';
 import { TinyOption } from '@opentiny/vue';
 import HelpHint from './HelpHint.vue';
 import FieldInput from './FieldInput.vue';
@@ -60,7 +60,7 @@ function changeField(key: ParameterKey, event: Event) {
               :value="String(thickness)" :label="String(thickness)" />
           </field-select>
           <field-input v-else :id="`param-${key}`" type="number" :data-k="key" :label="sizeLabels[key]"
-            :min="limits(key)[0]" :max="limits(key)[1]" step="1" :value="parameters[key]"
+            :min="limits(key, parameters)[0]" :max="limits(key, parameters)[1]" step="1" :value="parameters[key]"
             @commit="emit('change', key, $event.value, $event)" />
         </template>
         <i>{{ definition.unit }}</i>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { TinyOption } from '@opentiny/vue';
-import type { MemberKey } from '../design-types.ts';
-import { findSection, getSectionLibrary, normalizeSection } from '../section-spec.ts';
+import type { MemberKey } from '../domain/design-types.ts';
+import { findSection, getSectionLibrary, normalizeSection } from '../domain/specs/section-spec.ts';
 import FieldSelect from './FieldSelect.vue';
 
 const props = defineProps<{ member: MemberKey; value: string; label: string; disabled?: boolean }>();

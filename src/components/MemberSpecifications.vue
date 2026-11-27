@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { TinySelect } from '@opentiny/vue';
-import type { DesignerSnapshot } from '../designer.ts';
-import type { MaterialKey, MemberKey, ParameterKey } from '../design-types.ts';
-import type { DrawingLayout } from '../layout-variants.ts';
-import { MATERIAL_GRADE_OPTIONS, SECTION_LABEL } from '../config.ts';
-import { findParameterField } from '../parameter-fields.ts';
-import { useEditableSelects } from '../select-input.ts';
+import type { DesignerSnapshot } from '../app/designer-snapshot.ts';
+import type { MaterialKey, MemberKey, ParameterKey } from '../domain/design-types.ts';
+import type { DrawingLayout } from '../domain/layout-variants.ts';
+import { MATERIAL_GRADE_OPTIONS, SECTION_LABEL } from '../config/catalogs.ts';
+import { findParameterField } from '../domain/parameter-fields.ts';
+import { useEditableSelects } from './select-input.ts';
 import ParameterField from './ParameterField.vue';
 import SectionSelect from './SectionSelect.vue';
 

@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
 import { PRESETS } from '../src/config.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { PurlinConnectorPart } from '../src/parts/purlin-connector.ts';
-import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.ts';
-import { cutPurlin, PURLIN_CUT_GAP } from '../src/purlin-cut.ts';
-import { layoutEW } from '../src/solve.ts';
+import { getPresetParameters } from '../src/domain/model-parameters.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { PurlinConnectorPart } from '../src/model/parts/purlin-connector.ts';
+import { getPurlinConnectorSpec } from '../src/domain/specs/purlin-connector-spec.ts';
+import { cutPurlin, PURLIN_CUT_GAP } from '../src/domain/purlin-cut.ts';
+import { layoutEW } from '../src/domain/solve.ts';
 
 const drawing = getPresetParameters(PRESETS.A);
 const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);

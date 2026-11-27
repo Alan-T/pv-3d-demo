@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/post-tie-layout.ts';
+import { postTieHeights, calculatePostTies, enabledPostTieSpans, postTieLengths } from '../src/domain/post-tie-layout.ts';
 import { PRESETS, TIE_SECTION_LIB } from '../src/config.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
-import { DrawingLayouts } from '../src/layout-variants.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { solve, layoutEW } from '../src/solve.ts';
-import { PostTiePart } from '../src/parts/post-tie.ts';
-import { createSectionGeometry, createSectionShape } from '../src/section-geometry.ts';
+import { getPresetParameters } from '../src/domain/model-parameters.ts';
+import { DrawingLayouts } from '../src/domain/layout-variants.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { solve, layoutEW } from '../src/domain/solve.ts';
+import { PostTiePart } from '../src/model/parts/post-tie.ts';
+import { createSectionGeometry, createSectionShape } from '../src/model/geometry/section-geometry.ts';
 
 test('二维孔位规则：整百孔距、柱顶余量优先接近225，低柱退化为水平杆', () => {
   assert.deepEqual(postTieHeights({postLength:2298,embed:1500,strutHeight:250}), {topOffset:248,holeRise:100});

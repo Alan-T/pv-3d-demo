@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../design-types.ts';
-import { isSurfaceFinishKey } from '../design-types.ts';
-import { SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
-import { limits, findParameterField } from '../parameter-fields.ts';
-import { useEditableSelects, type SelectChoice } from '../select-input.ts';
+import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../domain/design-types.ts';
+import { isSurfaceFinishKey } from '../domain/design-types.ts';
+import { SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config/catalogs.ts';
+import { limits, findParameterField } from '../domain/parameter-fields.ts';
+import { useEditableSelects, type SelectChoice } from './select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';
 import FieldSelect from './FieldSelect.vue';
@@ -53,7 +53,7 @@ const fields: Field[] = [
 ];
 
 function slopeField(key: SlopeKey, label: string): Field {
-  const [min, max, step] = limits(key);
+  const [min, max, step] = limits(key, props.parameters);
   return { key, label, type: 'number', parameter: true, min, max, step, unit: '%' };
 }
 

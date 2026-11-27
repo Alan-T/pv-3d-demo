@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watchPostEffect } from 'vue';
 import { TinySelect } from '@opentiny/vue';
-import { setSelectExpanded } from '../select-input.ts';
+import { setSelectExpanded } from './select-input.ts';
 
 const props = defineProps<{
   id: string;

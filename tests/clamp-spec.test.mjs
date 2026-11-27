@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { getClampSpec } from '../src/clamp-spec.ts';
+import { getClampSpec } from '../src/domain/specs/clamp-spec.ts';
 import { FIX, PRESETS } from '../src/config.ts';
-import { getPurlinClipSpec } from '../src/purlin-clip-spec.ts';
-import { resolveMemberSections } from '../src/section-spec.ts';
-import { ClampPart } from '../src/parts/clamp.ts';
-import { BoltsPart } from '../src/parts/bolts.ts';
+import { getPurlinClipSpec } from '../src/domain/specs/purlin-clip-spec.ts';
+import { resolveMemberSections } from '../src/domain/specs/section-spec.ts';
+import { ClampPart } from '../src/model/parts/clamp.ts';
+import { BoltsPart } from '../src/model/parts/bolts.ts';
 
 const thicknessRows = [
   { modT: 30, edgeHeight: 35, boltLength: 30 },

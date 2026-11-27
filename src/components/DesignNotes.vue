@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BRACE_JOINT, braceConnectorPlates } from '../brace-connector-spec.ts';
-import { CLAMP_LENGTHS, getClampSpec, MODULE_THICKNESSES } from '../clamp-spec.ts';
-import { FIX } from '../config.ts';
+import { BRACE_JOINT, braceConnectorPlates } from '../domain/specs/brace-connector-spec.ts';
+import { CLAMP_LENGTHS, getClampSpec, MODULE_THICKNESSES } from '../domain/specs/clamp-spec.ts';
+import { fastenerLabel } from '../domain/specs/fastener-spec.ts';
+import { FIX, MODULE_MOUNTING } from '../config/engineering-rules.ts';
 
 const props = defineProps<{ moduleThickness: number; clampLength: number }>();
 const clampSpec = computed(() => getClampSpec(props.moduleThickness, props.clampLength));
@@ -34,12 +35,12 @@ const { single, double } = braceConnectorPlates;
         单面斜撑连接板 {{ single.name.replaceAll('*', '×') }}。从立柱孔中心线向斜撑侧伸出 {{ single.width - BRACE_JOINT.singleBack }} mm，背侧伸出 {{ BRACE_JOINT.singleBack }} mm。
         斜撑侧竖边高 {{ single.height / 2 - BRACE_JOINT.chamferY }} mm，再斜切到宽 {{ BRACE_JOINT.singleBack + BRACE_JOINT.singleBot }} mm 的下边。
         两个立柱孔上下对称，孔距 {{ BRACE_JOINT.boltPitch }} mm。斜撑孔离立柱孔中心线 {{ BRACE_JOINT.boltU }} mm，比板中点高 {{ BRACE_JOINT.rise }} mm。
-        斜撑两端孔心距端头各 {{ FIX.braceEdge }} mm。竖向长圆孔配 M12×35 外六角螺栓及螺母。
+        斜撑两端孔心距端头各 {{ FIX.braceEdge }} mm。竖向长圆孔配 {{ fastenerLabel('footBrace') }} 外六角螺栓及螺母。
       </li>
-      <li>M16×40（立柱-斜梁）及 M12 螺栓（斜撑-立柱、斜撑-斜梁、檩托）螺母下都是一个平垫、一个弹垫（按节点图，弹垫按 GB 93）。</li>
-      <li>立柱-斜梁：斜梁腹板贴立柱腹板，1 颗 M16×40 在立柱中心线上、孔心距柱顶 {{ FIX.postTopHole }} mm，立柱腹板上开竖向长圆孔（可调高度）；柱顶平切。</li>
-      <li>斜撑-斜梁：斜撑腹板贴斜梁腹板，在两条中心线交点用 1 颗 M12×35；斜撑端头平切，孔心到端头 {{ FIX.braceEdge }} mm。</li>
-      <li>檩条-斜梁：每处 1 个 L 形檩托，可在“构件”页选择 L100×63×6.0×50、L90×56×5.0×50 或 L75×50×5.0×50（立边高×底边宽×厚度×长度，mm）。底边 1 颗 M12×35 接斜梁上翼缘、立边 1 颗 M12×35 接檩条腹板；孔位暂按底边居中、立边距底面 50 mm，两孔均在长度中线。东西坡度为 0 时，另加 1 颗 M12×35 直接连接檩条下翼缘与斜梁上翼缘；组件用安装孔压在檩条上翼缘，每块 4 颗 M8×22 外六角螺栓 + 螺母（规格按组件节点图），螺栓头下普通平垫，螺母侧大平垫 + 弹垫；组件边框翼缘厚按 2 算。</li>
+      <li>{{ fastenerLabel('top') }}（立柱-斜梁）及 M12 螺栓（斜撑-立柱、斜撑-斜梁、檩托）螺母下都是一个平垫、一个弹垫（按节点图，弹垫按 GB 93）。</li>
+      <li>立柱-斜梁：斜梁腹板贴立柱腹板，1 颗 {{ fastenerLabel('top') }} 在立柱中心线上、孔心距柱顶 {{ FIX.postTopHole }} mm，立柱腹板上开竖向长圆孔（可调高度）；柱顶平切。</li>
+      <li>斜撑-斜梁：斜撑腹板贴斜梁腹板，在两条中心线交点用 1 颗 {{ fastenerLabel('btop') }}；斜撑端头平切，孔心到端头 {{ FIX.braceEdge }} mm。</li>
+      <li>檩条-斜梁：每处 1 个 L 形檩托，可在“构件”页选择 L100×63×6.0×50、L90×56×5.0×50 或 L75×50×5.0×50（立边高×底边宽×厚度×长度，mm）。底边 1 颗 {{ fastenerLabel('clip') }} 接斜梁上翼缘、立边 1 颗 {{ fastenerLabel('clipWeb') }} 接檩条腹板；孔位暂按底边居中、立边距底面 50 mm，两孔均在长度中线。东西坡度为 0 时，另加 1 颗 {{ fastenerLabel('purlinBeam') }} 直接连接檩条下翼缘与斜梁上翼缘；组件用安装孔压在檩条上翼缘，每块 4 颗 {{ fastenerLabel('module') }} 外六角螺栓 + 螺母（规格按组件节点图），螺栓头下普通平垫，螺母侧大平垫 + 弹垫；组件边框翼缘厚按 {{ MODULE_MOUNTING.frameFlangeThickness }} 算。</li>
       <li>
         按当前组件厚度 {{ moduleThickness }} mm 和压块长度 {{ clampLength }} mm，采用压块固定时，选用中压块 {{ clampSpec.mid.name }}、边压块 {{ clampSpec.edge.name }} 和 {{ clampSpec.bolt.name }} 内六角螺栓。
         东西向每道组件缝上一个中压块，阵列两端各一个边压块（立在檩条伸出组件的 100 上），沿坡对齐每根檩条，每个压块 1 颗螺栓穿过檩条上翼缘。

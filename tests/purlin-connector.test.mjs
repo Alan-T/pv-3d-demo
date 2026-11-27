@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { getPurlinConnectorSpec } from '../src/purlin-connector-spec.ts';
-import { createPurlinConnectorGeometry } from '../src/purlin-connector-geometry.ts';
-import { PurlinConnectorPart } from '../src/parts/purlin-connector.ts';
+import { getPurlinConnectorSpec } from '../src/domain/specs/purlin-connector-spec.ts';
+import { createPurlinConnectorGeometry } from '../src/model/geometry/purlin-connector-geometry.ts';
+import { PurlinConnectorPart } from '../src/model/parts/purlin-connector.ts';
 
 test('按用户选择的完整规格读取，未知名称不回退', () => {
   for (const name of ['U128*53*3.0*240', 'U128*45*3.0*240', 'U118*45*3.0*240',
