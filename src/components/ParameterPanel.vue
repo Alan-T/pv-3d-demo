@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import type { Designer, DesignerSnapshot } from '../designer.ts';
-import type { MaterialKey, MemberKey, ParameterDefinition, ParameterKey, ProjectInfo as ProjectData } from '../design-types.ts';
+import type { MaterialKey, MemberKey, ParameterKey, ProjectInfo as ProjectData } from '../design-types.ts';
 import { computed, ref } from 'vue';
-import { TinyButton, TinyOption, TinySelect } from '@opentiny/vue';
-import { MATERIAL_GRADE_OPTIONS, SECTION_LABEL } from '../config.ts';
-import { PARAMS } from '../parameter-fields.ts';
-import { useEditableSelects } from '../select-input.ts';
+import { TinyButton, TinyOption } from '@opentiny/vue';
+import { PARAMS, findParameterField } from '../parameter-fields.ts';
 import ParameterField from './ParameterField.vue';
 import FieldInput from './FieldInput.vue';
 import FieldSelect from './FieldSelect.vue';
-import SectionSelect from './SectionSelect.vue';
+import MemberSpecifications from './MemberSpecifications.vue';
 import PurlinCutEditor from './PurlinCutEditor.vue';
 import HelpHint from './HelpHint.vue';
 import ProjectInfo from './ProjectInfo.vue';
@@ -17,7 +15,7 @@ import DesignNotes from './DesignNotes.vue';
 import TabList from './TabList.vue';
 
 const props = defineProps<{ projectInfo: ProjectData; snapshot: DesignerSnapshot; ready?: boolean; open?: boolean }>();
-const emit = defineEmits<{
+defineEmits<{
   'update:projectInfo': [value: ProjectData];
   parameter: [key: ParameterKey, value: string | boolean, input?: HTMLInputElement];
   section: [key: MemberKey, value: string];
@@ -41,21 +39,13 @@ const tabs = [
 ];
 const activeTab = ref(tabs[0].id);
 const currentLayout = computed(() => props.snapshot.layouts.find(layout => layout.id === props.snapshot.activeLayoutId)!);
-const materialSelect = useEditableSelects<MaterialKey>('grade', key => currentLayout.value.materials[key],
-  (key, value) => emit('material-grade', key, value.trim()));
-
-function fieldFor<K extends ParameterKey>(key: K) {
-  return PARAMS.find((field): field is ParameterDefinition & { key: K } => field.key === key)!;
-}
 
 const layoutKeys: ParameterKey[] = ['cols', 'pitchEnd', 'pitch'];
-const layoutFields = layoutKeys.map(fieldFor);
+const layoutFields = layoutKeys.map(key => findParameterField(key)!);
 const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'purlinCutMode', 'slopeEW', 'slopeNS', 'alongSlope', ...layoutKeys];
 const commonFields = PARAMS.filter(item => !item.key || !otherFields.includes(item.key));
-const purlinCutModeField = fieldFor('purlinCutMode');
-const purlinTieField = { ...fieldFor('purlinTies'), label: '檩条拉杆' };
-const purlinClipField = fieldFor('purlinClip');
-const purlinConnectorField = fieldFor('purlinConnector');
+const purlinCutModeField = findParameterField('purlinCutMode')!;
+const purlinTieField = { ...findParameterField('purlinTies')!, label: '檩条拉杆' };
 const postTieModes = [['none', '无'], ['ends', '首末跨'], ['all', '全部跨'], ['custom', '自定义']];
 const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
   ['dims', '尺寸标注'], ['buried', '埋地部分'], ['modules', '光伏组件'],
@@ -178,47 +168,9 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'members'" id="panel-page-members" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-members" tabindex="0">
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="构件规格">
-          <section :key="`${snapshot.preset}-${snapshot.activeLayoutId}`" class="layout-parameters layout-member-specs" aria-labelledby="layout-member-heading">
-            <h3 id="layout-member-heading">排布规格 <small>{{ currentLayout.label }}</small></h3>
-            <div class="spec-row spec-heading">
-              <h4>构件截面</h4><span title="可选择或直接输入材质牌号">材质</span>
-            </div>
-            <div id="sections">
-              <div v-for="(label, key) in SECTION_LABEL" v-show="!['braceOF', 'braceOR'].includes(key) || !!snapshot.parameters.outer" :key="key" class="prow spec-row">
-                <label class="pl" :for="`section-${key}`">{{ label }}</label>
-                <section-select :member="key" :value="snapshot.sections[key]" :label="label" :disabled="!ready"
-                  @change="$emit('section', key, $event)" />
-                <tiny-select v-bind="materialSelect(key, `${label}材质`, MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
-                  :title="currentLayout.materials[key] || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
-                  filterable allow-create default-first-option clearable placement="bottom-end" />
-              </div>
-            </div>
-            <div class="spec-row spec-heading spec-divider">
-              <h4>檩条附件</h4><span>材质</span>
-            </div>
-            <parameter-field v-for="field in [purlinClipField, purlinConnectorField]" :key="field.key"
-              class="spec-row" :definition="field" :parameters="snapshot.parameters" :disabled="!ready" @change="(...args) => $emit('parameter', ...args)">
-              <template #label>{{ field.key === 'purlinClip' ? '檩托' : '连接件' }}</template>
-              <template #after-select>
-                <tiny-select v-bind="materialSelect(field.key, `${field.label}材质`, MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
-                  :title="currentLayout.materials[field.key] || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
-                  filterable allow-create default-first-option clearable placement="bottom-end" />
-              </template>
-            </parameter-field>
-            <div id="brace-connector-specs">
-              <div class="spec-row spec-heading spec-divider">
-                <h4>斜撑连接件</h4><span>材质</span>
-              </div>
-              <div class="prow spec-row">
-                <label class="pl" for="brace-connector">前后共用</label>
-                <output id="brace-connector" class="brace-connector-spec" aria-describedby="brace-connector-note">{{ snapshot.braceConnectorSpec || '—' }}</output>
-                <tiny-select v-bind="materialSelect('braceConnector', '斜撑连接件材质', MATERIAL_GRADE_OPTIONS)" :disabled="!ready"
-                  :title="currentLayout.materials.braceConnector || '输入材质牌号'" size="mini" tabindex="0" placeholder="未指定"
-                  filterable allow-create default-first-option clearable placement="bottom-end" />
-                <small id="brace-connector-note" class="field-description">自动匹配 · 宽 × 高 × 厚（mm）</small>
-              </div>
-            </div>
-          </section>
+          <member-specifications :key="`${snapshot.preset}-${snapshot.activeLayoutId}`" :snapshot="snapshot" :layout="currentLayout"
+            :disabled="!ready" @parameter="(...args) => $emit('parameter', ...args)" @section="(...args) => $emit('section', ...args)"
+            @material-grade="(...args) => $emit('material-grade', ...args)" />
         </fieldset>
       </div>
 
@@ -272,32 +224,9 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
   background: #f1f6fd;
 }
 .layout-parameters :deep(.field-description) { color: #636f7d; }
-.layout-member-specs { margin-block: 10px 4px; }
-.spec-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.28fr) clamp(96px, 31%, 112px);
-  align-items: center; column-gap: 4px;
-}
-.spec-row > :deep(.tiny-select) { width: 100%; min-width: 0; }
-.spec-row > :deep(.tiny-select .tiny-input) {
-  --tv-Input-suffix-padding-left: 4px;
-  --tv-Input-suffix-padding-right: 22px;
-  --tv-Input-suffix-right: 2px;
-}
-.spec-row :deep(.field-label) { gap: 3px; }
-.spec-heading { margin: 12px 0 8px; font-size: 12px; color: var(--muted); }
-.spec-heading > :first-child { grid-column: 1 / 3; }
-.spec-heading h4 { margin: 0; font-size: 14px; color: var(--ink); }
-.spec-divider { padding-top: 10px; border-top: 1px solid var(--line); }
-#brace-connector-specs .prow { margin-bottom: 0; }
-@media (max-width: 340px) {
-  .spec-row { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
-  .spec-row > :deep(.pl) { grid-column: 1 / -1; }
-  .spec-heading > :first-child { grid-column: 1; }
-}
 .design-parameters h4 { margin: 0 0 10px; font-size: 14px; }
 .design-parameters h4 small { margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: normal; }
 .design-parameters h5 { margin: 16px 0 8px; font-size: 14px; }
-.brace-connector-spec { font-size: 12px; color: var(--ink); }
 .layout-counts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; font-size: 12px; }
 .layout-counts > div { display: flex; align-items: baseline; gap: 5px; }
 .layout-counts dt { color: var(--muted); }

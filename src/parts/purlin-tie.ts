@@ -28,23 +28,29 @@ export class PurlinTiePart {
     return geometry;
   }
 
-  build({ solution, ties, parent, u, n, bolts }: { solution: Solution; ties: PurlinTies; parent: Object3D; u: Vector3; n: Vector3; bolts?: BoltCollector }) {
-    const p = solution.along(ties.start);
-    const geometry = ties.count && this.createDrilledGeometry
-      ? this.track(this.alignGeometry(this.createDrilledGeometry(ties.length,solution.purlins.map(t=>t-ties.start)))) : this.geometry;
+  private geometryForTies(ties: PurlinTies, purlins: number[]) {
+    if (!ties.count || !this.createDrilledGeometry) return this.geometry;
+    const holes = purlins.map(position => position - ties.start);
+    return this.track(this.alignGeometry(this.createDrilledGeometry(ties.length, holes)));
+  }
+
+  build({ solution, ties, parent, u, n, bolts }: {
+    solution: Solution; ties: PurlinTies; parent: Object3D; u: Vector3; n: Vector3; bolts?: BoltCollector;
+  }) {
+    const start = solution.along(ties.start);
+    const geometry = this.geometryForTies(ties, solution.purlins);
+    const offset = this.section.type === 'L' ? this.section.f / 2 : 0;
+    const mountingPoints = bolts && ties.rods.length ? solution.purlins.map(t => solution.along(t)) : [];
     for (const rod of ties.rods) {
       // L 型水平肢或 C 型腹板贴檩条底面；安装孔在跨中，C 型两翼位于孔的两侧。
-      const offset = this.section.type === 'L' ? this.section.f / 2 : 0;
-      const origin = V(p.x, p.y, rod.z + offset)
-        .addScaledVector(n, solution.hBeamTop * MM);
+      const origin = V(start.x, start.y, rod.z + offset).addScaledVector(n, solution.hBeamTop * MM);
       const mesh = addMember(parent, geometry, this.material, origin,
         n.clone().negate(), EZ.clone().negate(), u.clone().multiplyScalar(ties.length * MM));
       mesh.userData.purlinTie = { bay: rod.bay, length: ties.length };
-      for (const t of solution.purlins) {
-        const point=solution.along(t);
-        // 头在檩条槽内；螺母在拉杆安装面下面，原点为螺母侧夹紧面。
-        bolts?.add('purlinTie',V(point.x,point.y,rod.z).addScaledVector(n,(solution.hBeamTop-this.section.t)*MM),
-          n.clone().negate(),u,this.purlinSection.t+this.section.t);
+      for (const { x, y } of mountingPoints) {
+        // 螺母侧夹紧面位于拉杆安装面下面，头部在檩条槽内。
+        const nutFace = V(x, y, rod.z).addScaledVector(n, (solution.hBeamTop - this.section.t) * MM);
+        bolts?.add('purlinTie', nutFace, n.clone().negate(), u, this.purlinSection.t + this.section.t);
       }
     }
   }

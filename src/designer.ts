@@ -1,4 +1,4 @@
-import type { CorrosivityCategory, MaterialKey, MemberKey, ModelParameters, NumericParameterKey, PresetId } from './design-types.ts';
+import type { CorrosivityCategory, ModelParameters, PresetId } from './design-types.ts';
 import type { ViewName, JointType } from './joint-view-types.ts';
 import type { DrawingLayout } from './layout-variants.ts';
 import type { calculatePostTies } from './post-tie-layout.ts';
@@ -6,7 +6,7 @@ import type { RuntimeState } from './core.ts';
 
 export type DesignerSnapshot = ReturnType<typeof getSnapshot>;
 export type Designer = ReturnType<typeof createDesigner>;
-export type PostSide = 'F' | 'R';
+export type { PostSide } from './designer-parameters.ts';
 interface DesignerOptions {
   canvas: HTMLCanvasElement;
   stage: HTMLElement;
@@ -31,19 +31,18 @@ interface DesignerDebug {
 }
 declare global { interface Window { pvDemo?: DesignerDebug } }
 
-import { isSurfaceFinishKey } from './design-types.ts';
 import { PRESETS, SURFACE_FINISH_BY_CORROSIVITY } from './config.ts';
 import { P, show } from './model-parameters.ts';
-import { PARAMS } from './parameter-fields.ts';
-import { findSection, resolveMemberSections } from './section-spec.ts';
-import { getBuiltState, shared } from './core.ts';
+import { createParameterEditor } from './designer-parameters.ts';
+import { resolveMemberSections } from './section-spec.ts';
+import { shared } from './core.ts';
 import { initScene, disposeScene, getScene, tryGetScene, resize } from './scene.ts';
 import { initMaterials, disposeMaterials } from './materials.ts';
 import { build, clearDynamic } from './model.ts';
-import { initEditing, disposeEditing, closeEdit, setParam, pickLabel, update as updateEditor } from './edit.ts';
+import { initEditing, disposeEditing, closeEdit, pickLabel, update as updateEditor } from './edit.ts';
 import { updateLabels, disposeDimensions } from './dims.ts';
 import { initView, disposeView, setView, applyVisibility, getCamera, resizeTieJointView, tick } from './view.ts';
-import { layoutEW, solve } from './solve.ts';
+import { solve } from './solve.ts';
 import { createReport } from './report.ts';
 import { DrawingLayouts } from './layout-variants.ts';
 
@@ -198,60 +197,6 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     selectView(next);
   }
 
-  function getAutomaticPurlinCutLengths() {
-    const { cuts } = layoutEW({ ...P, purlinCutMode: 'auto' }, currentSections());
-    return cuts.valid ? cuts.segments.map(segment => segment.length) : null;
-  }
-
-  function changeParameter(key: keyof ModelParameters, value: string | boolean) {
-    if (isSurfaceFinishKey(key)) {
-      if (typeof value === 'string' && P[key] !== value) {
-        P[key] = value;
-        currentDrawing().sharedParameters[key] = value;
-        publish();
-      }
-      return P[key];
-    }
-    const definition = PARAMS.find(item => item.key === key);
-    if (definition?.type === 'select') {
-      const selected = 'numericOptions' in definition
-        ? definition.numericOptions.find(option => String(option) === value)
-        : definition.options.find(([option]) => option === value)?.[0];
-      if (selected === undefined) return P[key];
-      if (key === 'purlinCutMode' && value === 'custom' && !P.purlinCutLengths?.length) {
-        P.purlinCutLengths = getAutomaticPurlinCutLengths() ?? [];
-      }
-      if (key === 'purlinTies' && value === 'custom') {
-        const { layout } = getBuiltState();
-        const installed = new Set(layout.purlinTies.rods.map(rod => rod.bay));
-        P.purlinTieSpans = Array.from({ length: layout.zs.length - 1 }, (_, index) => Number(installed.has(index)));
-      }
-      Object.assign(P, { [key]: selected });
-      scheduleBuild();
-    } else if (definition?.type === 'bool') {
-      Object.assign(P, { [key]: Number(value) });
-      scheduleBuild();
-    } else if (String(value).trim() !== '' && Number.isFinite(Number(value))) {
-      setParam(key as NumericParameterKey, Number(value));
-    }
-    return P[key];
-  }
-
-  function changeSection(key: MemberKey, text: string) {
-    const section = findSection(key, text);
-    if (section) {
-      currentDrawing().setSection(key, section.name);
-      scheduleBuild();
-    }
-    return currentDrawing().active.sections[key];
-  }
-
-  function changeMaterialGrade(key: MaterialKey, value: string) {
-    const grade = currentDrawing().setMaterialGrade(key, value);
-    publish();
-    return grade;
-  }
-
   function loadActiveLayout() {
     const drawing = currentDrawing();
     Object.assign(P, drawing.getModelParameters());
@@ -302,45 +247,6 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     const quantity = currentDrawing().setQuantity(value);
     publish();
     return quantity;
-  }
-
-  function changePurlinCutLengths(lengths: number[]) {
-    if (P.purlinCutMode !== 'custom') return '请先选择自定义分段。';
-    const { cuts } = layoutEW({ ...P, purlinCutLengths: lengths }, currentSections());
-    if (!cuts.valid) return cuts.error ?? '当前参数无法生成有效的檩条分段。';
-    P.purlinCutLengths = [...lengths];
-    scheduleBuild();
-    return '';
-  }
-
-  function resetPurlinCutLengths() {
-    const lengths = getAutomaticPurlinCutLengths();
-    if (!lengths) return { error: '当前参数无法自动分段，请调整榀距或檩条最大长度。' };
-    return { lengths, error: changePurlinCutLengths(lengths) };
-  }
-
-  function changePostTieMode(key: PostSide, mode: string) {
-    if (mode === 'custom') {
-      P[`postTieSpans${key}`] = getBuiltState().layout.postTies[key === 'F' ? 0 : 1].enabled.map(Number);
-    }
-    P[`postTie${key}`] = mode;
-    scheduleBuild();
-  }
-
-  function changePostTieBay(key: PostSide, index: number, enabled: boolean) {
-    // Preserve edits made during the same animation frame.
-    const selected = getBuiltState().layout.postTies[key === 'F' ? 0 : 1].enabled
-      .map((installed, bay) => P[`postTieSpans${key}`][bay] ?? Number(installed));
-    selected[index] = Number(enabled);
-    P[`postTieSpans${key}`] = selected;
-    scheduleBuild();
-  }
-
-  function changePurlinTieBay(index: number, enabled: boolean) {
-    const selected = [...P.purlinTieSpans];
-    selected[index] = Number(enabled);
-    P.purlinTieSpans = selected;
-    scheduleBuild();
   }
 
   function changeDisplay(key: keyof typeof show, enabled: boolean) {
@@ -394,8 +300,8 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
   }
 
   return {
-    changeParameter, changeSection, changeMaterialGrade, applyCorrosivityCategory, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
-    changePostTieMode, changePostTieBay,
-    changePurlinTieBay, changePurlinCutLengths, resetPurlinCutLengths, changeDisplay, selectView, selectJoint, fitCanvas, dispose,
+    ...createParameterEditor({ currentDrawing, currentSections, scheduleBuild, publish }),
+    applyCorrosivityCategory, applyPreset, resetPreset, addLayout, removeLayout, selectLayout, changeLayoutQuantity,
+    changeDisplay, selectView, selectJoint, fitCanvas, dispose,
   };
 }

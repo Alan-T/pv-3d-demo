@@ -1,14 +1,11 @@
 import { getScene } from './scene.ts';
 import { V3, shared } from './core.ts';
 import { show, P } from './model-parameters.ts';
-import { limits } from './parameter-fields.ts';
-import { MODULE_THICKNESSES } from './clamp-spec.ts';
+import { updateNumericParameter } from './parameter-fields.ts';
 import { getCamera } from './view.ts';
 import * as THREE from 'three';
 
 import type { NumericParameterKey } from './design-types.ts';
-
-const params = P;
 
 /* 蓝字（输入参数）点击修改：点击蓝字 → 原位出现红字输入框（带光标）；回车或点别处完成，Esc 取消。
  * 数值超范围自动夹到范围内 */
@@ -18,14 +15,20 @@ let parameterChanged: (() => void) | null = null;
 let listeners: AbortController | undefined;
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let editing: { sprite: THREE.Sprite; key: NumericParameterKey } | null = null;   // { sprite, key }
-const shown = (o: THREE.Object3D | null) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+function isVisibleInScene(object: THREE.Object3D) {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    if (!node.visible) return false;
+  }
+  return true;
+}
 
 function pickLabel(ev: PointerEvent) {
   if (!show.dims) return null;
   const r = getScene().canvas.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, getCamera());
-  const hit = raycaster.intersectObjects(shared.labels.filter((l) => l.userData.edit && shown(l)), false)[0];
+  const editableLabels = shared.labels.filter(label => label.userData.edit && isVisibleInScene(label));
+  const hit = raycaster.intersectObjects(editableLabels, false)[0];
   return hit?.object instanceof THREE.Sprite ? hit.object : null;
 }
 
@@ -65,16 +68,8 @@ function closeEdit(commit: boolean) {
   if (commit && isFinite(v)) setParam(key, v);
 }
 
-function setParam(key: NumericParameterKey, v: number) {
-  const P = params;
-  if (key === 'modT' && !MODULE_THICKNESSES.includes(v)) return;
-  const [lo, hi, step] = limits(key);
-  v = Math.min(hi, Math.max(lo, Math.round(v / step) * step));
-  v = Math.round(v * 10) / 10;
-  if (P[key] === v) return;
-  P[key] = v;
-  if (key === 'modL') P.hole = Math.min(P.hole, P.modL - 200);
-  parameterChanged?.();
+function setParam(key: NumericParameterKey, value: number) {
+  if (updateNumericParameter(key, value)) parameterChanged?.();
 }
 
 // 每帧在标注文字更新之后调用：正在修改的那个文字由输入框代替

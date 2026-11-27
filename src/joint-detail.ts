@@ -1,15 +1,14 @@
-import { mats, DimSet } from './dims.ts';
+import { renderJointAnnotations } from './joint-annotations.ts';
 import { FIX } from './config.ts';
 import { P } from './model-parameters.ts';
 import { CLAMP_PROFILE, getClampSpec } from './clamp-spec.ts';
 import { BRACE_JOINT } from './brace-connector-spec.ts';
-import { V, V3, MM, DEG, ewPlace, track } from './core.ts';
-import * as THREE from 'three';
+import { DEG } from './core.ts';
 import { createTieJointSpecs } from './tie-joint-spec.ts';
 
 import type { Solution } from './solve.ts';
 import type { getBuiltState } from './core.ts';
-import type { PlanarJointSpec, JointSpecs, JointType } from './joint-view-types.ts';
+import type { PlanarJointSpec, JointSpecs } from './joint-view-types.ts';
 
 type Point = { x: number; y: number };
 type LeaderPart = [point: Point, label: string, z?: number];
@@ -24,33 +23,6 @@ interface JointBuildHelpers {
   mv: (p: Point, du: number, dn: number) => Point;
   beamY: (p: Point, x: number, h: number) => number;
   seg2: (a: Point, b: Point) => [number, number, number, number];
-}
-
-// 全局剖切也会裁掉随镜头转向的文字精灵。仅为本节点的标注使用独立材质，
-// 去掉片元剖切，保留模型剖切和其他节点的材质设置。
-function keepAnnotationsUnclipped(group: THREE.Group) {
-  const materials = new Map<THREE.Material, THREE.Material>();
-  group.traverse((object) => {
-    if (!(object instanceof THREE.Line || object instanceof THREE.Sprite) || Array.isArray(object.material)) return;
-    const original: THREE.Material = object.material;
-    if (!materials.has(original)) {
-      const material = track(original.clone());
-      material.onBeforeCompile = (shader) => {
-        shader.fragmentShader = shader.fragmentShader.replace('#include <clipping_planes_fragment>', '');
-      };
-      material.customProgramCacheKey = () => 'unclipped-joint-annotation';
-      materials.set(original, material);
-    }
-    object.material = materials.get(original)!;
-  });
-}
-
-function addLeader(segments: DimSet, tip: THREE.Vector3, anchor: THREE.Vector3) {
-  const axis = anchor.clone().sub(tip).normalize().multiplyScalar(0.012);
-  const wing = new V3(-axis.y, axis.x, 0).multiplyScalar(0.4);
-  segments.seg(tip, anchor);
-  segments.seg(tip, tip.clone().add(axis).add(wing));
-  segments.seg(tip, tip.clone().add(axis).sub(wing));
 }
 
 function buildFootPlanarJointSpec(fr: number, { S, layout }: JointBuildHelpers): PlanarJointSpec {
@@ -275,62 +247,6 @@ function buildSplicePlanarJointSpec(fr: number, { S, layout, mv, seg2 }: JointBu
   };
 }
 
-function renderJointAnnotations(specs: JointSpecs, zj: number, layout: BuiltLayout, zLast: number) {
-  const group = new THREE.Group();
-  for (const type of Object.keys(specs) as JointType[]) {
-    specs[type].forEach((sp, fr) => {
-      if (!sp) return;
-      const lead = new DimSet();
-      const cl = new DimSet();
-      const zl = sp.zl === undefined ? zj : sp.zl;
-
-      for (const [px, py, ly, text, pz, elevPoint] of sp.leaders) {
-        const a = V(px, py, pz === undefined ? zl : pz);
-        const b = V(sp.anchorX, ly, zl);
-        if (elevPoint) {
-          // 檩条拉杆在两种视角下分别露出螺栓头、螺母，共用一条文字说明。
-          for (const [view, tip] of [['joint-elev', V(...elevPoint)], ['joint-iso', a]] as const) {
-            const arrow = new DimSet();
-            addLeader(arrow, tip, b);
-            const arrowGroup = arrow.finish(mats.line);
-            arrowGroup.userData.jointView = view;
-            lead.group.add(arrowGroup);
-          }
-        } else {
-          addLeader(lead, a, b);
-        }
-        lead.label(text, b, 'out', 13).userData.outside = {
-          at: b,
-          dir: new V3(sp.labelSide, 0, 0),
-          screenSide: sp.matrix ? sp.labelSide : undefined,
-        };
-      }
-
-      for (const [x1, y1, x2, y2, lineZ = zl] of sp.lines) cl.seg(V(x1, y1, lineZ), V(x2, y2, lineZ), true);
-      for (const [x1, y1, x2, y2, ox, oy, text] of sp.dims || []) {
-        // 拉杆局部 z=0 是安装面；尺寸界线应从真实孔心和杆端起算。
-        const dimZ = sp.matrix ? 0 : zl;
-        const d = lead.dim(V(x1, y1, dimZ), V(x2, y2, dimZ), new V3(ox * MM, oy * MM, 0), text, 'out', 13, 0.2);
-        d.label.userData.outside = { at: d.A.clone().add(d.B).multiplyScalar(0.5), dir: new V3(Math.sign(ox), 0, 0) };
-      }
-
-      const g = lead.finish(mats.line);
-      g.add(cl.finish(mats.line, mats.center));
-      if (type === 'splice' || sp.matrix) keepAnnotationsUnclipped(g);
-      g.userData.joint = type + fr;
-      // 东西坡度：支架节点跟着最东一榀平移，檩条-组件、边压块顺坡
-      if (sp.matrix) {
-        g.matrixAutoUpdate = false;
-        g.matrix.copy(sp.matrix);
-      } else {
-        ewPlace(g, layout.ew, type === 'mod' || type === 'side' || type === 'splice' ? undefined : zLast);
-      }
-      group.add(g);
-    });
-  }
-  return group;
-}
-
 /** 生成各连接节点详图分组，并将节点取景规格写入 layout.jointSpecs。 */
 function build(S: Solution, layout: BuiltLayout) {
   const clamp = P.fix === 'clamp' ? getClampSpec(P.modT, P.clampL) : null;
@@ -373,7 +289,7 @@ function build(S: Solution, layout: BuiltLayout) {
   }
 
   layout.jointSpecs = specs;
-  return renderJointAnnotations(specs, zj, layout, zLast);
+  return renderJointAnnotations(specs, zj, layout);
 }
 
 export { build };

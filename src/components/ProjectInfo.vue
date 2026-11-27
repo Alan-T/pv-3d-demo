@@ -2,7 +2,7 @@
 import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../design-types.ts';
 import { isSurfaceFinishKey } from '../design-types.ts';
 import { SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
-import { limits, PARAMS } from '../parameter-fields.ts';
+import { limits, findParameterField } from '../parameter-fields.ts';
 import { useEditableSelects, type SelectChoice } from '../select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';
@@ -57,7 +57,7 @@ function slopeField(key: SlopeKey, label: string): Field {
   return { key, label, type: 'number', parameter: true, min, max, step, unit: '%' };
 }
 
-const alongSlopeField = PARAMS.find(field => field.key === 'alongSlope')!;
+const alongSlopeField = findParameterField('alongSlope')!;
 const environmentFields: Field[] = [
   { key: 'designStandard', label: '参考规范', options: ['US2010(ASCE 7-10)'] },
   { key: 'designMethod', label: '设计条文', options: ['ASD'] },

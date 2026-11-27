@@ -168,6 +168,7 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/App.vue` | 页面布局、场景生命周期、加载状态及面板折叠 |
 | `src/components/` | 视图工具栏、参数控件、参数与结果面板及图纸说明 |
 | `src/designer.ts` | 页面操作、场景初始化与清理、数据快照和调试入口 |
+| `src/designer-parameters.ts` | 处理参数编辑、构件选型、自定义檩条分段和逐跨拉杆布置 |
 | `src/report.ts` | 计算结果、提示和图纸核对数据 |
 | `启动预览.bat` | Windows 本地预览入口 |
 | `src/core.ts` | 单位、向量、矩阵工具、实例化及共享状态 |
@@ -193,8 +194,10 @@ ES Modules 需要通过 HTTP 加载，直接双击 `index.html` 使用 `file://`
 | `src/section-geometry.ts` | 独立截面轮廓、单位长度杆件和剖切封口；支持 C 型钢与圆管几何 |
 | `src/brace-layout.ts` | 双立柱斜撑连接孔布局、截面变化引起的板位偏移，以及由孔位推导的杆件端点和长度 |
 | `src/bracket.ts` | `createBracket(parameters, dependencies)`：注入构件、求解器与剖切范围，返回模型分组、求解结果和布置；不挂载场景或刷新界面 |
-| `src/dims.ts` / `src/joint-detail.ts` | 尺寸标注及节点引线 |
+| `src/dims.ts` / `src/dimension-graphics.ts` | 各视图的尺寸标注，以及共用的尺寸线、文字精灵和材质 |
+| `src/joint-detail.ts` / `src/joint-annotations.ts` | 各连接节点的详图规格及其尺寸和引线绘制 |
 | `src/view.ts` | 视图显隐、剖切、相机取景及动画 |
+| `src/camera-framing.ts` | 节点投影边界，以及容纳拉杆与文字标注所需的相机缩放 |
 | `src/edit.ts` | 3D 尺寸拾取、原位编辑及编辑事件清理 |
 | `src/main.ts` | 创建并挂载 Vue 应用，加载全局样式 |
 | `package.json` / `yarn.lock` | Yarn 脚本、Vue、three.js 和 Vite 依赖及锁定版本 |

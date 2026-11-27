@@ -1,5 +1,6 @@
+import { DimSet, dimensionMaterials, disposeDimensions } from './dimension-graphics.ts';
 import { getScene } from './scene.ts';
-import { FONT, V, V3, MM, DEG, track, ewPlace, shared, getBuiltState } from './core.ts';
+import { V, V3, MM, DEG, ewPlace, shared, getBuiltState } from './core.ts';
 import { P } from './model-parameters.ts';
 import { build as jointDetailBuild } from './joint-detail.ts';
 import * as THREE from 'three';
@@ -8,105 +9,11 @@ import type { Solution, EWLayout } from './solve.ts';
 
 /* 尺寸标注：侧视、东西向、垂直组件视图的标注；文字精灵保持固定屏幕像素大小。连接节点详图见 joint-detail.ts */
 
-const dimLineMat = new THREE.LineBasicMaterial({ color: 0x2f9e44, depthTest: false, transparent: true });
-const refLineMat = new THREE.LineBasicMaterial({ color: 0x7d8790, depthTest: false, transparent: true });
-const groundLineMat = new THREE.LineBasicMaterial({ color: 0x8a6a35, depthTest: false, transparent: true });
-const centerLineMat = new THREE.LineDashedMaterial({ color: 0xd23b3b, dashSize: 0.016, gapSize: 0.006, depthTest: false, transparent: true });
-const purlinLineMat = new THREE.LineBasicMaterial({ color: 0x1f5c34, depthTest: false, transparent: true });
-const beamLineMat = new THREE.LineBasicMaterial({ color: 0xd8861a, depthTest: false, transparent: true });
-const dashMat = new THREE.LineDashedMaterial({ color: 0x7d8790, dashSize: 0.08, gapSize: 0.06, depthTest: false, transparent: true });
-const KIND = { in: '#1958d0', out: '#1f1f1f', ref: '#5f6873' };
-
-type LabelKind = keyof typeof KIND;
-
-function makeLabel(text: string | number, kind: LabelKind, px?: number) {
-  const fs = 40;
-  const padX = 12;
-  const padY = 6;
-  const cv = document.createElement('canvas');
-  const g = cv.getContext('2d')!;
-  g.font = `600 ${fs}px ${FONT}`;
-  const w = Math.ceil(g.measureText(String(text)).width) + padX * 2;
-  const h = fs + padY * 2;
-  cv.width = w;
-  cv.height = h;
-  g.font = `600 ${fs}px ${FONT}`;
-  g.fillStyle = 'rgba(255,255,255,0.86)';
-  const r = 10;
-  g.beginPath();
-  g.moveTo(r, 0);
-  g.arcTo(w, 0, w, h, r);
-  g.arcTo(w, h, 0, h, r);
-  g.arcTo(0, h, 0, 0, r);
-  g.arcTo(0, 0, w, 0, r);
-  g.fill();
-  g.fillStyle = KIND[kind] || KIND.out;
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText(String(text), w / 2, h / 2 + 2);
-
-  const tex = new THREE.CanvasTexture(cv);
-  tex.minFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
-  track(tex, mat);
-  const sp = new THREE.Sprite(mat);
-  sp.renderOrder = 1001;
-  sp.userData = { aspect: w / h, px: px || 15 };
-  shared.labels.push(sp);
-  return sp;
-}
-
 /** 标记可点击编辑的蓝字标注对应参数。 */
 function editable<T extends THREE.Sprite | { label: THREE.Sprite }>(d: T, k: keyof typeof P): T {
   const sprite = d instanceof THREE.Sprite ? d : d.label;
   sprite.userData.edit = k;
   return d;
-}
-
-class DimSet {
-  group = new THREE.Group();
-  pos: number[] = [];
-  dash: number[] = [];
-
-  seg(a: THREE.Vector3, b: THREE.Vector3, dashed = false) {
-    (dashed ? this.dash : this.pos).push(a.x, a.y, a.z, b.x, b.y, b.z);
-  }
-
-  label(text: string | number, at: THREE.Vector3, kind: LabelKind, px?: number) {
-    const l = makeLabel(text, kind, px);
-    l.position.copy(at);
-    this.group.add(l);
-    return l;
-  }
-
-  /** a、b 为被测点，off 为尺寸线相对被测点的偏移（米）；k 为界线留空、出头和斜短线的比例。 */
-  dim(a: THREE.Vector3, b: THREE.Vector3, off: THREE.Vector3, text: string | number, kind: LabelKind, px?: number, k = 1) {
-    const on = off.clone().normalize();
-    const A = a.clone().add(off);
-    const B = b.clone().add(off);
-    this.seg(a.clone().addScaledVector(on, 0.03 * k), A.clone().addScaledVector(on, 0.05 * k));
-    this.seg(b.clone().addScaledVector(on, 0.03 * k), B.clone().addScaledVector(on, 0.05 * k));
-    this.seg(A, B);
-    const tick = B.clone().sub(A).normalize().add(on).normalize().multiplyScalar(0.045 * k);
-    this.seg(A.clone().sub(tick), A.clone().add(tick));
-    this.seg(B.clone().sub(tick), B.clone().add(tick));
-    const label = this.label(text, A.clone().add(B).multiplyScalar(0.5), kind, px);
-    return { label, A, B };
-  }
-
-  finish(lineMat: THREE.LineBasicMaterial, dashLineMat?: THREE.LineBasicMaterial) {
-    for (const [arr, mat] of [[this.pos, lineMat], [this.dash, dashLineMat || dashMat]] as const) {
-      if (!arr.length) continue;
-      const g = track(new THREE.BufferGeometry());
-      g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-      const ls = new THREE.LineSegments(g, mat);
-      if (mat instanceof THREE.LineDashedMaterial) ls.computeLineDistances();
-      ls.renderOrder = 1000;
-      this.group.add(ls);
-    }
-    return this.group;
-  }
 }
 
 function addFrameDimensions(
@@ -258,7 +165,7 @@ function addNormalDimensions(S: Solution, layout: EWLayout, nrm: DimSet, topCuts
     const mid = nb - 2;
     const text =
       P.pitchEnd === P.pitch || nb < 2
-        ? `${nb} × ${P.pitch === P.pitchEnd || nb < 3 ? P.pitchEnd : P.pitch}`
+        ? `${nb} × ${P.pitchEnd}`
         : mid > 0
           ? `${P.pitchEnd} + ${mid} × ${P.pitch} + ${P.pitchEnd}`
           : `${P.pitchEnd} + ${P.pitchEnd}`;
@@ -292,15 +199,15 @@ function build() {
   addNormalDimensions(S, layout, nrm, topCuts, purlinLines, beamLines);
 
   const jointG = jointDetailBuild(S, layout);
-  const deepG = deep.finish(dimLineMat);
+  const deepG = deep.finish(dimensionMaterials.line);
   const sideG = new THREE.Group();
-  sideG.add(side.finish(dimLineMat), ref.finish(refLineMat), deepG);
+  sideG.add(side.finish(dimensionMaterials.line), ref.finish(dimensionMaterials.reference), deepG);
   const keyG = new THREE.Group();
-  keyG.add(key.finish(dimLineMat), groundLine.finish(groundLineMat));
-  const ewG = ew.finish(dimLineMat);
-  const normalG = nrm.finish(dimLineMat);
-  const topCutsG = topCuts.finish(dimLineMat);
-  normalG.add(purlinLines.finish(purlinLineMat), beamLines.finish(beamLineMat));
+  keyG.add(key.finish(dimensionMaterials.line), groundLine.finish(dimensionMaterials.ground));
+  const ewG = ew.finish(dimensionMaterials.line);
+  const normalG = nrm.finish(dimensionMaterials.line);
+  const topCutsG = topCuts.finish(dimensionMaterials.line);
+  normalG.add(purlinLines.finish(dimensionMaterials.purlin), beamLines.finish(dimensionMaterials.beam));
 
   // 东西坡度：侧视标注跟着最东一榀平移，东西向、垂直组件视图的标注顺坡
   const zLast = layout.zs[layout.zs.length - 1];
@@ -320,20 +227,20 @@ const labelRight = new V3();
 const labelParentInverse = new THREE.Matrix3();
 
 function updateLabels(cam: THREE.PerspectiveCamera | THREE.OrthographicCamera, viewport: Pick<HTMLElement, 'clientHeight' | 'clientWidth'> = getScene().canvas) {
-  const hpx = viewport.clientHeight || 1;
-  const k = (shared.state.labelK = viewport.clientWidth < 520 ? 1.0 : 1.25);
-  const collapsed = new Set();
+  const viewportHeight = viewport.clientHeight || 1;
+  const labelScale = viewport.clientWidth < 520 ? 1 : 1.25;
+  shared.state.labelK = labelScale;
+  const perspective = cam instanceof THREE.PerspectiveCamera;
+  const viewHeight = perspective ? 2 * Math.tan(cam.fov * DEG / 2) : (cam.top - cam.bottom) / cam.zoom;
+  const unitsPerPixel = viewHeight / viewportHeight;
+  const collapsed = new Set<string>();
   cam.getWorldDirection(camDir);
 
   for (const sp of shared.labels) {
     sp.getWorldPosition(tmpV);
-    const wpp =
-      cam instanceof THREE.PerspectiveCamera
-        ? (2 * Math.max(0.05, tmpV.sub(cam.position).dot(camDir)) * Math.tan((cam.fov * DEG) / 2)) / hpx
-        : (cam.top - cam.bottom) / cam.zoom / hpx;
-
+    const wpp = perspective ? unitsPerPixel * Math.max(0.05, tmpV.sub(cam.position).dot(camDir)) : unitsPerPixel;
     const ud = sp.userData;
-    const hgt = ud.px * k * wpp;
+    const hgt = ud.px * labelScale * wpp;
     const w = hgt * ud.aspect;
     sp.scale.set(w, hgt, 1);
 
@@ -355,12 +262,6 @@ function updateLabels(cam: THREE.PerspectiveCamera | THREE.OrthographicCamera, v
   }
 }
 
-const mats = { line: dimLineMat, center: centerLineMat };
-
-function disposeDimensions() {
-  for (const material of [dimLineMat, refLineMat, groundLineMat, centerLineMat, purlinLineMat, beamLineMat, dashMat]) {
-    material.dispose();
-  }
-}
+const mats = { line: dimensionMaterials.line, center: dimensionMaterials.center };
 
 export { build, updateLabels, disposeDimensions, DimSet, mats };

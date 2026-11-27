@@ -1,24 +1,31 @@
 import { getScene, tryGetScene } from './scene.ts';
 import { M, ghostModules, ghostMat, applyPalette } from './materials.ts';
 import { show, P } from './model-parameters.ts';
-import { EY, V, V3, MM, DEG, ewMatrix, shared, track, getBuiltState } from './core.ts';
+import { V, V3, MM, DEG, ewMatrix, shared, track, getBuiltState } from './core.ts';
 import * as THREE from 'three';
 import { setFlatFrameDisplay } from './frame-projection.ts';
 import { createClippingCaps } from './clipping-caps.ts';
 import { createTieJointFocus } from './tie-joint-focus.ts';
+import { projectedFrame, screenAxes, tieJointPose, type CameraPose } from './camera-framing.ts';
 
 import type { SectionRangeLayout } from './bracket.ts';
 import type { PlanarJointSpec, JointType, TieJointSpec, TieJointType, ViewName } from './joint-view-types.ts';
 
 type SceneCamera = THREE.OrthographicCamera | THREE.PerspectiveCamera;
-type CameraPose = { target: THREE.Vector3; dir: THREE.Vector3; zoom: number };
-type ZoomFrame = { t: THREE.Vector3; off: THREE.Vector3; z: number };
+type CameraFrame = { target: THREE.Vector3; distance: number; zoom: number };
+type CameraTransition = {
+  from: CameraFrame;
+  to: CameraFrame;
+  direction: THREE.Vector3;
+  rotation: THREE.Quaternion;
+  startedAt: number;
+};
 
 /* 视角与显示：各视图下显示哪些部分、相机取景和切换动画 */
 const st = shared.state;
 
 let cam: SceneCamera | null = null;
-let tween: { from: ZoomFrame; to: ZoomFrame; t0: number; dur: number } | null = null;
+let tween: CameraTransition | null = null;
 let lastTiePose: CameraPose | null = null;
 
 // ---------- 剖切范围与辅助判断 ----------
@@ -211,11 +218,6 @@ function applyVisibility() {
 
 // ---------- 相机取景与包围盒 ----------
 
-function screenAxes(dir: THREE.Vector3) {
-  const right = new V3().crossVectors(EY, dir).normalize(); // 相机在 target + dir 一侧、朝 -dir 看
-  return [right, new V3().crossVectors(dir, right).normalize()];
-}
-
 function jointClipPlanes(sp: TieJointSpec) {
   const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
   return (
@@ -228,79 +230,6 @@ function jointClipPlanes(sp: TieJointSpec) {
       [new V3(0, 0, -1), z1],
     ] as const
   ).map(([normal, offset]) => new THREE.Plane(normal, offset * MM).applyMatrix4(sp.matrix));
-}
-
-function tieJointPose(sp: TieJointSpec, name: ViewName): CameraPose {
-  const { canvas, controls } = getScene();
-  const localDirection = new V3(...(name === 'joint-elev' ? [0, 0, 1] : sp.isoDirection ?? [0.5, 0.35, 1]));
-  const dir = localDirection.applyMatrix3(new THREE.Matrix3().getNormalMatrix(sp.matrix)).normalize();
-  const [right, up] = screenAxes(dir);
-  const origin = new V3().setFromMatrixPosition(sp.matrix);
-  const points: { x: number; y: number; left: number; right: number; bottom: number; top: number }[] = [];
-
-  const project = (local: THREE.Vector3, left = 0, rightEdge = 0, bottom = 0, top = 0) => {
-    const offset = local.clone().applyMatrix4(sp.matrix).sub(origin);
-    points.push({ x: offset.dot(right), y: offset.dot(up), left, right: rightEdge, bottom, top });
-  };
-
-  const [x0, x1, y0, y1, z0, z1] = sp.clipBox;
-  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) project(V(x, y, z));
-
-  const cw = canvas.clientWidth || 1;
-  const ch = canvas.clientHeight || 1;
-  if (show.dims) {
-    const annotations = st.dims?.joint.children.find((group) => group.userData.joint === st.jointType + st.jointSel);
-    annotations?.traverseVisible((object) => {
-      if (object instanceof THREE.LineSegments) {
-        const vertices = object.geometry.attributes.position;
-        for (let i = 0; i < vertices.count; i++) project(new V3().fromBufferAttribute(vertices, i));
-      }
-      if (!(object instanceof THREE.Sprite)) return;
-      const { outside, px, aspect } = object.userData;
-      const height = px * (cw < 520 ? 1 : 1.25);
-      const width = height * aspect;
-      // 与 updateLabels 一致：引线文字沿屏幕水平外移，尺寸文字沿本地尺寸轴外移。
-      const shift = outside.screenSide
-        ? right.clone().multiplyScalar(outside.screenSide)
-        : outside.dir.clone().applyMatrix3(new THREE.Matrix3().setFromMatrix4(sp.matrix));
-      shift.multiplyScalar(width / 2 + 6);
-      const dx = shift.dot(right);
-      const dy = shift.dot(up);
-      project(outside.at, dx - width / 2, dx + width / 2, dy - height / 2, dy + height / 2);
-    });
-  }
-
-  const top = (canvas.parentElement?.querySelector<HTMLElement>('#bar')?.offsetHeight ?? 0) + 12;
-  const bottom = (canvas.parentElement?.querySelector<HTMLElement>('#legend')?.offsetHeight ?? 0) + 24;
-  const width = cw - (cw < 520 ? 24 : 64);
-  const height = Math.max(24, ch - top - bottom);
-
-  // 模型随相机缩放，文字保持像素大小。用二者的实际投影求能完整显示的最大比例。
-  const bounds = (scale: number) => {
-    const box = new THREE.Box2();
-    for (const p of points) {
-      box.min.x = Math.min(box.min.x, p.x * scale + p.left);
-      box.max.x = Math.max(box.max.x, p.x * scale + p.right);
-      box.min.y = Math.min(box.min.y, p.y * scale + p.bottom);
-      box.max.y = Math.max(box.max.y, p.y * scale + p.top);
-    }
-    return box;
-  };
-
-  let scale = 1;
-  let limit = Math.min(3000, (controls.maxZoom * ch) / 2); // px/m，至多 3 px/mm
-  for (let i = 0; i < 14; i++) {
-    const mid = (scale + limit) / 2;
-    const size = bounds(mid).getSize(new THREE.Vector2());
-    if (size.x <= width && size.y <= height) scale = mid;
-    else limit = mid;
-  }
-
-  const center = bounds(scale).getCenter(new THREE.Vector2());
-  const target = origin
-    .addScaledVector(right, center.x / scale)
-    .addScaledVector(up, (center.y + (top - bottom) / 2) / scale);
-  return { target, dir, zoom: (2 * scale) / ch };
 }
 
 function normalViewPose(canvas: HTMLCanvasElement): CameraPose {
@@ -318,19 +247,10 @@ function normalViewPose(canvas: HTMLCanvasElement): CameraPose {
       points.push(V(q.x, q.y, z).addScaledVector(n, (S.hModBot + P.modT) * MM));
     }
   }
-  const xs = points.map((p) => p.dot(right));
-  const ys = points.map((p) => p.dot(up));
-  const x0 = Math.min(...xs);
-  const x1 = Math.max(...xs);
-  const y0 = Math.min(...ys);
-  const y1 = Math.max(...ys);
-  const target = points[0]
-    .clone()
-    .addScaledVector(right, (x0 + x1) / 2 - xs[0])
-    .addScaledVector(up, (y0 + y1) / 2 - ys[0]);
+  const { target, size } = projectedFrame(points, right, up);
   const pw = Math.max(80, canvas.clientWidth - 128);
   const ph = Math.max(80, canvas.clientHeight - 144);
-  const half = (Math.max((x1 - x0) / pw, (y1 - y0) / ph) * canvas.clientHeight) / 2;
+  const half = (Math.max(size.x / pw, size.y / ph) * canvas.clientHeight) / 2;
   return { target, dir, zoom: 1 / half };
 }
 
@@ -360,29 +280,24 @@ function spliceJointPose(
     points.push(V(x, y, pz ?? sp.zl ?? z).applyMatrix4(W));
     points.push(V(sp.anchorX, ly, sp.zl ?? z).applyMatrix4(W));
   }
-  const xs = points.map((p) => p.dot(right));
-  const ys = points.map((p) => p.dot(up));
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const scale = Math.max(0.05, Math.min(2.5, (cw - labelPx - 40) / ((maxX - minX) / MM), (ch - 190) / ((maxY - minY) / MM)));
-  const target = points[0]
-    .clone()
-    .addScaledVector(right, (minX + maxX) / 2 - xs[0] + ((labelPx / 2 / scale) * MM))
-    .addScaledVector(up, (minY + maxY) / 2 - ys[0]);
+  const { target, size } = projectedFrame(points, right, up);
+  const scale = Math.max(0.05, Math.min(2.5, (cw - labelPx - 40) / (size.x / MM), (ch - 190) / (size.y / MM)));
+  target.addScaledVector(right, (labelPx / 2 / scale) * MM);
   return { target, dir, zoom: 1 / ((ch / 2 / scale) * MM) };
 }
 
 function framePose(name: ViewName): CameraPose {
-  const { canvas } = getScene();
+  const { canvas, controls } = getScene();
   const { S, layout } = getBuiltState();
   if (name === 'normal') return normalViewPose(canvas);
 
   const sp = layout.jointSpecs?.[st.jointType][st.jointSel];
   if (!sp) throw new Error('连接节点尚未构建');
   if (sp.matrix) {
-    lastTiePose = tieJointPose(sp, name);
+    const annotations = show.dims
+      ? st.dims?.joint.children.find(group => group.userData.joint === st.jointType + st.jointSel)
+      : undefined;
+    lastTiePose = tieJointPose(sp, name, canvas, annotations, controls.maxZoom);
     return lastTiePose;
   }
 
@@ -514,7 +429,7 @@ function setView(name: ViewName, instant = false) {
     const dir = new V3(-1, 0.68, 1.25).normalize();
     const vf = persp.fov * DEG;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * aspect);
-    const dist = (visibleBox([model]).getSize(new V3()).length() / 2 / Math.sin(Math.min(vf, hf) / 2)) * (aspect < 1 ? 0.95 : 0.86);
+    const dist = (size.length() / 2 / Math.sin(Math.min(vf, hf) / 2)) * (aspect < 1 ? 0.95 : 0.86);
     goTo(persp, ctr.clone().addScaledVector(dir, dist), ctr, null, instant);
     return;
   }
@@ -538,21 +453,25 @@ function setView(name: ViewName, instant = false) {
   goTo(ortho, ctr.clone().addScaledVector(dir, 60), ctr, 1 / half, instant);
 }
 
+// 在正交和透视之间切换时，先匹配旧相机的朝向和画面比例。
+function matchProjection(previous: SceneCamera, next: SceneCamera, target: THREE.Vector3, fov: number) {
+  const halfFovTangent = Math.tan((fov * DEG) / 2);
+  const dir = previous.position.clone().sub(target).normalize();
+  if (next instanceof THREE.OrthographicCamera) {
+    next.zoom = 1 / (previous.position.distanceTo(target) * halfFovTangent);
+    next.position.copy(target).addScaledVector(dir, 60);
+  } else {
+    next.position.copy(target).addScaledVector(dir, 1 / (previous.zoom * halfFovTangent));
+  }
+  next.updateProjectionMatrix();
+  next.lookAt(target);
+}
+
 function goTo(next: SceneCamera, pos: THREE.Vector3, target: THREE.Vector3, zoom: number | null, instant: boolean) {
   const { persp, controls } = getScene();
   if (!cam) return;
-  const fovT = Math.tan((persp.fov * DEG) / 2);
   if (next !== cam) {
-    // 换相机时保持当前朝向与画面比例，过渡才连贯
-    const dir = cam.position.clone().sub(controls.target).normalize();
-    if (next instanceof THREE.OrthographicCamera) {
-      next.zoom = 1 / (cam.position.distanceTo(controls.target) * fovT);
-      next.position.copy(controls.target).addScaledVector(dir, 60);
-    } else {
-      next.position.copy(controls.target).addScaledVector(dir, 1 / (cam.zoom * fovT));
-    }
-    next.updateProjectionMatrix();
-    next.lookAt(controls.target);
+    matchProjection(cam, next, controls.target, persp.fov);
     cam = next;
     controls.object = next;
   }
@@ -567,34 +486,34 @@ function goTo(next: SceneCamera, pos: THREE.Vector3, target: THREE.Vector3, zoom
     tween = null;
     return;
   }
+  const fromOffset = cam.position.clone().sub(controls.target);
+  const toOffset = pos.clone().sub(target);
+  const direction = fromOffset.clone().normalize();
   tween = {
-    from: { off: cam.position.clone().sub(controls.target), t: controls.target.clone(), z: cam.zoom },
-    to: { off: pos.clone().sub(target), t: target.clone(), z: zoom || cam.zoom },
-    t0: performance.now(),
-    dur: 700,
+    from: { target: controls.target.clone(), distance: fromOffset.length(), zoom: cam.zoom },
+    to: { target: target.clone(), distance: toOffset.length(), zoom: zoom || cam.zoom },
+    direction,
+    rotation: new THREE.Quaternion().setFromUnitVectors(direction, toOffset.normalize()),
+    startedAt: performance.now(),
   };
 }
 
 function stepTween(now: number) {
   const { controls } = getScene();
   if (!tween || !cam) return;
-  const k = Math.min(1, (now - tween.t0) / tween.dur);
-  const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-  const f = tween.from;
-  const t = tween.to;
-  const d0 = f.off.clone().normalize();
-  const d1 = t.off.clone().normalize();
-  const q = new THREE.Quaternion().setFromUnitVectors(d0, d1);
-  const qe = new THREE.Quaternion().slerp(q, e);
-  const len = f.off.length() + (t.off.length() - f.off.length()) * e;
-  controls.target.lerpVectors(f.t, t.t, e);
-  cam.position.copy(controls.target).add(d0.applyQuaternion(qe).multiplyScalar(len));
+  const { from, to, direction, rotation, startedAt } = tween;
+  const progress = Math.min(1, (now - startedAt) / 700);
+  const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
+  const turn = new THREE.Quaternion().slerp(rotation, eased);
+  const distance = from.distance + (to.distance - from.distance) * eased;
+  controls.target.lerpVectors(from.target, to.target, eased);
+  cam.position.copy(direction).applyQuaternion(turn).multiplyScalar(distance).add(controls.target);
   if (cam instanceof THREE.OrthographicCamera) {
-    cam.zoom = f.z * Math.pow(t.z / f.z, e);
+    cam.zoom = from.zoom * (to.zoom / from.zoom) ** eased;
     cam.updateProjectionMatrix();
   }
   cam.lookAt(controls.target);
-  if (k >= 1) {
+  if (progress >= 1) {
     tween = null;
     controls.update();
   }

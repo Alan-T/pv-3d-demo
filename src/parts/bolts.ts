@@ -13,6 +13,11 @@ const BOLT_SIZE = {
 
 type BoltSizeKey = keyof typeof BOLT_SIZE;
 type BoltPartPair = [THREE.BufferGeometry, THREE.Material];
+interface BoltBatch {
+  kind: string;
+  parts: BoltPartPair[];
+  matrices: THREE.Matrix4[];
+}
 type BoltKindOptions = {
   len?: number;
   headWasher?: boolean;
@@ -25,6 +30,25 @@ type SlotOptions = { at: number[]; len: number; width?: number } | null;
 
 // 组件螺栓、压块螺栓跟着檩条顺坡（东西坡度），其余在各榀上。
 const SLOPE_KINDS = new Set(['splice', 'module', 'clampMid', 'clampSide']);
+const ROUND_HOLE_KINDS = new Set(['btop', 'postTie', 'purlinTie', 'splice']);
+const HEAD_WASHER_KINDS = new Set(['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie', 'splice']);
+const M8_KINDS = new Set(['module', 'clampMid', 'clampSide']);
+
+function countBoltSets(batches: Record<string, BoltBatch>) {
+  const counts = {
+    m16: 0, m12: 0, spliceBolts: 0, purlinTieBolts: 0,
+    m8: batches.module.matrices.length,
+    m8c: batches.clampMid.matrices.length + batches.clampSide.matrices.length,
+  };
+  for (const { kind, matrices } of Object.values(batches)) {
+    const count = matrices.length;
+    if (kind === 'top') counts.m16 += count;
+    else if (!M8_KINDS.has(kind)) counts.m12 += count;
+    if (kind === 'splice') counts.spliceBolts += count;
+    if (kind === 'purlinTie') counts.purlinTieBolts += count;
+  }
+  return counts;
+}
 
 /** 弹垫：开口的圆环，开口在局部 x-y 平面的左上方（节点正视图里看得见），从 z0 起厚 sw.t。 */
 function createSpringWasherGeometry(sw: { ri: number; ro: number; t: number }, z0: number) {
@@ -130,17 +154,13 @@ export class BoltsPart {
     this.track = track;
 
     // 立柱、内外斜撑连接螺栓由 add() 按各构件实际板厚动态生成。
+    const m12 = { len: 35, headWasher: true, spring: true };
     this.standardKinds = {
-      clip: this.boltKind(12, CLIP.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }),
-      clipWeb: this.boltKind(12, CLIP.t + purlinSection.t, null, { len: 35, headWasher: true, spring: true }),
-      purlinBeam: this.boltKind(12, purlinSection.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }),
-      splice: this.boltKind(12, purlinSection.t + 3, null, { len: 35, headWasher: true, spring: true }),
-      module: this.boltKind(8, purlinSection.t + 2, null, {
-        len: 22,
-        headWasher: true,
-        spring: true,
-        nutWasher: { radius: 12, thickness: 2 },
-      }),
+      clip: this.boltKind(12, CLIP.t + beamSection.t, null, m12),
+      clipWeb: this.boltKind(12, CLIP.t + purlinSection.t, null, m12),
+      purlinBeam: this.boltKind(12, purlinSection.t + beamSection.t, null, m12),
+      splice: this.boltKind(12, purlinSection.t + 3, null, m12),
+      module: this.moduleBolt(false),
     };
   }
 
@@ -201,6 +221,28 @@ export class BoltsPart {
     return parts;
   }
 
+  private moduleBolt(serratedHeadWasher: boolean) {
+    return this.boltKind(8, this.purlinSection.t + 2, null, {
+      len: 22, headWasher: true, serratedHeadWasher, spring: true,
+      nutWasher: { radius: 12, thickness: 2 },
+    });
+  }
+
+  /** 上节点的夹紧厚度包含斜梁腹板，其余节点直接使用传入的叠层厚度。 */
+  private connectionBolt(kind: string, thickness: number) {
+    const postTop = kind === 'top';
+    const stack = postTop || kind === 'btop' ? thickness + this.beamSection.t : thickness;
+    let slot: SlotOptions = null;
+    if (postTop) {
+      slot = { at: [-this.beamSection.t, -stack - 0.4], len: 40, width: 18 };
+    } else if (!ROUND_HOLE_KINDS.has(kind)) {
+      slot = { at: [-stack - 0.4], len: BRACE_JOINT.slotL, width: BRACE_JOINT.slotW };
+    }
+    return this.boltKind(postTop ? 16 : 12, stack, slot, {
+      len: postTop ? 40 : 35, headWasher: HEAD_WASHER_KINDS.has(kind), spring: true,
+    });
+  }
+
   /** 按组件厚度缓存压块 M8 内六角螺栓几何体。 */
   private getKinds(modT: number): Record<string, BoltPartPair[]> {
     if (!this.clampKinds[modT]) {
@@ -222,69 +264,37 @@ export class BoltsPart {
 
   /** 创建单次重建的螺栓收集器：add() 登记一颗螺栓，flush() 实例化绘制并统计套数。 */
   collector(modT: number, { moduleSerratedWasher = false } = {}) {
-    const K = this.getKinds(modT);
-    const mats: Record<string, THREE.Matrix4[]> = {};
+    const kinds = this.getKinds(modT);
     if (moduleSerratedWasher) {
-      this.serratedModule ??= this.boltKind(8, this.purlinSection.t + 2, null, {
-        len: 22,
-        headWasher: true,
-        serratedHeadWasher: true,
-        spring: true,
-        nutWasher: { radius: 12, thickness: 2 },
-      });
-      K.module = this.serratedModule;
+      this.serratedModule ??= this.moduleBolt(true);
+      kinds.module = this.serratedModule;
     }
-    for (const k in K) mats[k] = [];
+    const batches: Record<string, BoltBatch> = {};
+    for (const [kind, parts] of Object.entries(kinds)) {
+      batches[kind] = { kind, parts, matrices: [] };
+    }
 
     return {
       /** axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）。 */
       add: (kind: string, p: THREE.Vector3, axis: THREE.Vector3, up: THREE.Vector3, thickness?: number) => {
-        if (thickness !== undefined) {
-          const base = kind;
-          const key = `${base}:${thickness}`;
-          if (!K[key]) {
-            const stack = base === 'top' || base === 'btop' ? thickness + this.beamSection.t : thickness;
-            const slot = ['btop', 'postTie', 'purlinTie', 'splice'].includes(base)
-              ? null
-              : {
-                  at: base === 'top' ? [-this.beamSection.t, -stack - 0.4] : [-stack - 0.4],
-                  len: base === 'top' ? 40 : BRACE_JOINT.slotL,
-                  width: base === 'top' ? 18 : BRACE_JOINT.slotW,
-                };
-            K[key] = this.boltKind(base === 'top' ? 16 : 12, stack, slot, {
-              len: base === 'top' ? 40 : 35,
-              headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie', 'splice'].includes(base),
-              spring: true,
-            });
-            mats[key] = [];
-          }
-          kind = key;
+        const key = thickness === undefined ? kind : `${kind}:${thickness}`;
+        if (thickness !== undefined && !batches[key]) {
+          batches[key] = { kind, parts: this.connectionBolt(kind, thickness), matrices: [] };
         }
         const z = axis.clone().normalize();
         const y = up.clone().normalize();
         const x = new V3().crossVectors(y, z);
-        mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
+        batches[key].matrices.push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
       },
 
       flush(parent: THREE.Object3D, slopeParent: THREE.Object3D, purlinTieParent = slopeParent) {
-        for (const k in K) {
-          const base = k.split(':')[0];
-          const target = base === 'purlinTie' ? purlinTieParent : SLOPE_KINDS.has(base) ? slopeParent : parent;
-          for (const [g, mat] of K[k]) instanced(target, g, mat, mats[k]);
+        for (const { kind, parts, matrices } of Object.values(batches)) {
+          let target = parent;
+          if (kind === 'purlinTie') target = purlinTieParent;
+          else if (SLOPE_KINDS.has(kind)) target = slopeParent;
+          for (const [geometry, material] of parts) instanced(target, geometry, material, matrices);
         }
-        const countByBase = (predicate: (base: string) => boolean) =>
-          Object.keys(mats)
-            .filter((k) => predicate(k.split(':')[0]))
-            .reduce((sum, k) => sum + mats[k].length, 0);
-
-        return {
-          m16: countByBase((b) => b === 'top'),
-          m12: countByBase((b) => !['top', 'module', 'clampMid', 'clampSide'].includes(b)),
-          spliceBolts: countByBase((b) => b === 'splice'),
-          purlinTieBolts: countByBase((b) => b === 'purlinTie'),
-          m8: mats.module.length,
-          m8c: mats.clampMid.length + mats.clampSide.length,
-        };
+        return countBoltSets(batches);
       },
     };
   }
