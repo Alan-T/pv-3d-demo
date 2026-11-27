@@ -119,6 +119,12 @@ function build() {
     groundLine.seg(v(gx0, S.gy(gx0)), v(gx1, S.gy(gx1)));
     ed(groundLine.label(`${up ? '南向坡' : '北向坡'} ${Math.abs(P.slopeNS)}%`, v(gx1 + 380, S.gy(gx1) + (up ? 40 : -40)), 'in', 13), 'slopeNS');
     side.dim(v(S.xr, 0), v(S.xr, S.gR), off(620, 0), r(Math.abs(S.gR)), 'out');
+    if (!P.alongSlope) {
+      ref.seg(v(gx0, -S.gy(gx0)), v(gx1, -S.gy(gx1)), true);
+      ref.label(`反向参考 · ${up ? '北向坡' : '南向坡'} ${Math.abs(P.slopeNS)}%`,
+        v(S.xr, -S.gR + (up ? -120 : 120)), 'ref', 13);
+      side.dim(v(S.xr, 0), v(S.xr, -S.gR), off(620, 0), r(Math.abs(S.gR)), 'out');
+    }
   }
 
   // 高度与间距
@@ -157,7 +163,7 @@ function build() {
 
   // 地下部分
   ed(deep.dim(v(S.xf, S.botF), v(S.xf, 0), off(230, 0), P.embed, 'in'), 'embed');
-  ed(deep.dim(v(S.xr, S.botR), v(S.xr, S.gR), off(-260, 0), P.embed, 'in'), 'embed');   // 后柱从实际地面埋深
+  ed(deep.dim(v(S.xr, S.botR), v(S.xr, S.embedLevelR), off(-260, 0), P.embed, 'in'), 'embed');
   deep.dim(v(S.xf, S.botF), v(S.xf, S.topF), off(-470, 0), r(S.lenF), 'out');
   deep.dim(v(S.xr, S.botR), v(S.xr, S.topR), off(480, 0), r(S.lenR), 'out');
 

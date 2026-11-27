@@ -6,7 +6,7 @@ type StoredLayout = LayoutPreset & Partial<Record<PurlinAccessory, string>> & {
 };
 
 import { PURLIN_ACCESSORY_KEYS } from './config.ts';
-import { getLayoutParameters } from './model-parameters.ts';
+import { getLayoutParameters, splitDrawingPreset } from './model-parameters.ts';
 import { getSectionLibrary, isMemberKey } from './section-spec.ts';
 import { getBraceConnectorPlate, needsSplitBraceConnector } from './brace-connector-spec.ts';
 import { getPurlinDimensions } from './solve.ts';
@@ -49,7 +49,7 @@ export class DrawingLayouts {
   private nextId: number;
 
   constructor(preset: DrawingPreset) {
-    const { layouts, projectInfo, ...shared } = preset;
+    const { layouts, sharedParameters: shared } = splitDrawingPreset(preset);
     if (!layouts.length) throw new RangeError('每张图纸至少需要一种排布');
     this.defaultShared = shared;
     this.defaultLayouts = layouts.map(layout => normalizeLayout(layout, shared.outer));

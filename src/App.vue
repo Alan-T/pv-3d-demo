@@ -5,6 +5,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 
 import { TinyInput } from '@opentiny/vue';
 import { createDesigner, getSnapshot } from './designer.ts';
 import { PRESETS } from './config.ts';
+import { splitDrawingPreset } from './model-parameters.ts';
 import ParameterPanel from './components/ParameterPanel.vue';
 import ViewToolbar from './components/ViewToolbar.vue';
 import TabList from './components/TabList.vue';
@@ -14,7 +15,7 @@ const stage = ref<HTMLElement | null>(null);
 const editor = ref<{ getInput(): HTMLInputElement } | null>(null);
 const dimensionDraft = ref('');
 const snapshot = shallowRef(getSnapshot());
-const projectInfo = ref({ ...PRESETS[snapshot.value.preset].projectInfo });
+const projectInfo = ref(splitDrawingPreset(PRESETS[snapshot.value.preset]).projectInfo);
 const ready = ref(false);
 const rendered = ref(false);
 const failed = ref(false);

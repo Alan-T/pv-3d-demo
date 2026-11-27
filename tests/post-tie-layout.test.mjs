@@ -16,6 +16,28 @@ test('二维孔位规则：整百孔距、柱顶余量优先接近225，低柱�
   assert.deepEqual(postTieHeights({postLength:2100,embed:1500,strutHeight:250}), {topOffset:150,holeRise:0});
 });
 
+test('南北坡向和顺坡选项决定后柱底标高与后排立柱拉杆孔距', () => {
+  const parameters = getPresetParameters(PRESETS.A);
+  const sections = resolveMemberSections(PRESETS.A.layouts[0].sections);
+  // 柱距 3000、埋深 1500。双坡留出 300 mm 高差，计算后排拉杆时扣除该余量。
+  for (const [slopeNS, alongSlope, rearBottom, holeRise] of [
+    [-10, 0, -1800, 1200], [0, 0, -1500, 1200], [10, 0, -1800, 1200],
+    [-10, 1, -1800, 1500], [0, 1, -1500, 1200], [10, 1, -1500, 1200],
+  ]) {
+    const p = { ...parameters, slopeNS, alongSlope };
+    const s = solve(p, sections);
+    assert.equal(s.gR, slopeNS * 30);
+    assert.equal(s.botF, -1500);
+    assert.equal(s.botR, rearBottom);
+    assert.equal(s.lenR, s.topR - rearBottom);
+    const [front, rear] = calculatePostTies(p, s, layoutEW(p, sections));
+    assert.equal(front.holeRise, 100);
+    assert.equal(rear.topOffset, 240);
+    assert.equal(rear.holeRise, holeRise);
+    assert.equal(rear.bottom, s.topR - 240 - holeRise);
+  }
+});
+
 test('安装状态：无、首末跨、全部、自定义；单跨不重复', () => {
   assert.deepEqual(enabledPostTieSpans('ends', [], 1), [true]);
   assert.deepEqual(enabledPostTieSpans('none', [], 3), [false,false,false]);

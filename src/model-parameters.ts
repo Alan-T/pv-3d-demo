@@ -1,5 +1,20 @@
 import { DEFAULTS, DISPLAY_DEFAULTS, PURLIN_ACCESSORY_KEYS } from './config.ts';
-import type { DrawingPreset, LayoutPreset, ModelParameters, PurlinAccessory } from './design-types.ts';
+import type { DrawingPreset, LayoutPreset, ModelParameters, ProjectInfo, PurlinAccessory } from './design-types.ts';
+
+// 表单独立编辑项目资料；切换和重置排布只使用设计参数。
+export function splitDrawingPreset(preset: DrawingPreset) {
+  const {
+    number, version, name, customer, productType, tradeTerm, country, longitude, latitude,
+    designStandard, designMethod, terrainCategory, buildingCategory, windSpeed, snowPressure,
+    elevation, airDensity, designLife, corrosivityCategory, layouts, ...sharedParameters
+  } = preset;
+  const projectInfo: ProjectInfo = {
+    number, version, name, customer, productType, tradeTerm, country, longitude, latitude,
+    designStandard, designMethod, terrainCategory, buildingCategory, windSpeed, snowPressure,
+    elevation, airDensity, designLife, corrosivityCategory,
+  };
+  return { projectInfo, sharedParameters, layouts };
+}
 
 export function getLayoutParameters({ id, label, quantity, sections, materials, ...parameters }:
   LayoutPreset & { id?: string; label?: string } & Partial<Record<PurlinAccessory, string>>) {
@@ -10,7 +25,8 @@ export function getLayoutParameters({ id, label, quantity, sections, materials, 
 }
 
 // 三维模型使用图纸共用参数和当前排布参数的独立副本。
-export function getPresetParameters({ projectInfo, layouts, ...sharedParameters }: DrawingPreset, layout = layouts[0]): ModelParameters {
+export function getPresetParameters(preset: DrawingPreset, layout = preset.layouts[0]): ModelParameters {
+  const { sharedParameters } = splitDrawingPreset(preset);
   return structuredClone({ ...sharedParameters, ...getLayoutParameters(layout) });
 }
 

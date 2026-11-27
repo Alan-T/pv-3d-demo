@@ -162,27 +162,25 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
   // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
     // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
-    projectInfo: {
-      number: '202611041101',
-      version: '1',
-      name: 'Sunel- Romania-Buzoesti-38',
-      customer: '0',
-      productType: '双立柱',
-      tradeTerm: 'DDP',
-      country: 'Romania',
-      longitude: 6,
-      latitude: 52,
-      designStandard: 'US2010(ASCE 7-10)',
-      designMethod: 'ASD',
-      terrainCategory: '3',
-      buildingCategory: 'Ⅱ',
-      windSpeed: 79.167, // m/s
-      snowPressure: 0, // kN/m²
-      elevation: 0, // m
-      airDensity: 1.225, // kg/m³
-      designLife: 25, // 年
-      corrosivityCategory: 'C4',
-    },
+    number: '202611041101',
+    version: '1',
+    name: 'Sunel- Romania-Buzoesti-38',
+    customer: '0',
+    productType: '双立柱',
+    tradeTerm: 'DDP',
+    country: 'Romania',
+    longitude: 6,
+    latitude: 52,
+    designStandard: 'US2010(ASCE 7-10)',
+    designMethod: 'ASD',
+    terrainCategory: '3',
+    buildingCategory: 'Ⅱ',
+    windSpeed: 79.167, // m/s
+    snowPressure: 0, // kN/m²
+    elevation: 0, // m
+    airDensity: 1.225, // kg/m³
+    designLife: 25, // 年
+    corrosivityCategory: 'C4',
 
     // 表面处理，当前图纸的所有排布共用。
     moduleFastenerFinish: '30304',
@@ -216,6 +214,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
     embed: 1500, // 立柱埋深
     slopeNS: 0, // 南北坡度（%），正值北高南低
     slopeEW: 0, // 东西坡度（%），正值东高西低
+    alongSlope: 0, // 只考虑顺坡安装
 
     maxPurlin: 9000, // 檩条切割最大长度
 
@@ -294,27 +293,25 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
   // 图纸二：3 排组件、压块固定、带外斜撑。
   B: {
     // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
-    projectInfo: {
-      number: '202611041101',
-      version: '1',
-      name: 'Sunel- Romania-Buzoesti-38',
-      customer: '0',
-      productType: '双立柱',
-      tradeTerm: 'DDP',
-      country: 'Romania',
-      longitude: 6,
-      latitude: 52,
-      designStandard: 'US2010(ASCE 7-10)',
-      designMethod: 'ASD',
-      terrainCategory: '3',
-      buildingCategory: 'Ⅱ',
-      windSpeed: 79.167, // m/s
-      snowPressure: 0, // kN/m²
-      elevation: 0, // m
-      airDensity: 1.225, // kg/m³
-      designLife: 25, // 年
-      corrosivityCategory: 'C4',
-    },
+    number: '202611041101',
+    version: '1',
+    name: 'Sunel- Romania-Buzoesti-38',
+    customer: '0',
+    productType: '双立柱',
+    tradeTerm: 'DDP',
+    country: 'Romania',
+    longitude: 6,
+    latitude: 52,
+    designStandard: 'US2010(ASCE 7-10)',
+    designMethod: 'ASD',
+    terrainCategory: '3',
+    buildingCategory: 'Ⅱ',
+    windSpeed: 79.167, // m/s
+    snowPressure: 0, // kN/m²
+    elevation: 0, // m
+    airDensity: 1.225, // kg/m³
+    designLife: 25, // 年
+    corrosivityCategory: 'C4',
 
     // 表面处理，当前图纸的所有排布共用。
     moduleFastenerFinish: '30304',
@@ -348,6 +345,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
     embed: 1500, // 立柱埋深
     slopeNS: 0, // 南北坡度（%），正值北高南低
     slopeEW: 0, // 东西坡度（%），正值东高西低
+    alongSlope: 0, // 只考虑顺坡安装
 
     maxPurlin: 9000, // 檩条切割最大长度
 
@@ -463,7 +461,8 @@ export const PARAMETER_FIELDS: ParameterFieldConfig[] = [
   { key: 'pitchEnd', label: '首末跨榀距',    unit: 'mm', min: 1500, max: 4500, step: 100,
     hint: '第 1–2 榀、倒数第 2–1 榀之间的距离' },
   { key: 'slopeNS',  label: '地面南北坡度',    unit: '%',  min: -60,  max: 60,   step: 0.5,
-    hint: '正 = 南向坡（北高南低），负 = 北向坡（北低南高）。前柱处地面为 ±0，后柱按实际地面埋深：后柱总长 = 柱顶高 − 坡度 × 立柱间距 + 埋深' },
+    hint: '正值表示北高南低，负值表示北低南高。前柱处地面为 ±0。勾选“只考虑顺坡安装”时，后柱埋深从输入坡面与水平基线的较低处起算。未勾选时，按正反两个坡向中较低的地面起算。' },
+  { key: 'alongSlope', label: '只考虑顺坡安装', type: 'bool' },
   { key: 'slopeEW', label: '地面东西坡度',  unit: '%',  min: -10,  max: 10,   step: 0.5,
     hint: '正 = 东高西低，负 = 东低西高。各榀立柱竖直、跟着地面抬高，檩条顺坡；榀距、阵列宽、檩条长都是沿檩条量的长度，水平距离 = 长度 ÷ √(1 + 坡度²)' },
 ];

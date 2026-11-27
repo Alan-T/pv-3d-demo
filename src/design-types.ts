@@ -42,6 +42,7 @@ export interface SharedParameters extends Record<SurfaceFinishKey, string> {
   hole: number; rows: number; fix: 'bolt' | 'clamp'; serratedWasher: ToggleValue; clampL: number;
   pileFoundationType: '水泥灌注桩' | '锤入桩' | '水泥台桩' | '螺旋桩';
   tilt: number; h0: number; span: number; embed: number; slopeNS: number; slopeEW: number;
+  alongSlope: ToggleValue;
   maxPurlin: number | string; outer: ToggleValue;
   braceHF: number; braceHR: number; braceTopF: number; braceTopR: number;
   braceOutF: number; braceOutR: number;
@@ -58,8 +59,7 @@ export interface LayoutPreset extends LayoutSettings {
   sections: Record<MaterialKey, string>;
   materials: Record<MaterialKey, string>;
 }
-export interface DrawingPreset extends SharedParameters {
-  projectInfo: ProjectInfo;
+export interface DrawingPreset extends ProjectInfo, SharedParameters {
   layouts: LayoutPreset[];
 }
 export type ModelParameters = SharedParameters & LayoutSettings & Record<PurlinAccessory, string>;
@@ -72,7 +72,7 @@ type ParameterField<Options, NumericOptions> = FieldBase & (
   | { type: 'size'; keys: ['modL', 'modW', 'modT']; key?: never }
   | { type: 'select'; key: ParameterKey; options: Options; keys?: never }
   | { type: 'select'; key: NumericParameterKey; numericOptions: NumericOptions; keys?: never }
-  | { type: 'bool'; key: 'serratedWasher' | 'outer'; keys?: never }
+  | { type: 'bool'; key: 'serratedWasher' | 'outer' | 'alongSlope'; keys?: never }
   | { type?: 'number'; key: NumericParameterKey; keys?: never }
 );
 export type ParameterFieldConfig = ParameterField<(string | [string, string])[], 'clampLengths' | readonly number[]> & {

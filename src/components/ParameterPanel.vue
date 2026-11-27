@@ -50,7 +50,7 @@ function fieldFor<K extends ParameterKey>(key: K) {
 
 const layoutKeys: ParameterKey[] = ['cols', 'pitchEnd', 'pitch'];
 const layoutFields = layoutKeys.map(fieldFor);
-const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'purlinCutMode', 'slopeEW', 'slopeNS', ...layoutKeys];
+const otherFields = ['purlinTies', 'purlinClip', 'purlinConnector', 'purlinCutMode', 'slopeEW', 'slopeNS', 'alongSlope', ...layoutKeys];
 const commonFields = PARAMS.filter(item => !item.key || !otherFields.includes(item.key));
 const purlinCutModeField = fieldFor('purlinCutMode');
 const purlinTieField = { ...fieldFor('purlinTies'), label: '檩条拉杆' };

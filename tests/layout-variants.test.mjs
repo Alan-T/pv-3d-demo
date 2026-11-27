@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PRESETS, SECTION_LABEL } from '../src/config.ts';
-import { getPresetParameters } from '../src/model-parameters.ts';
+import { getPresetParameters, splitDrawingPreset } from '../src/model-parameters.ts';
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { BRACE_JOINT, braceConnectorPlates, parseBraceConnectorSpec } from '../src/brace-connector-spec.ts';
 import { braceConnection } from '../src/brace-layout.ts';
@@ -9,6 +9,24 @@ import { MM } from '../src/core.ts';
 import { DrawingLayouts } from '../src/layout-variants.ts';
 import { BraceConnectorPart } from '../src/parts/brace-connector.ts';
 import { layoutEW, solve } from '../src/solve.ts';
+
+test('图纸顶层的项目资料供表单独立编辑，初始化和重置模型只读取设计参数', () => {
+  for (const preset of Object.values(PRESETS)) {
+    assert.ok(!Object.hasOwn(preset, 'projectInfo'));
+    const { projectInfo } = splitDrawingPreset(preset);
+    const drawing = new DrawingLayouts(preset);
+    drawing.reset();
+    const initial = getPresetParameters(preset), restored = drawing.getModelParameters();
+    for (const [key, value] of Object.entries(projectInfo)) {
+      assert.ok(Object.hasOwn(preset, key), key);
+      assert.equal(value, preset[key], key);
+      assert.ok(!Object.hasOwn(initial, key), key);
+      assert.ok(!Object.hasOwn(restored, key), key);
+    }
+    projectInfo.name = '已编辑项目名称';
+    assert.notEqual(projectInfo.name, preset.name);
+  }
+});
 
 test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向布置与构件截面独立', () => {
   const a = new DrawingLayouts(PRESETS.A), b = new DrawingLayouts(PRESETS.B);
@@ -350,7 +368,7 @@ test('从预设逐项读取排布套数、参数和截面，恢复时取稳定�
     { quantity: 7, cols: 21, pitch: 2800, offset: 12, sections: { beam: 'C90' } },
     { quantity: 2, cols: 9, pitch: 3100, offset: 13, sections: { beam: 'C100' } },
   ];
-  const preset = { projectInfo: {}, tilt: 25, layouts };
+  const preset = { name: '测试图纸', designLife: 25, tilt: 25, layouts };
   const drawing = new DrawingLayouts(preset);
   const expectedLayouts = layouts.map(layout => ({
     ...layout, sections: { ...layout.sections, braceConnector: singlePlate },

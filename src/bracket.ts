@@ -99,7 +99,8 @@ export function createBracket(parameters: ModelParameters, { sections, partOptio
     concreteMaterial: P.pileFoundationType === '水泥灌注桩' ? postOptions.concreteMaterial : undefined,
     createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track };
   const frontPost = new PostPart({ ...postConfig, section: postOptions.postFSection, x: S.xf, bottom: S.botF, top: S.topF, ground: S.gy(S.xf) });
-  const rearPost = new PostPart({ ...postConfig, section: postOptions.postRSection, x: S.xr, bottom: S.botR, top: S.topR, ground: S.gy(S.xr) });
+  const rearPost = new PostPart({ ...postConfig, section: postOptions.postRSection, x: S.xr,
+    bottom: S.botR, top: S.topR, ground: S.gR, pileGrade: S.pileGradeR });
   const braceOptions = partOptions.brace;
   const braceConfig = { material: braceOptions.braceMaterial, createSectionGeometry: braceOptions.createSectionGeometry, track: braceOptions.track };
   const frontBrace = new BracePart({ ...braceConfig, section: braceOptions.braceFSection, node: layout.joints[0] });

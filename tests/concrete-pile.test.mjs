@@ -12,8 +12,8 @@ import { createSectionGeometry, createSectionCapGeometry } from '../src/section-
 import { resolveMemberSections } from '../src/section-spec.ts';
 import { solve, layoutEW } from '../src/solve.ts';
 
-test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有支架', t => {
-  const parameters = { ...getPresetParameters(PRESETS.A), cols: 8, slopeNS: -7, slopeEW: 5, embed: 1800 };
+function bracketBuilder(t) {
+  const parameters = { ...getPresetParameters(PRESETS.A), cols: 8, embed: 1800 };
   // 两排截面不同，分别验证各自桩径的增量。
   const sections = resolveMemberSections({ ...PRESETS.A.layouts[0].sections, postR: 'C220*100*30*4.0' });
   const geometries = [];
@@ -23,20 +23,25 @@ test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有�
     track: geometry => { geometries.push(geometry); return geometry; },
   });
   t.after(() => geometries.forEach(geometry => geometry.dispose()));
-  const build = pileFoundationType => createBracket({ ...parameters, pileFoundationType }, {
+  return overrides => createBracket({ ...parameters, ...overrides }, {
     sections, partOptions, solvers: { solve, layoutEW }, sectionRange: () => [0, 0],
   });
-  const driven = build('锤入桩');
+}
+
+const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} ≠ ${expected}`);
+
+test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有支架', t => {
+  const build = bracketBuilder(t);
+  const driven = build({ pileFoundationType: '锤入桩', slopeEW: 5 });
   driven.model.updateMatrixWorld(true);
   const bounds = mesh => new Box3().setFromObject(mesh);
   const steel = driven.groups.buried.children.map(bounds);
   assert.equal(steel.length, driven.layout.frames * 2);
-  const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} ≠ ${expected}`);
   const { diameterAllowance, endAllowance } = FIX.concretePile;
   assert.equal(diameterAllowance, 100);
 
   for (const type of ['水泥灌注桩', '水泥台桩', '螺旋桩']) {
-    const result = build(type);
+    const result = build({ pileFoundationType: type, slopeEW: 5 });
     assert.deepEqual(result.layout.counts, driven.layout.counts);
     for (const key of ['lenF', 'lenR', 'beamLen', 'braceF', 'braceR']) {
       assert.equal(result.solution[key], driven.solution[key]);
@@ -60,6 +65,26 @@ test('水泥灌注桩包住各榀埋地立柱，切换基础类型保留原有�
       const size = box.getSize(new Vector3());
       close(size.x, size.z);
       close(size.x - Math.max(postSize.x, postSize.z), diameterAllowance * MM);
+    }
+  }
+});
+
+test('南北坡度下前后灌注桩的实体上下标高覆盖所选坡向', t => {
+  const build = bracketBuilder(t);
+  // 柱距 3000、埋深 1800，桩顶、桩底分别外伸 50 mm。
+  for (const [slopeNS, alongSlope, rearMin, rearMax] of [
+    [-10, 0, -2150, 350], [0, 0, -1850, 50], [10, 0, -2150, 350],
+    [-10, 1, -2150, 50], [0, 1, -1850, 50], [10, 1, -1850, 350],
+  ]) {
+    const { groups, layout, model, solution } = build({ slopeNS, alongSlope, pileFoundationType: '水泥灌注桩' });
+    model.updateMatrixWorld(true);
+    const piles = groups.buried.children.filter(mesh => mesh.material === M.concrete);
+    assert.equal(piles.length, layout.frames * 2);
+    for (const mesh of piles) {
+      const box = new Box3().setFromObject(mesh);
+      const rear = Math.abs(box.getCenter(new Vector3()).x - solution.xr * MM) < 1e-6;
+      close(box.min.y, (rear ? rearMin : -1850) * MM);
+      close(box.max.y, (rear ? rearMax : 50) * MM);
     }
   }
 });

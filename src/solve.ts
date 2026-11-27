@@ -30,13 +30,14 @@ export function solve(p: ModelParameters, sections: MemberSections) {
   // 连接孔位于立柱中心线与斜梁腹板中心线的交点；柱顶水平切，孔心向上留边。
   const holeF = nodeF, holeR = nodeR;
   const topF = holeF + FIX.postTopHole, topR = holeR + FIX.postTopHole;
-  // 南北坡度：前柱处为转折点（地面 = ±0），后柱处地面高 gR = 坡度 × 立柱间距（南向坡为正）。
-  // 两根立柱都按实际地面埋深 embed 定长度：后柱总长 = 柱顶高 − gR + 埋深
-  // （图纸后柱 4336 = 2391 + 5% × 2900 + 1800，是按北向坡 5% 设计的）
+  // 地面过前柱 ±0。后柱的设计范围取输入坡向与另一端标高：顺坡安装取平地，双向安装取反向坡。
   const sp = p.slopeNS / 100;
   const gy = (x: number) => sp * (x - xf);
   const gR = gy(xr);
-  const botF = -p.embed, botR = gR - p.embed;
+  const otherGroundR = p.alongSlope ? 0 : -gR;
+  const embedLevelR = Math.min(gR, otherGroundR);
+  const pileGradeR = Math.max(gR, otherGroundR);
+  const botF = -p.embed, botR = embedLevelR - p.embed;
   const along = (t: number) => ({ x: xf + (t - ovh) * c, y: nodeF + (t - ovh) * s }); // t：距斜梁下端
   const warn = [];
   if (ovh < 150) warn.push(`立柱间距太大：斜梁两端悬挑只剩 ${Math.round(ovh)}`);
@@ -92,7 +93,7 @@ export function solve(p: ModelParameters, sections: MemberSections) {
   return {
     sections, c, s, beamLen, ovh, extLow, hBeamTop, hModBot, xf, xr, nodeF, nodeR, topF, topR, holeF, holeR, botF, botR,
     lenF: topF - botF, lenR: topR - botR, along, tF, tR, bF, bR, tFp, tRp, braceF, braceR, outer,
-    connections, braceMembers, modStarts, purlins, sp, gy, gR, clearEdge, clearBraceR, warn,
+    connections, braceMembers, modStarts, purlins, sp, gy, gR, embedLevelR, pileGradeR, clearEdge, clearBraceR, warn,
   };
 }
 

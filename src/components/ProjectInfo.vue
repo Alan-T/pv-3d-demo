@@ -2,12 +2,13 @@
 import type { ProjectInfo, ModelParameters, PresetId, SurfaceFinishKey } from '../design-types.ts';
 import { isSurfaceFinishKey } from '../design-types.ts';
 import { SURFACE_FINISH_BY_CORROSIVITY, SURFACE_FINISH_OPTIONS } from '../config.ts';
-import { limits } from '../parameter-fields.ts';
+import { limits, PARAMS } from '../parameter-fields.ts';
 import { useEditableSelects, type SelectChoice } from '../select-input.ts';
 import { TinyOption, TinySelect } from '@opentiny/vue';
 import FieldInput from './FieldInput.vue';
 import FieldSelect from './FieldSelect.vue';
 import HelpHint from './HelpHint.vue';
+import ParameterField from './ParameterField.vue';
 
 type SlopeKey = 'slopeEW' | 'slopeNS';
 type NumericKey = { [K in keyof ProjectInfo]: ProjectInfo[K] extends number ? K : never }[keyof ProjectInfo];
@@ -30,7 +31,7 @@ type SurfaceFinishField = FieldOptions & {
 const props = defineProps<{ modelValue: ProjectInfo; parameters: ModelParameters; preset: PresetId; disabled?: boolean }>();
 const emit = defineEmits<{
   'update:modelValue': [value: ProjectInfo];
-  parameter: [key: SlopeKey | SurfaceFinishKey, value: string, field?: HTMLInputElement];
+  parameter: [key: SlopeKey | SurfaceFinishKey | 'alongSlope', value: string | boolean, field?: HTMLInputElement];
 }>();
 const projectSelect = useEditableSelects<TextKey | SurfaceFinishKey>('project',
   key => isSurfaceFinishKey(key) ? props.parameters[key] : props.modelValue[key],
@@ -56,6 +57,7 @@ function slopeField(key: SlopeKey, label: string): Field {
   return { key, label, type: 'number', parameter: true, min, max, step, unit: '%' };
 }
 
+const alongSlopeField = PARAMS.find(field => field.key === 'alongSlope')!;
 const environmentFields: Field[] = [
   { key: 'designStandard', label: '参考规范', options: ['US2010(ASCE 7-10)'] },
   { key: 'designMethod', label: '设计条文', options: ['ASD'] },
@@ -132,12 +134,16 @@ function changeField(field: Field, input: HTMLInputElement) {
           @commit="changeField(field, $event)" />
         <span v-if="field.unit" class="project-unit">{{ field.unit }}</span>
       </div>
+      <parameter-field v-if="field.key === 'slopeNS' && parameters.slopeNS !== 0" class="slope-option"
+        :definition="alongSlopeField" :parameters="parameters" :disabled="disabled"
+        @change="(_, value, input) => emit('parameter', 'alongSlope', value, input)" />
     </div>
   </section>
 </template>
 
 <style scoped>
 .project-info .prow { grid-template-columns: 72px minmax(0, 1fr); }
+.project-info .slope-option { grid-column: 2; grid-template-columns: 1fr; margin: 2px 0 0; }
 .project-info[data-project-group="corrosion"] .prow {
   grid-template-columns: 80px minmax(0, 1fr);
 }
