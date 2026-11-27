@@ -76,7 +76,17 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
         <fieldset class="pbody panel-fields" :disabled="!ready" aria-label="项目信息">
           <project-info :preset="snapshot.preset" :model-value="projectInfo" :parameters="snapshot.parameters" :disabled="!ready"
             @update:model-value="$emit('update:projectInfo', $event)"
-            @parameter="(...args) => $emit('parameter', ...args)" />
+            @parameter="(...args) => $emit('parameter', ...args)">
+            <template #title-action>
+              <tiny-button id="reset" type="text" native-type="button" size="mini" :reset-time="0"
+                title="按当前图纸模板重置项目信息、设计参数和全部排布" aria-label="按当前图纸模板重置项目信息、设计参数和全部排布" :disabled="!ready" @click="$emit('reset-preset')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 10a9 9 0 1 1 2 8M3 4v6h6" />
+                </svg>
+              </tiny-button>
+            </template>
+          </project-info>
           <section>
             <h3>显示设置</h3>
             <div class="toggles">
@@ -92,14 +102,10 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
       <div v-show="activeTab === 'parameters'" id="panel-page-parameters" class="panel-page" role="tabpanel"
         aria-labelledby="panel-tab-parameters" tabindex="0">
         <fieldset class="pbody panel-fields design-parameters" :disabled="!ready" aria-label="设计参数">
-          <h3>设计参数 <tiny-button id="reset" type="text" native-type="button" size="mini" :reset-time="0"
-            :disabled="!ready" @click="$emit('reset-preset')">恢复图纸参数</tiny-button></h3>
-          <section aria-labelledby="common-parameters-heading">
-            <h4 id="common-parameters-heading">通用参数</h4>
-            <div id="params">
-              <parameter-field v-for="field in commonFields" :key="field.key || field.keys[0]" :definition="field"
-                :parameters="snapshot.parameters" :disabled="!ready" @change="(...args) => $emit('parameter', ...args)" />
-            </div>
+          <h3 id="design-parameters-heading">设计参数</h3>
+          <section id="params" aria-labelledby="design-parameters-heading">
+            <parameter-field v-for="field in commonFields" :key="field.key || field.keys[0]" :definition="field"
+              :parameters="snapshot.parameters" :disabled="!ready" @change="(...args) => $emit('parameter', ...args)" />
           </section>
 
           <section class="layout-parameters" aria-labelledby="layout-parameters-heading">
@@ -250,7 +256,13 @@ const displays: [keyof DesignerSnapshot['display'], string, string?][] = [
 
 <style scoped>
 .design-parameters > h3 { margin: 14px 0 0; }
-.design-parameters #reset { margin-left: auto; color: var(--blue); font-size: var(--field-value-size); }
+#reset {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; min-width: 26px;
+  margin-left: auto; padding: 0; border-radius: 4px; color: var(--blue);
+}
+#reset svg { display: block; }
+#reset:hover:enabled { background: #e8f0ff; }
+#reset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 .design-parameters > section:first-of-type { border-bottom: 0; }
 .layout-parameters {
   margin-inline: -10px;

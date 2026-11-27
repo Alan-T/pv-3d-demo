@@ -123,6 +123,7 @@ test('两类拉杆 C/L 往返切换及预设恢复：截面形状正确，各排
           assert.equal(original.name, preset.layouts[index].sections[key]);
         }
         drawing.reset();
+        drawing.select(layout.id);
         assert.deepEqual(resolveMemberSections(drawing.active.sections)[key], original);
       }
     }

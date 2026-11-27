@@ -115,7 +115,7 @@ function changeField(field: Field, input: HTMLInputElement) {
 
 <template>
   <section v-for="group in groups" :key="group.id" class="project-info" :data-project-group="group.id">
-    <h3>{{ group.title }}</h3>
+    <h3>{{ group.title }}<slot v-if="group.id === 'basic'" name="title-action" /></h3>
     <div v-for="field in group.fields" :key="field.key" class="prow">
       <div class="pl field-label">
         <label :for="`project-${field.key}`">{{ field.label }}</label>

@@ -68,6 +68,11 @@ function updateProjectInfo(info: ProjectInfo) {
   projectInfo.value = info;
 }
 
+function resetPreset() {
+  updateProjectInfo(splitDrawingPreset(PRESETS[snapshot.value.preset]).projectInfo);
+  designer.resetPreset();
+}
+
 function changeParameter(key: ParameterKey, value: string | boolean, input?: HTMLInputElement) {
   const normalized = designer.changeParameter(key, value);
   if (input?.type === 'checkbox') input.checked = !!normalized;
@@ -126,7 +131,7 @@ async function toggleSheet() {
       </button>
     </div>
     <parameter-panel :project-info="projectInfo" @update:project-info="updateProjectInfo" :snapshot="snapshot" :ready="ready" :open="sheetOpen"
-      @parameter="changeParameter" @section="(key, value) => designer.changeSection(key, value)" @material-grade="(key, value) => designer.changeMaterialGrade(key, value)" @reset-preset="designer.resetPreset(projectInfo.corrosivityCategory)"
+      @parameter="changeParameter" @section="(key, value) => designer.changeSection(key, value)" @material-grade="(key, value) => designer.changeMaterialGrade(key, value)" @reset-preset="resetPreset"
       @layout-quantity="changeLayoutQuantity"
       @purlin-cut-lengths="(lengths, done) => done(designer.changePurlinCutLengths(lengths))"
       @reset-purlin-cut="done => done(designer.resetPurlinCutLengths())"

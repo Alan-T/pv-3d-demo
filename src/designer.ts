@@ -272,11 +272,9 @@ export function createDesigner({ canvas, stage, editor, onUpdate, onReady, onErr
     publish();
   }
 
-  function resetPreset(category: CorrosivityCategory) {
+  function resetPreset() {
     closeEdit(false);
-    const drawing = currentDrawing();
-    drawing.reset();
-    Object.assign(drawing.sharedParameters, SURFACE_FINISH_BY_CORROSIVITY[category]);
+    currentDrawing().reset();
     loadActiveLayout();
   }
 

@@ -161,7 +161,7 @@ const FIX = {
 const PRESETS: Record<PresetId, DrawingPreset> = {
   // 图纸一：2 排组件、螺栓固定、无外斜撑。
   A: {
-    // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
+    // 切换图纸时沿用已填写的项目资料，点击重置时恢复为以下默认值。
     number: '202611041101',
     version: '1',
     name: 'Sunel- Romania-Buzoesti-38',
@@ -292,7 +292,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
   },
   // 图纸二：3 排组件、压块固定、带外斜撑。
   B: {
-    // 项目资料初始值；页面单独复制，切换或重置设计参数时保留已填写资料。
+    // 切换图纸时沿用已填写的项目资料，点击重置时恢复为以下默认值。
     number: '202611041101',
     version: '1',
     name: 'Sunel- Romania-Buzoesti-38',

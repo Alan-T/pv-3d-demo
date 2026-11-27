@@ -41,21 +41,23 @@ function normalizeLayout({ sections, materials, ...layout }: StoredLayout, share
 }
 
 export class DrawingLayouts {
-  readonly defaultShared: SharedParameters;
-  readonly defaultLayouts: LayoutPreset[];
-  sharedParameters: SharedParameters;
-  layouts: DrawingLayout[];
-  activeId: string;
-  private nextId: number;
+  private readonly preset: DrawingPreset;
+  sharedParameters!: SharedParameters;
+  layouts!: DrawingLayout[];
+  activeId!: string;
+  private nextId!: number;
 
   constructor(preset: DrawingPreset) {
-    const { layouts, sharedParameters: shared } = splitDrawingPreset(preset);
+    this.preset = preset;
+    this.reset();
+  }
+
+  reset() {
+    const { layouts, sharedParameters } = splitDrawingPreset(structuredClone(this.preset));
     if (!layouts.length) throw new RangeError('每张图纸至少需要一种排布');
-    this.defaultShared = shared;
-    this.defaultLayouts = layouts.map(layout => normalizeLayout(layout, shared.outer));
-    this.sharedParameters = structuredClone(shared);
-    this.layouts = this.defaultLayouts.map((layout, index) => ({
-      ...structuredClone(layout), id: String(index + 1), label: `排布${index + 1}`,
+    this.sharedParameters = sharedParameters;
+    this.layouts = layouts.map((layout, index) => ({
+      ...normalizeLayout(layout, sharedParameters.outer), id: String(index + 1), label: `排布${index + 1}`,
     }));
     this.activeId = this.layouts[0].id;
     this.nextId = this.layouts.length + 1;
@@ -148,15 +150,5 @@ export class DrawingLayouts {
     if (!Object.hasOwn(grades, key)) return undefined;
     if (typeof value === 'string') grades[key as MaterialKey] = value.trim();
     return grades[key as MaterialKey];
-  }
-
-  reset() {
-    const previousCuts = this.getCutSettings();
-    this.sharedParameters = structuredClone(this.defaultShared);
-    const original = this.defaultLayouts[Number(this.activeId) - 1] ?? this.defaultLayouts[0];
-    const index = this.layouts.findIndex(layout => layout.id === this.activeId);
-    const { id, label, quantity } = this.layouts[index];
-    this.layouts[index] = { ...structuredClone(original), id, label, quantity };
-    this.refreshDerivedValues(previousCuts);
   }
 }

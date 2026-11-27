@@ -51,7 +51,7 @@ test('图纸各自保留排布列表；组件尺寸和倾角共享，东西向�
   assert.equal(PRESETS.A.layouts[0].cols, 26);
 });
 
-test('自定义檩条分段只属于当前排布，复制和恢复后各自保留独立段长', () => {
+test('复制排布独立保留自定义段长，重置后恢复各模板排布的分段', () => {
   for (const preset of Object.values(PRESETS)) {
     const drawing = new DrawingLayouts(preset);
     const [first, second] = drawing.layouts;
@@ -67,9 +67,8 @@ test('自定义檩条分段只属于当前排布，复制和恢复后各自保�
     assert.deepEqual(drawing.active.purlinCutLengths, lengths);
     assert.notEqual(drawing.active.purlinCutLengths, first.purlinCutLengths);
     drawing.reset();
-    assert.equal(drawing.active.purlinCutMode, 'auto');
-    assert.deepEqual(drawing.active.purlinCutLengths, []);
-    assert.deepEqual(first.purlinCutLengths, lengths);
+    for (const layout of drawing.layouts) assertAutomaticCuts(layout);
+    assert.equal(drawing.layouts.length, preset.layouts.length);
   }
 });
 
@@ -114,12 +113,8 @@ test('修改柱截面与共用外斜撑时同步各排布连接板尺寸，材�
 
   drawing.select('2');
   drawing.reset();
-  assert.deepEqual(specs(), [singlePlate, doublePlate, doublePlate]);
-  assert.deepEqual(drawing.layouts.map(layout => layout.materials.braceConnector), ['Q355B', 'Q235B', 'S350GD']);
-  drawing.select('1');
-  drawing.reset();
-  assert.equal(drawing.active.sections.braceConnector, doublePlate);
-  assert.equal(drawing.active.materials.braceConnector, 'Q235B');
+  assert.deepEqual(specs(), [doublePlate, doublePlate]);
+  assert.deepEqual(drawing.layouts.map(layout => layout.materials.braceConnector), ['Q235B', 'Q235B']);
 });
 
 test('旧排布连接规格迁入 sections，修改、复制、切换和恢复后按当前排布生成扁平参数', () => {
@@ -157,9 +152,9 @@ test('旧排布连接规格迁入 sections，修改、复制、切换和恢复�
   drawing.select('2');
   check(oldSpecs);
   drawing.reset();
-  check(newSpecs);
-  drawing.select('1');
   check(oldSpecs);
+  drawing.select('2');
+  check(newSpecs);
 });
 
 test('前后柱共用实际斜撑板规格，安装位置按各自柱宽调整', t => {
@@ -248,10 +243,10 @@ test('构件材质与截面独立，复制、切换和恢复排布均保留正�
   drawing.setMaterialGrade('purlinConnector', 'S450GD');
   drawing.setMaterialGrade('purlinClip', 'Q235B');
   drawing.reset();
+  assert.deepEqual(drawing.active.materials, preset.layouts[0].materials);
+  drawing.select('2');
   assert.deepEqual(drawing.active.materials, { beam: 'S350GD', purlinClip: '', purlinConnector: 'Q355B' });
   drawing.select('1');
-  assert.equal(drawing.active.materials.postF, 'S390GD+ZM');
-  assert.equal(drawing.active.materials.postR, '');
   for (const key of accessoryKeys) assert.equal(drawing.setMaterialGrade(key, ''), '');
   drawing.reset();
   for (const key of accessoryKeys) assert.equal(drawing.active.materials[key], 'Q235B');
@@ -349,8 +344,13 @@ test('同时更新共享宽度和当前列数，按各排布实际总长分别�
   assertAutomaticCuts(drawing.active);
 });
 
-test('恢复图纸共用参数使其他排布总长改变时也清除其自定义段长', () => {
-  const drawing = new DrawingLayouts(PRESETS.A);
+test('重置后重新加载非当前排布的模板套数和自定义段长', () => {
+  const preset = structuredClone(PRESETS.A);
+  const layout = preset.layouts[1];
+  const { cuts } = layoutEW(getPresetParameters(preset, layout), resolveMemberSections(layout.sections));
+  layout.purlinCutMode = 'custom';
+  layout.purlinCutLengths = cuts.segments.map(segment => segment.length);
+  const drawing = new DrawingLayouts(preset);
   drawing.captureParameters({ modW: 1304 });
   applyCustomCuts(drawing, '2');
   drawing.setQuantity(8);
@@ -358,11 +358,12 @@ test('恢复图纸共用参数使其他排布总长改变时也清除其自定�
   drawing.reset();
   drawing.select('2');
   assert.equal(drawing.getModelParameters().modW, PRESETS.A.modW);
-  assert.equal(drawing.active.quantity, 8);
-  assertAutomaticCuts(drawing.active);
+  assert.equal(drawing.active.quantity, layout.quantity);
+  assert.equal(drawing.active.purlinCutMode, 'custom');
+  assert.deepEqual(drawing.active.purlinCutLengths, layout.purlinCutLengths);
 });
 
-test('从预设逐项读取排布套数、参数和截面，恢复时取稳定标识对应的预设', () => {
+test('重置恢复被删除的模板排布、原始顺序和套数，并选中排布1', () => {
   const layouts = [
     { quantity: 4, cols: 29, pitch: 2500, offset: 11, sections: { beam: 'C80' } },
     { quantity: 7, cols: 21, pitch: 2800, offset: 12, sections: { beam: 'C90' } },
@@ -390,17 +391,18 @@ test('从预设逐项读取排布套数、参数和截面，恢复时取稳定�
   drawing.select('3');
   drawing.remove('1');
   drawing.reset();
-  assert.equal(drawing.active.label, '排布2');
-  assert.equal(drawing.active.quantity, 8);
-  assert.deepEqual(drawing.getModelParameters(), { tilt: 25, cols: 9, pitch: 3100, offset: 13 });
-  assert.deepEqual(drawing.active.sections, expectedLayouts[2].sections);
+  assert.equal(drawing.activeId, '1');
+  assert.deepEqual(drawing.getModelParameters(), expectedFirst);
+  assert.deepEqual(drawing.layouts, new DrawingLayouts(preset).layouts);
 
   drawing.add();
   assert.equal(drawing.activeId, '4');
   drawing.reset();
-  assert.equal(drawing.active.quantity, 1);
-  assert.deepEqual(drawing.getModelParameters(), expectedFirst);
-  assert.deepEqual(drawing.active.sections, expectedLayouts[0].sections);
+  assert.equal(drawing.active.quantity, layouts[0].quantity);
+  assert.equal(drawing.select('4'), false);
+  drawing.add();
+  assert.equal(drawing.activeId, '4');
+  assert.equal(drawing.active.label, '排布4');
 });
 
 test('只有一条排布预设时可直接使用和新增', () => {
@@ -415,7 +417,7 @@ test('只有一条排布预设时可直接使用和新增', () => {
   assert.deepEqual(drawing.getModelParameters(), getPresetParameters(preset));
 });
 
-test('新增独立复制当前排布；恢复只重置当前排布和共享参数，保留套数', () => {
+test('新增排布独立复制当前参数，重置后每个排布重新读取模板数据', () => {
   const drawing = new DrawingLayouts(PRESETS.A);
   drawing.select('2');
   drawing.captureParameters({ ...drawing.getModelParameters(),
@@ -440,14 +442,15 @@ test('新增独立复制当前排布；恢复只重置当前排布和共享参�
   assert.equal(drawing.active.sections.postR, 'C80*40*15*3.0');
   assert.equal(drawing.active.quantity, 8);
   drawing.reset();
+  assert.equal(drawing.activeId, '1');
+  assert.deepEqual(drawing.layouts, new DrawingLayouts(PRESETS.A).layouts);
   assert.equal(drawing.getModelParameters().tilt, PRESETS.A.tilt);
+  drawing.select('2');
   assert.equal(drawing.getModelParameters().cols, 13);
-  assert.equal(drawing.active.quantity, 8);
+  assert.equal(drawing.active.quantity, PRESETS.A.layouts[1].quantity);
   assert.notEqual(drawing.active.postTieSpansR, PRESETS.A.layouts[1].postTieSpansR);
   assert.notEqual(drawing.active.sections, PRESETS.A.layouts[1].sections);
-  drawing.select('3');
-  assert.equal(drawing.getModelParameters().cols, 11);
-  assert.equal(drawing.active.sections.postR, 'C80*40*15*2.0');
+  assert.equal(drawing.select('3'), false);
 });
 
 test('套数必须为正整数；删除后名称连续，保留至少一个排布', () => {

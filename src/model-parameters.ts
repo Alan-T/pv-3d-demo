@@ -1,7 +1,7 @@
 import { DEFAULTS, DISPLAY_DEFAULTS, PURLIN_ACCESSORY_KEYS } from './config.ts';
 import type { DrawingPreset, LayoutPreset, ModelParameters, ProjectInfo, PurlinAccessory } from './design-types.ts';
 
-// 表单独立编辑项目资料；切换和重置排布只使用设计参数。
+// 项目信息表单和三维模型分别读取当前图纸的默认值。
 export function splitDrawingPreset(preset: DrawingPreset) {
   const {
     number, version, name, customer, productType, tradeTerm, country, longitude, latitude,
