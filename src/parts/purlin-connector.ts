@@ -3,10 +3,12 @@ import type { Vector3 } from 'three';
 import { addMember, EZ, MM } from '../core.ts';
 import { createPurlinConnectorGeometry } from '../purlin-connector-geometry.ts';
 
-/** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
+/** 檩条拼接连接件及两侧螺栓。 */
 export class PurlinConnectorPart {
-  splice;
-  build;
+  readonly splice: ConnectorSpec | null;
+  private readonly purlinSection;
+  private readonly material;
+  private readonly geometry;
 
   constructor({
     purlinSection,
@@ -14,27 +16,34 @@ export class PurlinConnectorPart {
     purlinConnectorMaterial,
     track,
   }: PartOptions['purlin']['purlinConnector'] & { connectorSpec: ConnectorSpec | null }) {
-  this.splice = connectorSpec;
-  if (!connectorSpec) { this.build = () => {}; return; }
-  const splice = connectorSpec;
-  const connectorGeo = track(createPurlinConnectorGeometry(splice));
-  function build(c: BuildContext, origin: (z: number) => Vector3) {
-    const { layout, n, u } = c;
-      for(const z of layout.cuts.positions){
-        addMember(c.hwSlope,connectorGeo,purlinConnectorMaterial,origin(z-splice.length/2),n,u,EZ.clone().multiplyScalar(splice.length*MM));
-        const at=(du: number,dn: number,dz: number)=>origin(z+dz).addScaledVector(u,du*MM).addScaledVector(n,dn*MM);
-        const flangeOffset = splice.flangeHoleOffset - splice.t;
-        const clearance = (splice.d - 2 * splice.t - purlinSection.d) / 2;
-        const flangeStack = purlinSection.t + splice.t + clearance;
-        for (const dz of splice.flangeHoles) {
-          c.bolts.add('splice', at(flangeOffset, purlinSection.d/2-purlinSection.t, dz), n.clone().negate(), u, flangeStack);
-          c.bolts.add('splice', at(flangeOffset, -purlinSection.d/2+purlinSection.t, dz), n, u, flangeStack);
-        }
-        for (const dz of splice.webHoles) {
-          c.bolts.add('splice', at(purlinSection.t, 0, dz), u, n, purlinSection.t + splice.t);
-        }
-      }
+    this.splice = connectorSpec;
+    this.purlinSection = purlinSection;
+    this.material = purlinConnectorMaterial;
+    this.geometry = connectorSpec ? track(createPurlinConnectorGeometry(connectorSpec)) : null;
   }
-    this.build = build;
+
+  build(c: BuildContext, origin: (z: number) => Vector3) {
+    if (!this.splice || !this.geometry) return;
+    const { layout, n, u } = c;
+    const splice = this.splice;
+    const purlin = this.purlinSection;
+    const flangeOffset = splice.flangeHoleOffset - splice.t;
+    const clearance = (splice.d - 2 * splice.t - purlin.d) / 2;
+    const flangeStack = purlin.t + splice.t + clearance;
+    const span = EZ.clone().multiplyScalar(splice.length * MM);
+
+    for (const z of layout.cuts.positions) {
+      addMember(c.hwSlope, this.geometry, this.material, origin(z - splice.length / 2), n, u, span);
+      const at = (du: number, dn: number, dz: number) =>
+        origin(z + dz).addScaledVector(u, du * MM).addScaledVector(n, dn * MM);
+
+      for (const dz of splice.flangeHoles) {
+        c.bolts.add('splice', at(flangeOffset, purlin.d / 2 - purlin.t, dz), n.clone().negate(), u, flangeStack);
+        c.bolts.add('splice', at(flangeOffset, -purlin.d / 2 + purlin.t, dz), n, u, flangeStack);
+      }
+      for (const dz of splice.webHoles) {
+        c.bolts.add('splice', at(purlin.t, 0, dz), u, n, purlin.t + splice.t);
+      }
+    }
   }
 }

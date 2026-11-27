@@ -5,9 +5,107 @@ import { V3, MM, instanced } from '../core.ts';
 import { createSerratedWasherGeometry } from '../serrated-washer-geometry.ts';
 import * as THREE from 'three';
 
-/** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
+const BOLT_SIZE = {
+  16: { wr: 15, wt: 3, af: 24, nh: 14.8, r: 8, hh: 10, out: 6, sw: { ri: 8.1, ro: 12.2, t: 4 } },
+  12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6, sw: { ri: 6.1, ro: 9.2, t: 3.1 } },
+  8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sw: { ri: 4.1, ro: 6.35, t: 2 }, sk: { d: 13, k: 8, s: 6 } },
+} as const;
+
+type BoltSizeKey = keyof typeof BOLT_SIZE;
+type BoltPartPair = [THREE.BufferGeometry, THREE.Material];
+type BoltKindOptions = {
+  len?: number;
+  headWasher?: boolean;
+  socket?: boolean;
+  spring?: boolean;
+  serratedHeadWasher?: boolean;
+  nutWasher?: { radius: number; thickness: number };
+};
+type SlotOptions = { at: number[]; len: number; width?: number } | null;
+
+// 组件螺栓、压块螺栓跟着檩条顺坡（东西坡度），其余在各榀上。
+const SLOPE_KINDS = new Set(['splice', 'module', 'clampMid', 'clampSide']);
+
+/** 弹垫：开口的圆环，开口在局部 x-y 平面的左上方（节点正视图里看得见），从 z0 起厚 sw.t。 */
+function createSpringWasherGeometry(sw: { ri: number; ro: number; t: number }, z0: number) {
+  const gap = 0.12;
+  const a0 = (3 * Math.PI) / 4 + gap;
+  const a1 = a0 + 2 * Math.PI - 2 * gap;
+  const s = new THREE.Shape();
+  s.absarc(0, 0, sw.ro * MM, a0, a1, false);
+  s.absarc(0, 0, sw.ri * MM, a1, a0, true);
+  const g = new THREE.ExtrudeGeometry(s, { depth: sw.t * MM, bevelEnabled: false, curveSegments: 32 });
+  return g.translate(0, 0, z0 * MM);
+}
+
+/** 内六角头的前半段：六角孔对边为 s，负 z 端为螺栓头顶面，外沿倒角 0.6 mm。 */
+function createSocketRimGeometry(diameter: number, s: number, depth: number, z0: number) {
+  const radius = (diameter * MM) / 2;
+  const hexRadius = (s * MM) / Math.sqrt(3);
+  const outline = new THREE.Shape();
+  const recess = new THREE.Path();
+  outline.absarc(0, 0, radius, 0, 2 * Math.PI, false);
+  for (let i = 0; i < 6; i++) {
+    const angle = (-i * Math.PI) / 3;
+    const x = hexRadius * Math.cos(angle);
+    const y = hexRadius * Math.sin(angle);
+    if (i === 0) recess.moveTo(x, y);
+    else recess.lineTo(x, y);
+  }
+  recess.closePath();
+  outline.holes.push(recess);
+
+  const rim = new THREE.ExtrudeGeometry(outline, { depth: depth * MM, steps: 2, curveSegments: 12, bevelEnabled: false });
+  const vertices = rim.getAttribute('position');
+  for (let i = 0; i < vertices.count; i++) {
+    const x = vertices.getX(i);
+    const y = vertices.getY(i);
+    const z = vertices.getZ(i);
+    if (z === 0 && Math.hypot(x, y) > hexRadius + 1e-8) {
+      const scale = (radius - 0.6 * MM) / radius;
+      vertices.setXY(i, x * scale, y * scale);
+    } else if (Math.abs(z - (depth * MM) / 2) < 1e-8) {
+      vertices.setZ(i, 0.6 * MM);
+    }
+  }
+  rim.computeVertexNormals();
+  return rim.translate(0, 0, z0 * MM);
+}
+
+/** 生成沿局部 z 的圆柱/棱柱几何体（r1 为 z1 端半径，不传则为等径柱）。 */
+function createCylinderGeometry(r: number, z0: number, z1: number, seg: number, r1?: number) {
+  const g = new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg);
+  g.rotateX(Math.PI / 2);
+  g.translate(0, 0, ((z0 + z1) / 2) * MM);
+  return g;
+}
+
+/** 生成长圆孔二维形状。 */
+function createSlotShape(len: number, width: number) {
+  const w = (width / 2) * MM;
+  const l = ((len - width) / 2) * MM;
+  const s = new THREE.Shape();
+  s.moveTo(w, -l);
+  s.lineTo(w, l);
+  s.absarc(0, l, w, 0, Math.PI, false);
+  s.lineTo(-w, -l);
+  s.absarc(0, -l, w, Math.PI, Math.PI * 2, false);
+  return s;
+}
+
+/**
+ * 螺栓组构建器：M16 / M12 / M8 三种规格，按连接位置分叠层厚度。
+ * 局部 z 为螺栓轴线并指向螺母一侧，z=0 在螺母侧被连接件外表面。
+ * 每次重建通过 collector() 登记螺栓位置，flush() 统一实例化绘制并统计套数。
+ */
 export class BoltsPart {
-  collector;
+  private readonly beamSection;
+  private readonly purlinSection;
+  private readonly materials;
+  private readonly track;
+  private readonly standardKinds: Record<string, BoltPartPair[]>;
+  private readonly clampKinds: Record<number, Record<string, BoltPartPair[]>> = {};
+  private serratedModule: BoltPartPair[] | undefined;
 
   constructor({
     beamSection,
@@ -20,183 +118,174 @@ export class BoltsPart {
     CLIP,
     track,
   }: PartOptions['bolts'] & { CLIP: ClipSpec }) {
-  /* 螺栓：M16 / M12 / M8 三种规格，按连接位置分几种叠层厚度；每次重建由各构件登记位置，最后统一画成实例化网格 */
+    this.beamSection = beamSection;
+    this.purlinSection = purlinSection;
+    this.materials = {
+      steel: boltSteelMaterial,
+      nut: nutMaterial,
+      washer: washerMaterial,
+      spring: springMaterial,
+      slot: slotMaterial,
+    };
+    this.track = track;
 
-  // 螺栓组：局部 z 为螺栓轴线、指向螺母一侧，z=0 在螺母一侧被连接件的外表面。
-  // 零件：垫圈、螺母、露出的螺杆、另一侧的螺栓头；可选长圆孔（沿局部 y，画在开孔那块板的表面上，at 为这些表面的局部 z）。
-  // opt.len：按公称长度（螺栓头支承面到杆端）画杆长，不给就在螺母外露 out；opt.headWasher：螺栓头下也垫一个平垫；
-  // opt.socket：内六角圆柱头（sk：头径 d、头高 k、内六角对边 s）；opt.spring：平垫和螺母之间加一个弹垫（sw：内外半径、厚，GB 93）
-  const BOLT_SIZE = {
-    16: { wr: 15, wt: 3, af: 24, nh: 14.8, r: 8, hh: 10, out: 6, sw: { ri: 8.1, ro: 12.2, t: 4 } },
-    12: { wr: 12, wt: 2.5, af: 18, nh: 10.8, r: 6, hh: 7.5, out: 6, sw: { ri: 6.1, ro: 9.2, t: 3.1 } },
-    8: { wr: 8, wt: 1.6, af: 13, nh: 6.5, r: 4, hh: 5.3, out: 4, sw: { ri: 4.1, ro: 6.35, t: 2 }, sk: { d: 13, k: 8, s: 6 } },
-  };
-  // 弹垫：开口的圆环，开口在局部 x-y 平面的左上方（节点正视图里看得见），从 z0 起厚 sw.t
-  function springWasher(sw: { ri: number; ro: number; t: number }, z0: number) {
-    const gap = 0.12, a0 = (3 * Math.PI) / 4 + gap, a1 = a0 + 2 * Math.PI - 2 * gap;
-    const s = new THREE.Shape();
-    s.absarc(0, 0, sw.ro * MM, a0, a1, false);
-    s.absarc(0, 0, sw.ri * MM, a1, a0, true);
-    const g = track(new THREE.ExtrudeGeometry(s, { depth: sw.t * MM, bevelEnabled: false, curveSegments: 32 }));
-    g.translate(0, 0, z0 * MM);
-    return g;
+    // 立柱、内外斜撑连接螺栓由 add() 按各构件实际板厚动态生成。
+    this.standardKinds = {
+      clip: this.boltKind(12, CLIP.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }),
+      clipWeb: this.boltKind(12, CLIP.t + purlinSection.t, null, { len: 35, headWasher: true, spring: true }),
+      purlinBeam: this.boltKind(12, purlinSection.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }),
+      splice: this.boltKind(12, purlinSection.t + 3, null, { len: 35, headWasher: true, spring: true }),
+      module: this.boltKind(8, purlinSection.t + 2, null, {
+        len: 22,
+        headWasher: true,
+        spring: true,
+        nutWasher: { radius: 12, thickness: 2 },
+      }),
+    };
   }
-  // 内六角头的前半段：六角孔对边为 s，负 z 端为螺栓头顶面，外沿倒角 0.6 mm。
-  function socketRim(diameter: number, s: number, depth: number, z0: number) {
-    const radius = diameter * MM / 2, hexRadius = s * MM / Math.sqrt(3);
-    const outline = new THREE.Shape(), recess = new THREE.Path();
-    outline.absarc(0, 0, radius, 0, 2 * Math.PI, false);
-    for (let i = 0; i < 6; i++) {
-      const angle = -i * Math.PI / 3, x = hexRadius * Math.cos(angle), y = hexRadius * Math.sin(angle);
-      if (i === 0) recess.moveTo(x, y);
-      else recess.lineTo(x, y);
-    }
-    recess.closePath();
-    outline.holes.push(recess);
-    const rim = track(new THREE.ExtrudeGeometry(outline, { depth: depth * MM, steps: 2, curveSegments: 12, bevelEnabled: false }));
-    const vertices = rim.getAttribute('position');
-    for (let i = 0; i < vertices.count; i++) {
-      const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
-      if (z === 0 && Math.hypot(x, y) > hexRadius + 1e-8) {
-        const scale = (radius - 0.6 * MM) / radius;
-        vertices.setXY(i, x * scale, y * scale);
-      } else if (Math.abs(z - depth * MM / 2) < 1e-8) vertices.setZ(i, 0.6 * MM);
-    }
-    rim.computeVertexNormals();
-    return rim.translate(0, 0, z0 * MM);
-  }
-  function boltKind(size: keyof typeof BOLT_SIZE, stack: number, slot: { at: number[]; len: number; width?: number } | null,
-    opt: { len?: number; headWasher?: boolean; socket?: boolean; spring?: boolean; serratedHeadWasher?: boolean; nutWasher?: { radius: number; thickness: number } }) {
-    const o = opt, b = BOLT_SIZE[size], hexR = b.af / Math.sqrt(3);
-    // 螺母侧平垫可单独配置；头部平垫仍采用该螺栓的普通规格。
-    const washer = o.nutWasher || { radius: b.wr, thickness: b.wt };
-    const nut = washer.thickness + (o.spring ? b.sw.t : 0), top = nut + b.nh;   // 螺母底面、顶面
-    // 图示 H≈3S，暂用 S=0.6、H=1.8 mm。
+
+  private boltKind(size: BoltSizeKey, stack: number, slot: SlotOptions, opt: BoltKindOptions): BoltPartPair[] {
+    const b = BOLT_SIZE[size];
+    const hexR = b.af / Math.sqrt(3);
+    const washer = opt.nutWasher || { radius: b.wr, thickness: b.wt };
+    const nut = washer.thickness + (opt.spring ? b.sw.t : 0);
+    const top = nut + b.nh;
     const serratedThickness = 0.6;
-    const headWasherHeight = o.serratedHeadWasher ? 3 * serratedThickness : b.wt;
-    const back = -stack - (o.headWasher ? headWasherHeight : 0);    // 螺栓头支承面
-    const socket = o.socket ? BOLT_SIZE[8].sk : null;
+    const headWasherHeight = opt.serratedHeadWasher ? 3 * serratedThickness : b.wt;
+    const back = -stack - (opt.headWasher ? headWasherHeight : 0);
+    const socket = opt.socket ? BOLT_SIZE[8].sk : null;
     const hh = socket ? socket.k : b.hh;
     const recessDepth = 4;
-    const cyl = (r: number, z0: number, z1: number, seg: number, r1?: number) => {   // r1：z1 一端的半径（倒角用），不给就是圆柱
-      const g = track(new THREE.CylinderGeometry((r1 === undefined ? r : r1) * MM, r * MM, (z1 - z0) * MM, seg));
-      g.rotateX(Math.PI / 2);
-      g.translate(0, 0, ((z0 + z1) / 2) * MM);
-      return g;
-    };
-    const parts: [THREE.BufferGeometry, THREE.Material][] = [
-      [cyl(washer.radius, 0, washer.thickness, 24), washerMaterial],
-      [cyl(hexR, nut, top, 6), nutMaterial],
-      [cyl(b.r, socket ? back : back - hh, o.len ? back + o.len : top + b.out, 16), boltSteelMaterial],
-      socket ? [cyl(socket.d / 2, back - hh + recessDepth, back, 24), boltSteelMaterial] : [cyl(hexR, back - hh, back, 6), boltSteelMaterial],
+    const cyl = (r: number, z0: number, z1: number, seg: number, r1?: number) =>
+      this.track(createCylinderGeometry(r, z0, z1, seg, r1));
+
+    const parts: BoltPartPair[] = [
+      [cyl(washer.radius, 0, washer.thickness, 24), this.materials.washer],
+      [cyl(hexR, nut, top, 6), this.materials.nut],
+      [cyl(b.r, socket ? back : back - hh, opt.len ? back + opt.len : top + b.out, 16), this.materials.steel],
+      socket
+        ? [cyl(socket.d / 2, back - hh + recessDepth, back, 24), this.materials.steel]
+        : [cyl(hexR, back - hh, back, 6), this.materials.steel],
     ];
-    if (o.headWasher) {
-      // 锯齿垫圈仅替换头下普通平垫，上下齿尖贴合螺栓头与组件。
-      let geometry;
-      if (o.serratedHeadWasher) {
-        geometry = track(createSerratedWasherGeometry({
-          outerRadius: b.wr, innerRadius: b.r + 0.4, thickness: serratedThickness,
-        }));
+
+    if (opt.headWasher) {
+      let geometry: THREE.BufferGeometry;
+      if (opt.serratedHeadWasher) {
+        geometry = this.track(
+          createSerratedWasherGeometry({ outerRadius: b.wr, innerRadius: b.r + 0.4, thickness: serratedThickness }),
+        );
         geometry.translate(0, 0, back * MM);
       } else {
         geometry = cyl(b.wr, back, -stack, 24);
       }
-      parts.push([geometry, washerMaterial]);
+      parts.push([geometry, this.materials.washer]);
     }
-    if (o.spring) parts.push([springWasher(b.sw, washer.thickness), springMaterial]);
+
+    if (opt.spring) {
+      parts.push([this.track(createSpringWasherGeometry(b.sw, washer.thickness)), this.materials.spring]);
+    }
+
     if (socket) {
-      parts.push([socketRim(socket.d, socket.s, recessDepth, back - hh), boltSteelMaterial]);
+      parts.push([this.track(createSocketRimGeometry(socket.d, socket.s, recessDepth, back - hh)), this.materials.steel]);
     }
+
     if (slot) {
-      const width = slot.width ?? BRACE_JOINT.slotW;
-      const w = (width / 2) * MM, l = ((slot.len - width) / 2) * MM;
-      const s = new THREE.Shape();
-      s.moveTo(w, -l);
-      s.lineTo(w, l);
-      s.absarc(0, l, w, 0, Math.PI, false);
-      s.lineTo(-w, -l);
-      s.absarc(0, -l, w, Math.PI, Math.PI * 2, false);
+      const shape = createSlotShape(slot.len, slot.width ?? BRACE_JOINT.slotW);
       for (const z of slot.at) {
-        const g = track(new THREE.ShapeGeometry(s, 12));
+        const g = this.track(new THREE.ShapeGeometry(shape, 12));
         g.translate(0, 0, z * MM);
-        parts.unshift([g, slotMaterial]);
+        parts.unshift([g, this.materials.slot]);
       }
     }
+
     return parts;
   }
-  // M12 螺栓的螺母下都是一个平垫、一个弹垫（节点图）
-  const BOLTS = {
-    // 立柱、内外斜撑连接螺栓由 add() 按各构件实际板厚生成。
-    clip: boltKind(12, CLIP.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }), // 底边：檩托+斜梁翼缘，两面平垫
-    clipWeb: boltKind(12, CLIP.t + purlinSection.t, null, { len: 35, headWasher: true, spring: true }), // 立边：檩托+檩条腹板，两面平垫
-    purlinBeam: boltKind(12, purlinSection.t + beamSection.t, null, { len: 35, headWasher: true, spring: true }), // 平坡：檩条下翼缘直接连接斜梁上翼缘
-    // 组件安装孔：M8×22 外六角螺栓 + 螺母（组件节点图），两面平垫；夹檩条上翼缘 + 组件边框（边框翼缘厚 2 为假设）
-    splice: boltKind(12, purlinSection.t + 3, null, { len: 35, headWasher: true, spring: true }),
-    // 组件上方：普通平垫 Ø16×1.6；檩条下方：大平垫（图未标尺寸，暂按 Ø24×2）。
-    module: boltKind(8, purlinSection.t + 2, null, { len: 22, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } }),
-  };
-  // 压块用 M8 内六角螺栓，公称长度由组件厚度选定，头下平垫落在各自槽底。
-  // 叠层厚度跟组件厚度 H 走，按厚度缓存
-  const clampKinds: Record<number, Record<string, ReturnType<typeof boltKind>>> = {};
-  function kinds(H: number): Record<string, ReturnType<typeof boltKind>> {
-    if (!clampKinds[H]) {
-      const { length } = getClampBoltSpec(H);
-      const options = { len: length, socket: true, headWasher: true, spring: true, nutWasher: { radius: 12, thickness: 2 } };
-      clampKinds[H] = {
-        // 头部普通平垫 Ø16×1.6，螺母侧大平垫暂按 Ø24×2，上叠弹垫。
-        clampMid: boltKind(8, purlinSection.t + H - CLAMP_PROFILE.mid.floor, null, options),
-        clampSide: boltKind(8, purlinSection.t + H - CLAMP_PROFILE.side.floor, null, options),
+
+  /** 按组件厚度缓存压块 M8 内六角螺栓几何体。 */
+  private getKinds(modT: number): Record<string, BoltPartPair[]> {
+    if (!this.clampKinds[modT]) {
+      const { length } = getClampBoltSpec(modT);
+      const options: BoltKindOptions = {
+        len: length,
+        socket: true,
+        headWasher: true,
+        spring: true,
+        nutWasher: { radius: 12, thickness: 2 },
+      };
+      this.clampKinds[modT] = {
+        clampMid: this.boltKind(8, this.purlinSection.t + modT - CLAMP_PROFILE.mid.floor, null, options),
+        clampSide: this.boltKind(8, this.purlinSection.t + modT - CLAMP_PROFILE.side.floor, null, options),
       };
     }
-    return Object.assign({}, BOLTS, clampKinds[H]);
+    return { ...this.standardKinds, ...this.clampKinds[modT] };
   }
 
-  // 组件螺栓、压块螺栓跟着檩条顺坡（东西坡度），其余在各榀上
-  const SLOPE_KINDS = new Set(['splice', 'module', 'clampMid', 'clampSide']);
-
-  // 一次重建用一个收集器（modT：组件厚度）：add() 登记一颗螺栓，flush() 画出全部并返回 M12、M8 安装螺栓、M8 压块螺栓套数
-  let serratedModule: ReturnType<typeof boltKind> | undefined;
-  function collector(modT: number, { moduleSerratedWasher = false } = {}) {
-    const K = kinds(modT), mats: Record<string, THREE.Matrix4[]> = {};
+  /** 创建单次重建的螺栓收集器：add() 登记一颗螺栓，flush() 实例化绘制并统计套数。 */
+  collector(modT: number, { moduleSerratedWasher = false } = {}) {
+    const K = this.getKinds(modT);
+    const mats: Record<string, THREE.Matrix4[]> = {};
     if (moduleSerratedWasher) {
-      serratedModule ??= boltKind(8, purlinSection.t + 2, null, {
-        len: 22, headWasher: true, serratedHeadWasher: true, spring: true,
+      this.serratedModule ??= this.boltKind(8, this.purlinSection.t + 2, null, {
+        len: 22,
+        headWasher: true,
+        serratedHeadWasher: true,
+        spring: true,
         nutWasher: { radius: 12, thickness: 2 },
       });
-      K.module = serratedModule;
+      K.module = this.serratedModule;
     }
     for (const k in K) mats[k] = [];
-    return {
-      // axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）
-      add(kind: string, p: THREE.Vector3, axis: THREE.Vector3, up: THREE.Vector3, thickness?: number) {
-        if (thickness !== undefined) {
-          const base = kind, key = base + ':' + thickness;
-          if (!K[key]) {
-            // 上节点叠加斜梁板厚，其他节点传入总夹紧厚度。
-            const stack = base === 'top' || base === 'btop' ? thickness + beamSection.t : thickness;
-            const slot = ['btop', 'postTie', 'purlinTie', 'splice'].includes(base) ? null : { at: base === 'top' ? [-beamSection.t, -stack - 0.4] : [-stack - 0.4], len: base === 'top' ? 40 : BRACE_JOINT.slotL, width: base === 'top' ? 18 : BRACE_JOINT.slotW };
-            K[key] = boltKind(base === 'top' ? 16 : 12, stack, slot, { len: base === 'top' ? 40 : 35, headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie', 'splice'].includes(base), spring: true });
 
+    return {
+      /** axis：螺栓轴线（指向螺母一侧），up：局部 y（长圆孔方向）。 */
+      add: (kind: string, p: THREE.Vector3, axis: THREE.Vector3, up: THREE.Vector3, thickness?: number) => {
+        if (thickness !== undefined) {
+          const base = kind;
+          const key = `${base}:${thickness}`;
+          if (!K[key]) {
+            const stack = base === 'top' || base === 'btop' ? thickness + this.beamSection.t : thickness;
+            const slot = ['btop', 'postTie', 'purlinTie', 'splice'].includes(base)
+              ? null
+              : {
+                  at: base === 'top' ? [-this.beamSection.t, -stack - 0.4] : [-stack - 0.4],
+                  len: base === 'top' ? 40 : BRACE_JOINT.slotL,
+                  width: base === 'top' ? 18 : BRACE_JOINT.slotW,
+                };
+            K[key] = this.boltKind(base === 'top' ? 16 : 12, stack, slot, {
+              len: base === 'top' ? 40 : 35,
+              headWasher: ['foot', 'footBrace', 'top', 'btop', 'postTie', 'purlinTie', 'splice'].includes(base),
+              spring: true,
+            });
             mats[key] = [];
           }
           kind = key;
         }
-        const z = axis.clone().normalize(), y = up.clone().normalize(), x = new V3().crossVectors(y, z);
+        const z = axis.clone().normalize();
+        const y = up.clone().normalize();
+        const x = new V3().crossVectors(y, z);
         mats[kind].push(new THREE.Matrix4().makeBasis(x, y, z).setPosition(p));
       },
+
       flush(parent: THREE.Object3D, slopeParent: THREE.Object3D, purlinTieParent = slopeParent) {
-        for (const k in K) for (const [g, mat] of K[k]) instanced(k.split(':')[0] === 'purlinTie' ? purlinTieParent : SLOPE_KINDS.has(k.split(':')[0]) ? slopeParent : parent, g, mat, mats[k]);
+        for (const k in K) {
+          const base = k.split(':')[0];
+          const target = base === 'purlinTie' ? purlinTieParent : SLOPE_KINDS.has(base) ? slopeParent : parent;
+          for (const [g, mat] of K[k]) instanced(target, g, mat, mats[k]);
+        }
+        const countByBase = (predicate: (base: string) => boolean) =>
+          Object.keys(mats)
+            .filter((k) => predicate(k.split(':')[0]))
+            .reduce((sum, k) => sum + mats[k].length, 0);
+
         return {
-          m16: Object.keys(mats).filter(k => k.split(':')[0] === 'top').reduce((sum,k) => sum + mats[k].length, 0),
-          m12: Object.keys(mats).filter(k => !['top','module','clampMid','clampSide'].includes(k.split(':')[0])).reduce((sum,k) => sum + mats[k].length, 0),
-          spliceBolts: Object.keys(mats).filter(k => k.split(':')[0] === 'splice').reduce((sum, k) => sum + mats[k].length, 0),
-          purlinTieBolts: Object.keys(mats).filter(k=>k.split(':')[0]==='purlinTie').reduce((sum,k)=>sum+mats[k].length,0),
+          m16: countByBase((b) => b === 'top'),
+          m12: countByBase((b) => !['top', 'module', 'clampMid', 'clampSide'].includes(b)),
+          spliceBolts: countByBase((b) => b === 'splice'),
+          purlinTieBolts: countByBase((b) => b === 'purlinTie'),
           m8: mats.module.length,
           m8c: mats.clampMid.length + mats.clampSide.length,
         };
       },
     };
-  }
-    this.collector = collector;
   }
 }

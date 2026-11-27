@@ -1,14 +1,24 @@
-import type { PartOptions, BuildContext } from '../part-types.ts';
+import type { PartOptions, BuildContext, ConnectorSpec } from '../part-types.ts';
 import type { Object3D } from 'three';
 import { addMember, EZ, V, MM } from '../core.ts';
 import { PurlinConnectorPart } from './purlin-connector.ts';
 import { PurlinClipPart } from './purlin-clip.ts';
 
-/** 构件实例：构造参数配置本构件，build 接收本次支架的放置上下文。 */
+/**
+ * 檩条、檩托及拼接连接件。
+ * 檩条坐在斜梁上表面，沿东西向通长；截面局部 a 沿 n、b 沿 u，腹板在下坡一侧。
+ */
 export class PurlinPart {
-  build;
-  cap;
-  splice;
+  readonly splice: ConnectorSpec | null;
+  private readonly purlinSection;
+  private readonly material;
+  private readonly capMaterial;
+  private readonly geometry;
+  private readonly capGeometry;
+  private readonly createDrilledPurlinGeometry;
+  private readonly track;
+  private readonly connector: PurlinConnectorPart;
+  private readonly clip: PurlinClipPart;
 
   constructor({
     purlinSection,
@@ -24,45 +34,61 @@ export class PurlinPart {
     purlinClip: ConstructorParameters<typeof PurlinClipPart>[0];
     purlinConnector: ConstructorParameters<typeof PurlinConnectorPart>[0];
   }) {
-  const { build: buildConnector, splice } = new PurlinConnectorPart(purlinConnectorOptions);
-  const { build: buildClip } = new PurlinClipPart(purlinClipOptions);
-  /* 檩条和檩托。檩条坐在斜梁上表面，沿东西向通长。
-   * 檩条-斜梁：L 形檩托，底边压在斜梁上翼缘、立边贴檩条腹板（下坡一侧），各 1 颗 M12 */
-
-  const geo = track(createSectionGeometry(purlinSection));
-  const capGeo = track(createSectionCapGeometry(purlinSection));
-  // 檩条 t（距斜梁下端）在东西向 z 处的截面原点：截面局部 a 沿 n、b 沿 u，腹板在下坡一侧
-  function origin(c: BuildContext, t: number, z: number) {
-    const p = c.S.along(t);
-    return V(p.x, p.y, z)
-      .addScaledVector(c.n, (c.S.hBeamTop + purlinSection.d / 2) * MM)
-      .addScaledVector(c.u, (-purlinSection.f / 2) * MM);
+    this.purlinSection = purlinSection;
+    this.material = purlinMaterial;
+    this.capMaterial = purlinCapMaterial;
+    this.createDrilledPurlinGeometry = createDrilledPurlinGeometry;
+    this.track = track;
+    this.geometry = track(createSectionGeometry(purlinSection));
+    this.capGeometry = track(createSectionCapGeometry(purlinSection));
+    this.connector = new PurlinConnectorPart(purlinConnectorOptions);
+    this.clip = new PurlinClipPart(purlinClipOptions);
+    this.splice = this.connector.splice;
   }
 
-  // 返回檩托个数
-  function build(c: BuildContext): number {
-    const { S, layout, zw, u, n } = c;
-    const clipCount = buildClip(c);
-    const segmentGeometry = layout.cuts.segments.map(seg => {
-      const holes = (layout.purlinTies?.rods || []).map(rod=>rod.z-seg.start)
-        .filter(z=>z>7 && z<seg.length-7);
-      return holes.length ? track(createDrilledPurlinGeometry(purlinSection,seg.length,holes)) : geo;
+  /** 檩条 t（距斜梁下端）在东西向 z 处的截面原点。 */
+  private origin(c: BuildContext, t: number, z: number) {
+    const p = c.S.along(t);
+    return V(p.x, p.y, z)
+      .addScaledVector(c.n, (c.S.hBeamTop + this.purlinSection.d / 2) * MM)
+      .addScaledVector(c.u, (-this.purlinSection.f / 2) * MM);
+  }
+
+  /** 生成檩托、檩条分段及拼接件，返回檩托个数。 */
+  build(c: BuildContext): number {
+    const { S, layout, u, n } = c;
+    const clipCount = this.clip.build(c);
+    const segmentGeometry = layout.cuts.segments.map((seg) => {
+      const holes = (layout.purlinTies?.rods || [])
+        .map((rod) => rod.z - seg.start)
+        .filter((z) => z > 7 && z < seg.length - 7);
+      return holes.length
+        ? this.track(this.createDrilledPurlinGeometry(this.purlinSection, seg.length, holes))
+        : this.geometry;
     });
 
     for (const t of S.purlins) {
-      layout.cuts.segments.forEach((seg,index)=>addMember(c.slope, segmentGeometry[index], purlinMaterial, origin(c,t,seg.start),n,u,EZ.clone().multiplyScalar(seg.length*MM)));
-      buildConnector(c, (z) => origin(c, t, z));
+      layout.cuts.segments.forEach((seg, index) => {
+        addMember(
+          c.slope,
+          segmentGeometry[index],
+          this.material,
+          this.origin(c, t, seg.start),
+          n,
+          u,
+          EZ.clone().multiplyScalar(seg.length * MM),
+        );
+      });
+      this.connector.build(c, (z) => this.origin(c, t, z));
     }
     return clipCount;
   }
 
-  // 剖切面封口：在东西向 z 处给每根檩条补一块 C 型截面
-  function cap(c: BuildContext, z: number, parent: Object3D) {
-    if (!c.layout.cuts.segments.some(s=>z>s.start && z<s.start+s.length)) return;
-    for (const t of c.S.purlins) addMember(parent, capGeo, purlinCapMaterial, origin(c, t, z), c.n, c.u, EZ);
-  }
-    this.build = build;
-    this.cap = cap;
-    this.splice = splice;
+  /** 剖切面封口：在东西向 z 处给每根檩条补一块 C 型截面。 */
+  cap(c: BuildContext, z: number, parent: Object3D) {
+    if (!c.layout.cuts.segments.some((s) => z > s.start && z < s.start + s.length)) return;
+    for (const t of c.S.purlins) {
+      addMember(parent, this.capGeometry, this.capMaterial, this.origin(c, t, z), c.n, c.u, EZ);
+    }
   }
 }
