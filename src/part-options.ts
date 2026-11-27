@@ -8,7 +8,7 @@ import { createDrilledAngleGeometry, createDrilledPurlinGeometry, createDrilledC
 /** Page-independent translation from section/material configuration to part options. */
 interface PartDependencies {
   sections: MemberSections;
-  materials: Record<'purlinTie' | 'postTie' | 'post' | 'buried' | 'beam' | 'brace' | 'bracket' | 'purlin' | 'purlinCap' | 'purlinConnector' | 'clip' | 'moduleCap' | 'clamp' | 'boltSteel' | 'boltNut' | 'boltWasher' | 'boltSpring' | 'slot', Material>;
+  materials: Record<'purlinTie' | 'postTie' | 'post' | 'buried' | 'concrete' | 'beam' | 'brace' | 'bracket' | 'purlin' | 'purlinCap' | 'purlinConnector' | 'clip' | 'moduleCap' | 'clamp' | 'boltSteel' | 'boltNut' | 'boltWasher' | 'boltSpring' | 'slot', Material>;
   connections: { plates: typeof braceConnectorPlates };
   geometry: {
     createSectionGeometry: typeof createSectionGeometry;
@@ -28,6 +28,7 @@ export function createPartOptions({ sections, materials, connections, geometry, 
       postRSection: sections.postR,
       postMaterial: materials.post,
       buriedMaterial: materials.buried,
+      concreteMaterial: materials.concrete,
       createSectionGeometry,
       track },
     beam: { beamSection: sections.beam,

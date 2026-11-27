@@ -40,6 +40,7 @@ export function isSurfaceFinishKey(key: string): key is SurfaceFinishKey {
 export interface SharedParameters extends Record<SurfaceFinishKey, string> {
   modL: number; modW: number; modT: number; modPower: number; modWeight: number;
   hole: number; rows: number; fix: 'bolt' | 'clamp'; serratedWasher: ToggleValue; clampL: number;
+  pileFoundationType: '水泥灌注桩' | '锤入桩' | '水泥台桩' | '螺旋桩';
   tilt: number; h0: number; span: number; embed: number; slopeNS: number; slopeEW: number;
   maxPurlin: number | string; outer: ToggleValue;
   braceHF: number; braceHR: number; braceTopF: number; braceTopR: number;
@@ -74,7 +75,7 @@ type ParameterField<Options, NumericOptions> = FieldBase & (
   | { type: 'bool'; key: 'serratedWasher' | 'outer'; keys?: never }
   | { type?: 'number'; key: NumericParameterKey; keys?: never }
 );
-export type ParameterFieldConfig = ParameterField<(string | [string, string])[], 'clampLengths'> & {
+export type ParameterFieldConfig = ParameterField<(string | [string, string])[], 'clampLengths' | readonly number[]> & {
   whenFix?: ModelParameters['fix'];
 };
 export type ParameterDefinition = ParameterField<[string, string][], readonly number[]> & {

@@ -95,12 +95,11 @@ export function createBracket(parameters: ModelParameters, { sections, partOptio
     purlinClip: clipSpec,
   });
   const postOptions = partOptions.post;
-  const frontPost = new PostPart({ section: postOptions.postFSection, material: postOptions.postMaterial,
-    buriedMaterial: postOptions.buriedMaterial, x: S.xf, bottom: S.botF, top: S.topF, ground: S.gy(S.xf),
-    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
-  const rearPost = new PostPart({ section: postOptions.postRSection, material: postOptions.postMaterial,
-    buriedMaterial: postOptions.buriedMaterial, x: S.xr, bottom: S.botR, top: S.topR, ground: S.gy(S.xr),
-    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track });
+  const postConfig = { material: postOptions.postMaterial, buriedMaterial: postOptions.buriedMaterial,
+    concreteMaterial: P.pileFoundationType === '水泥灌注桩' ? postOptions.concreteMaterial : undefined,
+    createSectionGeometry: postOptions.createSectionGeometry, track: postOptions.track };
+  const frontPost = new PostPart({ ...postConfig, section: postOptions.postFSection, x: S.xf, bottom: S.botF, top: S.topF, ground: S.gy(S.xf) });
+  const rearPost = new PostPart({ ...postConfig, section: postOptions.postRSection, x: S.xr, bottom: S.botR, top: S.topR, ground: S.gy(S.xr) });
   const braceOptions = partOptions.brace;
   const braceConfig = { material: braceOptions.braceMaterial, createSectionGeometry: braceOptions.createSectionGeometry, track: braceOptions.track };
   const frontBrace = new BracePart({ ...braceConfig, section: braceOptions.braceFSection, node: layout.joints[0] });

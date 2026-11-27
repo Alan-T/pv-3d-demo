@@ -22,7 +22,7 @@ function changeField(key: ParameterKey, event: Event) {
 <template>
   <div v-show="!definition.when || definition.when(parameters)" class="prow"
     :class="{ pbool: definition.type === 'bool', psize: definition.type === 'size',
-      'select-with-unit-column': definition.type === 'select' && (definition.unit || definition.key === 'fix') }">
+      'select-with-unit-column': definition.type === 'select' && (definition.unit || definition.key === 'fix' || definition.key === 'pileFoundationType') }">
     <div class="pl field-label">
       <label v-if="definition.type === 'bool'" :for="`param-${definition.key}`">
         <input :id="`param-${definition.key}`" type="checkbox" :checked="!!parameters[definition.key]"

@@ -8,7 +8,10 @@ const numericOptionLists = { clampLengths: CLAMP_LENGTHS };
 function resolveField({ whenFix, ...field }: ParameterFieldConfig): ParameterDefinition {
   const when = whenFix && ((parameters: ModelParameters) => parameters.fix === whenFix);
   if (field.type !== 'select') return { ...field, when };
-  if ('numericOptions' in field) return { ...field, when, numericOptions: numericOptionLists[field.numericOptions] };
+  if ('numericOptions' in field) {
+    const options = field.numericOptions;
+    return { ...field, when, numericOptions: typeof options === 'string' ? numericOptionLists[options] : options };
+  }
   const options = field.options.map((option): [string, string] => typeof option === 'string' ? [option, option] : option);
   return { ...field, when, options };
 }
@@ -19,6 +22,7 @@ export const PARAMS = PARAMETER_FIELDS.map(resolveField);
 export function limits(key: string): [number, number, number] {
   const field = PARAMS.find(item => item.key === key);
   if (field) {
+    if ('numericOptions' in field) return [Math.min(...field.numericOptions), Math.max(...field.numericOptions), 1];
     const step = key === 'tilt' || field.unit === '%' ? 0.1 : Math.min(field.step ?? 1, 1);
     return [field.min ?? -Infinity, field.max ?? Infinity, step];
   }

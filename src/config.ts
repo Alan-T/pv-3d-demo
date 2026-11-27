@@ -142,6 +142,7 @@ export const SURFACE_FINISH_BY_CORROSIVITY = {
 
 // ---------- 固定尺寸与连接件 ----------
 const FIX = {
+  concretePile: { diameterAllowance: 100, endAllowance: 50 }, // mm：桩径比柱截面较大边增加 100，桩顶和桩底各延伸 50
   beamEndOffsets: { low: 135, high: 85 }, // 首末孔到梁端的基础距离（沿梁）；长度取整余量再平分两端
   braceEdge: 35, // 沿斜撑轴线，首末孔中心到各自端头的距离（mm）
   postTieEdge: 135, // 立柱拉杆端孔中心到杆端的基础距离（mm），前后排共用
@@ -208,6 +209,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
     clampL: 50, // 压块长度（沿坡），仅压块固定时生效
 
     // 安装位置与地形
+    pileFoundationType: '锤入桩',
     tilt: 20, // 组件倾角（°）
     h0: 620, // 组件前沿离地高度
     span: 3000, // 前后立柱水平间距
@@ -339,6 +341,7 @@ const PRESETS: Record<PresetId, DrawingPreset> = {
     clampL: 60, // 压块长度（沿坡），仅压块固定时生效
 
     // 安装位置与地形
+    pileFoundationType: '锤入桩',
     tilt: 14, // 组件倾角（°）
     h0: 700, // 组件前沿离地高度
     span: 3700, // 前后立柱水平间距
@@ -431,6 +434,8 @@ export const PARAMETER_FIELDS: ParameterFieldConfig[] = [
     hint: '立边高 × 底边宽 × 厚度 × 长度（mm）' },
   { key: 'purlinTies', label: '檩条拉杆布置', type: 'select', options: [['none', '无'], ['all', '全部跨'], ['inner', '剔除首末跨'], ['custom', '自定义']],
     hint: '每跨中间一套，贯通所有檩条，两端各伸出85 mm；自定义可逐跨勾选' },
+  { key: 'pileFoundationType', label: '桩基础类型', type: 'select',
+    options: ['水泥灌注桩', '锤入桩', '水泥台桩', '螺旋桩'] },
   { key: 'tilt',   label: '组件倾角',        unit: '°',  min: 10,   max: 40,   step: 0.5 },
   { key: 'span',   label: '前后立柱间距',    unit: 'mm', min: 2000, max: 4500, step: 50 },
   { key: 'h0',     label: '组件前沿离地高度', unit: 'mm', min: 300,  max: 1500, step: 10 },
@@ -450,14 +455,14 @@ export const PARAMETER_FIELDS: ParameterFieldConfig[] = [
   { key: 'purlinConnector', label: '檩条连接件', type: 'select',
     options: PURLIN_CONNECTOR_SPECS,
     hint: '手动选择 U 型连接件规格（高度*翼缘宽*板厚*长度），不随檩条截面自动切换' },
-  { key: 'rows',   label: '组件排数（沿坡）', unit: '排', min: 2,    max: 4,    step: 1 },
+  { key: 'rows', label: '组件排数（沿坡）', type: 'select', unit: '排', numericOptions: [2, 3] },
   { key: 'outer',  label: '外斜撑',          type: 'bool', hint: '立柱外侧再加一根斜撑，撑住斜梁悬挑段（与内斜撑共用连接板）' },
   { key: 'cols',   label: '组件列数（东西向）', unit: '列', min: 1,  max: 60,   step: 1,
     hint: '榀数由列数算出：檩条两端悬挑不超过首末跨榀距 0.4 倍的最少榀数' },
   { key: 'pitch',  label: '中间跨榀距',      unit: 'mm', min: 2000, max: 4500, step: 100 },
   { key: 'pitchEnd', label: '首末跨榀距',    unit: 'mm', min: 1500, max: 4500, step: 100,
     hint: '第 1–2 榀、倒数第 2–1 榀之间的距离' },
-  { key: 'slopeNS',  label: '地面南北坡度',    unit: '%',  min: -10,  max: 10,   step: 0.5,
+  { key: 'slopeNS',  label: '地面南北坡度',    unit: '%',  min: -60,  max: 60,   step: 0.5,
     hint: '正 = 南向坡（北高南低），负 = 北向坡（北低南高）。前柱处地面为 ±0，后柱按实际地面埋深：后柱总长 = 柱顶高 − 坡度 × 立柱间距 + 埋深' },
   { key: 'slopeEW', label: '地面东西坡度',  unit: '%',  min: -10,  max: 10,   step: 0.5,
     hint: '正 = 东高西低，负 = 东低西高。各榀立柱竖直、跟着地面抬高，檩条顺坡；榀距、阵列宽、檩条长都是沿檩条量的长度，水平距离 = 长度 ÷ √(1 + 坡度²)' },

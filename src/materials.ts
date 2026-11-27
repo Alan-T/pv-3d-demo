@@ -50,6 +50,7 @@ const M = {
   post: steel(), beam: steel(), brace: steel(), postTie: steel(), purlinTie: steel(), purlin: steel(), buried: steel(), bracket: steel(), clip: steel(),
   clamp: new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.45 }),   // 铝压块
   ground: new THREE.MeshLambertMaterial(),
+  concrete: new THREE.MeshStandardMaterial({ color: 0x9b9994, roughness: 0.95, transparent: true, opacity: 0.58, depthWrite: false }),
   // 紧固件统一金属灰色系，以色阶区分零件；六角头/螺母使用平面着色突出棱面。
   boltSteel: new THREE.MeshStandardMaterial({ color: 0xb4b4b4, roughness: 0.42, metalness: 0.5, flatShading: true }),
   boltNut: new THREE.MeshStandardMaterial({ color: 0x929292, roughness: 0.42, metalness: 0.5, flatShading: true }),
